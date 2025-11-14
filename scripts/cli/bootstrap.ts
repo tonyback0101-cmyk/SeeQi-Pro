@@ -31,11 +31,11 @@ async function createDemoData() {
 
     const { data: existing } = await client.auth.admin.listUsers({
       page: 1,
-      perPage: 1,
-      email: demoEmail,
+      perPage: 100,
     });
 
-    let userId: string | undefined = existing?.users?.[0]?.id;
+    const existingUser = existing?.users?.find((user) => user.email === demoEmail);
+    let userId: string | undefined = existingUser?.id;
     if (!userId) {
       const { data, error } = await client.auth.admin.createUser({
         email: demoEmail,
