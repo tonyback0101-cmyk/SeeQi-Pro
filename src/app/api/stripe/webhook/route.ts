@@ -17,7 +17,9 @@ function requireEnv(name: string) {
 }
 
 const stripe = getStripeClient();
-const webhookSecret = requireEnv("STRIPE_WEBHOOK_SECRET");
+// 在构建时，如果环境变量不存在，使用占位值以避免构建失败
+// 实际运行时会在 POST 函数中检查并抛出错误
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "placeholder-webhook-secret";
 
 async function getSupabase() {
   return getSupabaseAdminClient();
@@ -256,6 +258,11 @@ async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
 }
 
 export async function POST(request: Request) {
+  // 运行时检查：如果使用占位值，说明环境变量未配置
+  if (webhookSecret === "placeholder-webhook-secret") {
+    return NextResponse.json({ error: "STRIPE_WEBHOOK_SECRET 未配置" }, { status: 500 });
+  }
+
   const signature = headers().get("stripe-signature");
   if (!signature) {
     return NextResponse.json({ error: "缺少 Stripe 签名" }, { status: 400 });

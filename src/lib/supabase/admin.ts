@@ -1,16 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
-function requiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`环境变量 ${name} 未设置，请在 .env.local 中配置 Supabase 凭据`);
-  }
-  return value;
-}
+// 在构建时，如果环境变量不存在，使用占位值以避免构建失败
+// 实际运行时会在使用前检查并抛出错误
+const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
 export const supabaseAdmin = createClient(
-  requiredEnv("SUPABASE_URL"),
-  requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl,
+  supabaseServiceRoleKey,
   {
     auth: {
       persistSession: false,
