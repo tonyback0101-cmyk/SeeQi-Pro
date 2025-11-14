@@ -43,7 +43,6 @@
     "vitest": "^4.0.8"
   },
   "dependencies": {
-    "@img/sharp-win32-arm64": "^0.34.5",
     "@next-auth/supabase-adapter": "^0.2.1",
     "@stripe/stripe-js": "^8.3.0",
     "@supabase/supabase-js": "^2.43.1",
