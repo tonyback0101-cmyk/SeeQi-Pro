@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { generateHexagram } from "@/lib/analysis/ichingGenerator";
+import type { HexagramEntry, HexagramLine } from "@/lib/analysis/ichingGenerator";
 import HexagramDisplay from "@/components/iching/HexagramDisplay";
+import type { HexagramMeta, IchingLine } from "@/lib/ichingGenerator";
 import { loadData, loadStatuses } from "@/state/assessmentStorage";
 import type { IChingRecordData, ModuleStatus } from "@/types/assessment";
 
@@ -47,7 +49,32 @@ export default function IChingReportPage({ params }: PageProps) {
 
   const reading = useMemo(() => {
     if (!data) return null;
-    return generateHexagram(data.createdAt);
+    const raw = generateHexagram(data.createdAt);
+    // Convert HexagramEntry to HexagramMeta for HexagramDisplay component
+    const convertToMeta = (entry: HexagramEntry, id: string): HexagramMeta => ({
+      id,
+      name: entry.name.replace("卦", ""),
+      description: entry.chinese,
+      judgement: entry.judgment,
+      image: entry.image,
+      lineTexts: entry.lines ? Object.values(entry.lines) : [],
+      modernAdvice: "",
+    });
+    const convertLines = (lines: HexagramLine[]): IchingLine[] =>
+      lines.map((line) => ({
+        position: line.position as 1 | 2 | 3 | 4 | 5 | 6,
+        value: line.value as 6 | 7 | 8 | 9,
+        type: line.type as "yin" | "yang",
+        isChanging: line.changing,
+        traditionalMeaning: raw.base.lines?.[line.position] || "",
+        modernReflection: "",
+      }));
+    return {
+      base: convertToMeta(raw.base, raw.baseId.toString()),
+      changing: raw.changing ? convertToMeta(raw.changing, raw.changingId!.toString()) : undefined,
+      lines: convertLines(raw.lines),
+      interpretation: raw.interpretation,
+    };
   }, [data]);
 
   return (
@@ -102,7 +129,7 @@ export default function IChingReportPage({ params }: PageProps) {
             lines={reading.lines}
             locale={locale}
           />
-          <p style={{ margin: 0 }}>{reading.base.chinese} · {reading.base.judgment}</p>
+          <p style={{ margin: 0 }}>{reading.base.description} · {reading.base.judgement}</p>
           <p style={{ margin: 0 }}>{reading.base.image}</p>
           <strong style={{ color: "#2C3E30" }}>{copy.modern}</strong>
           <ul style={listStyle}>
