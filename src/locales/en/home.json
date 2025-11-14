@@ -1,0 +1,91 @@
+{
+  "banner": {
+    "highlight": "Seasonal Wellness Insight",
+    "title": "SeeQi Intelligent Constitution Insight",
+    "subtitle": "Blending oriental wisdom with modern algorithms for tailored wellness",
+    "cta": "Start Now"
+  },
+  "featuresTitle": "Tap For Instant Insight",
+  "featureLabels": {
+    "dream": "Zhougong Dream Interpretation",
+    "iching": "Zhouyi Bagua Reasoning"
+  },
+  "featureDescriptions": {
+    "dreamDesc": "Explore subconscious wisdom through dream insights",
+    "ichingDesc": "Ancient I Ching guidance for modern decisions"
+  },
+  "features": [
+    {
+      "key": "palm",
+      "title": "Palm Line Forensics",
+      "description": "Trace palm lines to unveil constitution tendencies"
+    },
+    {
+      "key": "tongue",
+      "title": "Tongue Wellness Analysis",
+      "description": "High-resolution tongue mapping aligned with meridians"
+    },
+    {
+      "key": "fiveElements",
+      "title": "Five-Element Feng Shui Scan",
+      "description": "Assess elemental balance to fine-tune living and habits"
+    },
+    {
+      "key": "solarTerm",
+      "title": "Solar Term Alerts",
+      "description": "Receive guidance across the 24 seasonal nodes"
+    },
+    {
+      "key": "dream",
+      "title": "Zhougong Dream Interpretation",
+      "description": "Decode dream symbols to surface subconscious insights"
+    },
+    {
+      "key": "iching",
+      "title": "Zhouyi Bagua Reasoning",
+      "description": "Apply I Ching wisdom to navigate real-life choices"
+    }
+  ],
+  "solarTerm": {
+    "title": "Today's Fortune Index",
+    "name": "Beginning of Winter",
+    "description": "Nature conserves energy—focus on warming nutrition.",
+    "advice": "Consider warming ingredients such as black sesame and Chinese yam."
+  },
+  "experts": {
+    "title": "Experts Online",
+    "items": [
+      {
+        "name": "Lin Qingzhu",
+        "title": "National TCM Diagnostics Expert",
+        "bio": "25 years refining constitution analysis with palm-light diagnostics.",
+        "avatar": "https://i.pravatar.cc/120?img=14"
+      },
+      {
+        "name": "Su Yuncen",
+        "title": "PhD in Oriental Nutrition",
+        "bio": "Integrates nutritional science and food therapy with seasonal wisdom.",
+        "avatar": "https://i.pravatar.cc/120?img=28"
+      },
+      {
+        "name": "Cheng Huaijin",
+        "title": "AI Healthcare Researcher",
+        "bio": "Builds multimodal models for precise wellness profiling.",
+        "avatar": "https://i.pravatar.cc/120?img=48"
+      },
+      {
+        "name": "Zhang Qiang",
+        "title": "Master of Chinese Classics",
+        "bio": "Brings three decades of I Ching and Confucian wisdom into modern wellness coaching.",
+        "avatar": "https://i.pravatar.cc/120?img=62"
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+

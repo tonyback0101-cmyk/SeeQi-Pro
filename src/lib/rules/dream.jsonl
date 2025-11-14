@@ -1,0 +1,5 @@
+{"id":"dream_teeth_fall","priority":70,"when":{"dream.keywords":"掉牙"},"then":{"advice":{"lifestyle":["关注家庭与健康焦虑","规律作息一周观察"],"mindset":["掉牙象征焦虑与能量耗散"]},"quote":"心定则梦清。"},"merge":"append"}
+{"id":"dream_blood","priority":70,"when":{"dream.keywords":"流血"},"then":{"advice":{"lifestyle":["减少熬夜","补充优质蛋白"],"exercise":["轻度拉伸10分钟"]}},"merge":"append"}
+{"id":"dream_fly","priority":65,"when":{"dream.keywords":"飞翔"},"then":{"advice":{"mindset":["渴望突破，可安排小目标"],"exercise":["户外步行20分钟"]}},"merge":"append"}
+{"id":"dream_rainbow","priority":60,"when":{"dream.keywords":"彩虹"},"then":{"quote":"风雨之后，常见彩虹。","advice":{"lifestyle":["保持正向联结"]}},"merge":"append"}
+

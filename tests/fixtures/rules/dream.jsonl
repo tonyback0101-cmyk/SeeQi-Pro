@@ -1,0 +1,2 @@
+{"id":"test_dream_teeth","priority":70,"when":{"dream.keywords":"掉牙"},"then":{"advice":{"mindset":["关注焦虑"]}},"merge":"append"}
+

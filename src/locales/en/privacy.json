@@ -1,0 +1,41 @@
+{
+  "title": "Wellness & Privacy Statement",
+  "subtitle": "SeeQi offers Eastern-inspired wellness insights. We are committed to handling your information transparently and securely.",
+  "updatedAt": "Last updated: 2025-11-11",
+  "sections": {
+    "health": {
+      "title": "Wellness Disclaimer",
+      "items": [
+        "All SeeQi outputs are cultural and wellness references. They do not replace medical diagnosis or treatment.",
+        "Please consult qualified healthcare professionals if you experience discomfort or need professional advice.",
+        "We do not provide disease prediction or guaranteed therapeutic effects."
+      ]
+    },
+    "data": {
+      "title": "Data We May Collect",
+      "description": "To generate personalised suggestions, we may process the following data points:",
+      "items": [
+        "Palm and tongue images: used solely for quality analysis. Originals are deleted after processing unless you request storage.",
+        "Dream descriptions and emotional tags: help us match keywords. You may delete them at any time.",
+        "Basic information (for example language preference, time zone or optional forms): used to refine recommendations and localisation."
+      ]
+    },
+    "usage": {
+      "title": "How We Use Data",
+      "description": "Your data is used only for content generation, product improvement and anonymised analytics. We do not sell or disclose personal data to third parties without consent."
+    },
+    "rights": {
+      "title": "Your Rights",
+      "items": [
+        "Withdraw assessments and delete reports at any time. Registered users can manage this in “My Reports”.",
+        "Request data export or deletion by contacting privacy@seeqi.app. We respond within five business days.",
+        "If you sign in via third-party providers (e.g. Google, Apple), please also follow their privacy policies."
+      ]
+    },
+    "contact": {
+      "title": "Contact Us",
+      "description": "Questions about this statement? Email privacy@seeqi.app and we will respond within five business days."
+    }
+  }
+}
+

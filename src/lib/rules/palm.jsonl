@@ -1,0 +1,4 @@
+{"id":"palm_ruddy_deep_life","priority":60,"when":{"palm.color":"pink","palm.lines.life":"deep"},"then":{"advice":{"lifestyle":["适度耐力训练"],"exercise":["快走或慢跑20-30分钟"]}},"merge":"append"}
+{"id":"palm_pale_broken_heart","priority":60,"when":{"palm.color":"pale","palm.lines.heart":"broken"},"then":{"advice":{"lifestyle":["减压与情绪管理"],"exercise":["呼吸冥想5分钟"]}},"merge":"append"}
+{"id":"palm_dark_wisdom_straight","priority":55,"when":{"palm.color":"dark","palm.lines.wisdom":"straight"},"then":{"advice":{"lifestyle":["避免久坐"],"exercise":["颈肩拉伸3组"]}},"merge":"append"}
+

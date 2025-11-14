@@ -1,0 +1,3 @@
+{"id":"test_palm_deep","priority":60,"when":{"palm.lines.life":"deep"},"then":{"advice":{"lifestyle":["耐力训练"]}},"merge":"append"}
+{"id":"test_palm_existing","priority":40,"when":{"palm.lines.life":"deep"},"then":{"advice":{"lifestyle":["晨练"]}},"merge":"append"}
+

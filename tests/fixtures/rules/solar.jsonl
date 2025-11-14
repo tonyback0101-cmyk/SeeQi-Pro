@@ -1,0 +1,2 @@
+{"id":"test_solar_summer","priority":50,"when":{"solar.name":"夏至","constitution":"阴虚"},"then":{"advice":{"diet":["银耳羹"]}},"merge":"append"}
+

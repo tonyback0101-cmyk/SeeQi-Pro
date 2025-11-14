@@ -1,0 +1,65 @@
+{
+  "title": "Begin Your Wellness Analysis",
+  "description": "Upload palm and tongue photos, provide a few details, and receive tailored Eastern wellness insights.",
+  "steps": ["Upload", "Info", "Result"],
+  "handUpload": {
+    "label": "Palm Photo",
+    "hint": "Upload a clear palm image in JPG/PNG format, up to 5MB."
+  },
+  "tongueUpload": {
+    "label": "Tongue Photo",
+    "hint": "Upload a tongue image taken under natural light, JPG/PNG only, up to 5MB."
+  },
+  "capture": {
+    "open": "Use camera",
+    "upload": "Upload from device",
+    "cancel": "Cancel",
+    "remove": "Remove photo",
+    "preview": "Current preview",
+    "cameraUnavailable": "Camera is unavailable on this device. Please upload instead.",
+    "desktopGuide": "Desktop browsers will open a guided camera window. Allow access and use the Capture button to take your photo.",
+    "fallbackHint": "If the camera fails to start, switch to Upload from device or choose a file instead."
+  },
+  "form": {
+    "title": "Personal Information",
+    "dreamLabel": "Dream description (optional)",
+    "dreamPlaceholder": "Describe your recent memorable dream. Up to 300 characters.",
+    "dreamSection": {
+      "title": "Dream details (optional)",
+      "typeLabel": "Dream setting",
+      "typeDescription": "Pick the closest theme to help us understand the storyline.",
+      "emotionLabel": "Feeling upon waking",
+      "emotionDescription": "Choose the emotion you felt—it refines the emotional insight.",
+      "keywordsLabel": "Symbol tags",
+      "keywordsDescription": "Select up to 5 tags that appeared in the dream to capture key symbols."
+    },
+    "privacyPrefix": "I have read and agree to the ",
+    "privacyLink": "privacy & wellness statement",
+    "submit": "Start analysis",
+    "submitting": "Processing…",
+    "buttonStart": "Start analysis",
+    "buttonLoading": "Reading your Qi…",
+    "buttonRetry": "Try again"
+  },
+  "errors": {
+    "handRequired": "Please upload your palm photo.",
+    "tongueRequired": "Please upload your tongue photo.",
+    "privacyRequired": "Please accept the privacy statement to continue.",
+    "dreamTooLong": "Dream description must be within 300 characters.",
+    "fileTooLarge": "File size must not exceed 5MB.",
+    "fileType": "Only JPG or PNG files are supported.",
+    "fileConvert": "We couldn't convert this photo automatically. Please save it as JPG/PNG and upload again.",
+    "server": "Server is busy, please try again later.",
+    "unexpected": "Unexpected response, please retry."
+  },
+  "progress": {
+    "uploading": "Uploading & analysing… please wait."
+  }
+}
+
+
+
+
+
+
+

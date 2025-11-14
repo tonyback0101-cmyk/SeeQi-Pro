@@ -1,0 +1,91 @@
+{
+  "banner": {
+    "highlight": "养生节气洞察",
+    "title": "SeeQi 气运健康体质洞察",
+    "subtitle": "融合东方智慧与现代算法，为你打造专属健康方案",
+    "cta": "立即体验"
+  },
+  "featuresTitle": "点击立刻获得结果",
+  "featureLabels": {
+    "dream": "周公梦境解析",
+    "iching": "周易八卦推理"
+  },
+  "featureDescriptions": {
+    "dreamDesc": "通过梦境探寻潜意识智慧",
+    "ichingDesc": "古老智慧指引当下决策"
+  },
+  "features": [
+    {
+      "key": "palm",
+      "title": "手相掌纹鉴识",
+      "description": "识别掌纹走势，洞察五行体质与健康倾向"
+    },
+    {
+      "key": "tongue",
+      "title": "舌象健康分析",
+      "description": "高清舌象识别，匹配中医经络与脏腑状态"
+    },
+    {
+      "key": "fiveElements",
+      "title": "五行风水检测",
+      "description": "根据个体气场定制居家风水与行为调理建议"
+    },
+    {
+      "key": "solarTerm",
+      "title": "节气养生提醒",
+      "description": "实时推送二十四节气的调养策略"
+    },
+    {
+      "key": "dream",
+      "title": "周公梦境解析",
+      "description": "解读梦境符号，洞察潜意识提示"
+    },
+    {
+      "key": "iching",
+      "title": "周易八卦推理",
+      "description": "以易经智慧辅助日常决策与规划"
+    }
+  ],
+  "solarTerm": {
+    "title": "今日气运指数",
+    "name": "今日气运指数：3 · 立冬",
+    "description": "天地萧杀，万物避藏，今日宜温补护阳。",
+    "advice": "建议多食里仁芝麻、山药等温润食材，调养脾胃。"
+  },
+  "experts": {
+    "title": "专家在线",
+    "items": [
+      {
+        "name": "林青竹",
+        "title": "国家级中医诊断专家",
+        "bio": "专注体质辨识 25 年，提出“光影手相”诊断体系。",
+        "avatar": "/images/experts/expert-01.jpg"
+      },
+      {
+        "name": "苏云岚",
+        "title": "东方营养学博士",
+        "bio": "融合膳养与食疗，构建节气食材知识图谱。",
+        "avatar": "/images/experts/expert-02.jpg"
+      },
+      {
+        "name": "霍怀瑾",
+        "title": "AI 医疗算法专家",
+        "bio": "打造多模态识别模型，实现人群健康精准画像。",
+        "avatar": "/images/experts/expert-03.jpg"
+      },
+      {
+        "name": "张强",
+        "title": "中国国学大师",
+        "bio": "研习易经与国学三十载，善于将传统智慧融入现代养生。",
+        "avatar": "/images/experts/expert-04.jpg"
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+

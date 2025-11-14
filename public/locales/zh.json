@@ -1,0 +1,16 @@
+{
+  "cta.start": "立即开启体质分析",
+  "cta.unlock": "解锁完整报告（$1）",
+  "share.make": "生成分享卡",
+  "report.title": "SeeQi 分析报告",
+  "uploader.camera": "使用摄像头拍摄",
+  "uploader.gallery": "从相册选择",
+  "error.format": "请上传清晰的手掌/舌面照片（支持 JPG/PNG）。建议在自然光下拍摄。",
+  "qi.title": "今日气运指数",
+  "qi.phrase.good": "今天预计你运气不错，宜主动表达与行动。",
+  "qi.warning": "温馨提醒：今天不适合往东方远行。",
+  "dream.input.placeholder": "写下你记得的梦境片段（50–300字），也可直接选择关键词",
+  "dream.unlock": "查看更多梦境含义与体质关系（$1 解锁）",
+  "privacy.hint": "我已阅读并同意 SeeQi 的健康说明与隐私条款"
+}
+

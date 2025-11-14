@@ -1,0 +1,4 @@
+{"priority":10,"when":{"tongue.color":"pale"},"then":{"set":{"constitution":"阳虚"}}}
+{"priority":20,"when":{"palm.color":"pale"},"then":{"append":{"palm.tags":["气血偏虚"]}}}
+{"priority":30,"when":{},"then":{"merge":{"advice":{"diet":["红枣桂圆茶"],"lifestyle":["保持稳定作息"]}}}}
+

@@ -1,0 +1,3 @@
+{"id":"test_tongue_pale","priority":90,"when":{"tongue.color":"pale"},"then":{"constitution":"阳虚","advice":{"diet":["羊肉汤"]}},"merge":"append"}
+{"id":"test_tongue_red","priority":80,"when":{"tongue.color":"red"},"then":{"constitution":"阴虚","advice":{"diet":["百合粥"]}},"merge":"replace"}
+

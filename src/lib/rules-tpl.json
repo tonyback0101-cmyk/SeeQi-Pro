@@ -1,0 +1,29 @@
+SeqQiRuleTemplate: {
+  "id": "tongue_yangxu_01",
+  "priority": 90,
+  "when": {
+    "tongue.color": "pale",
+    "tongue.coating": "thin"
+  },
+  "then": {
+    "constitution": "阳虚",
+    "advice": {
+      "zh": {
+        "diet": ["羊肉汤", "红枣桂圆粥"],
+        "lifestyle": ["睡前泡脚", "保持腰腹温暖"],
+        "acupoints": ["命门", "关元"]
+      },
+      "en": {
+        "diet": ["Lamb soup", "Red date & longan porridge"],
+        "lifestyle": ["Foot bath before bed", "Keep lower back warm"],
+        "acupoints": ["Mingmen", "Guanyuan"]
+      }
+    },
+    "quote": {
+      "zh": "温阳固本，脾肾得养。",
+      "en": "Warm and nourish the yang to support spleen and kidney."
+    }
+  },
+  "merge": "append"
+}
+

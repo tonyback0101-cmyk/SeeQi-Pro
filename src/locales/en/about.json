@@ -1,0 +1,59 @@
+{
+  "title": "SeeQi · Intelligent Eastern Wellness",
+  "mission": "Mission: Bring the wisdom of Traditional Chinese Medicine to the world through data-driven, personalized experiences.",
+  "vision": "Vision: Become the trusted platform for next-generation Eastern constitution insights.",
+  "intro": [
+    "Our team blends expertise from TCM practitioners, AI engineers, and data scientists, reimagining how Eastern wellness is delivered.",
+    "By analyzing multi-modal signals such as palm and tongue imagery, our proprietary models identify constitution patterns and offer guidance aligned with the 24 solar terms.",
+    "We believe technology can illuminate the timeless wisdom of the East for a modern lifestyle."
+  ],
+  "values": {
+    "title": "Our Values",
+    "items": [
+      {
+        "label": "Trusted Expertise",
+        "description": "Co-developed with leading TCM experts, continually validated with clinical insights."
+      },
+      {
+        "label": "User First",
+        "description": "We protect privacy and data security, crafting a warm, empathetic experience."
+      },
+      {
+        "label": "Eastern Innovation",
+        "description": "Eastern philosophy inspires tailored wellness solutions for contemporary life."
+      }
+    ]
+  },
+  "team": {
+    "title": "Core Team",
+    "members": [
+      {
+        "name": "Lin Qingzhu",
+        "role": "Chief TCM Advisor",
+        "bio": "National TCM diagnostics expert specializing in constitution analysis and tongue diagnosis."
+      },
+      {
+        "name": "Su Yuncen",
+        "role": "Nutrition & Solar Terms Advisor",
+        "bio": "PhD in Oriental Nutrition, architect of our seasonal food therapy database."
+      },
+      {
+        "name": "Cheng Huaijin",
+        "role": "Chief Algorithm Scientist",
+        "bio": "Researcher in multi-modal medical AI, builds our identification and recommendation engine."
+      }
+    ]
+  },
+  "contact": {
+    "title": "Contact",
+    "email": "Email: hello@seeqi.com",
+    "address": "Address: 88 Dongfang Road, Pudong, Shanghai"
+  }
+}
+
+
+
+
+
+
+

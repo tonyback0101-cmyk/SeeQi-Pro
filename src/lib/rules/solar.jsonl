@@ -1,0 +1,3 @@
+{"id":"solar_winter_yangxu_penalty","priority":50,"when":{"solar.name":"立冬","constitution":"阳虚"},"then":{"advice":{"diet":["羊肉萝卜汤"],"lifestyle":["早睡晚起避寒"]}},"merge":"append"}
+{"id":"solar_summer_yinxu_tip","priority":50,"when":{"solar.name":"夏至","constitution":"阴虚"},"then":{"advice":{"diet":["银耳百合羹"],"lifestyle":["午间小憩","避免辛辣酒精"]}},"merge":"append"}
+

@@ -1,0 +1,65 @@
+{
+  "title": "开启智能体质测评",
+  "description": "上传您的手相与舌相，填写基础信息，即可获得专属的东方体质洞察。",
+  "steps": ["上传", "信息", "结果"],
+  "handUpload": {
+    "label": "手相上传",
+    "hint": "请上传清晰的手掌照片，支持 JPG/PNG，大小不超过 5MB。"
+  },
+  "tongueUpload": {
+    "label": "舌相上传",
+    "hint": "请上传自然光拍摄的舌面照片，支持 JPG/PNG，大小不超过 5MB。"
+  },
+  "capture": {
+    "open": "使用摄像头拍摄",
+    "upload": "从相册上传",
+    "cancel": "取消",
+    "remove": "移除当前照片",
+    "preview": "当前预览",
+    "cameraUnavailable": "当前设备暂不支持摄像头，请改用上传方式。",
+    "desktopGuide": "桌面浏览器会弹出带取景框的摄像窗口，请允许权限并点击“拍照”完成采集。",
+    "fallbackHint": "若摄像头无法启动，可切换为“上传现有照片”或直接选择文件。"
+  },
+  "form": {
+    "title": "个人信息",
+    "dreamLabel": "梦境描述（选填）",
+    "dreamPlaceholder": "可以描述最近一次印象深刻的梦境，最多 300 字。",
+    "dreamSection": {
+      "title": "梦境补充（选填）",
+      "typeLabel": "梦境场景",
+      "typeDescription": "选择一个最贴近的主题，有助于精准解析剧情。",
+      "emotionLabel": "醒来后的感受",
+      "emotionDescription": "挑选最贴近的情绪，可辅助情绪解析。",
+      "keywordsLabel": "梦境元素标签",
+      "keywordsDescription": "可多选，最多 5 个，帮助捕捉象征细节。"
+    },
+    "privacyPrefix": "我已阅读并同意",
+    "privacyLink": "隐私与健康声明",
+    "submit": "开始分析",
+    "submitting": "解析中…",
+    "buttonStart": "开始分析",
+    "buttonLoading": "正在解读你的气运…",
+    "buttonRetry": "重新分析"
+  },
+  "errors": {
+    "handRequired": "请上传手相照片。",
+    "tongueRequired": "请上传舌相照片。",
+    "privacyRequired": "请勾选隐私声明以继续。",
+    "dreamTooLong": "梦境文字需在 300 字以内。",
+    "fileTooLarge": "文件大小不能超过 5MB。",
+    "fileType": "仅支持 JPG 或 PNG 格式。",
+    "fileConvert": "暂时无法自动转换该图片，请先在本地另存为 JPG/PNG 后重新上传。",
+    "server": "服务器繁忙，请稍后再试。",
+    "unexpected": "解析结果异常，请稍后重试。"
+  },
+  "progress": {
+    "uploading": "正在上传并解析，请稍候…"
+  }
+}
+
+
+
+
+
+
+
