@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     const uploadId = randomUUID();
-    const extension = resolveImageExtension(file.type);
+    const { ext: extension } = resolveImageExtension({ type: file.type, name: file.name });
     const storagePath = `tongue/${sessionId}/${uploadId}.${extension}`;
 
     const { error: uploadError } = await client.storage.from(STORAGE_BUCKET).upload(storagePath, buffer, {
