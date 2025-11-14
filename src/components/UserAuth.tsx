@@ -125,7 +125,10 @@ export default function UserAuth({
     hasSyncedAfterLogin.current = true;
 
     try {
-      await fetch("/api/affiliate/bind", { method: "POST" });
+      await fetch("/api/affiliate/bind", {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
       console.warn("affiliate bind failed", error);
     }
@@ -139,6 +142,7 @@ export default function UserAuth({
           "Content-Type": "application/json",
         },
         body: JSON.stringify(snapshot),
+        credentials: "include",
       });
     } catch (error) {
       console.warn("assessment sync failed", error);
@@ -946,6 +950,7 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ phone: normalized, locale }),
+          credentials: "include",
         });
         const data = await response.json();
         if (!response.ok) {
@@ -977,6 +982,7 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email: normalizedEmail, locale }),
+        credentials: "include",
       });
       const data = await response.json();
       if (!response.ok) {

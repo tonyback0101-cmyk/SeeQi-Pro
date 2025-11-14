@@ -89,7 +89,9 @@ export default function PalmFeatureAnnotator({ record, locale, onClose, onSaved 
       }
       setLoadingImage(true);
       try {
-        const response = await fetch(`/api/palmprints/${record.id}/image-url`);
+        const response = await fetch(`/api/palmprints/${record.id}/image-url`, {
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error(await response.text());
         }
@@ -227,6 +229,7 @@ export default function PalmFeatureAnnotator({ record, locale, onClose, onSaved 
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           features: workingFeatures.map((feature) => ({
             type: feature.type,

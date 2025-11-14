@@ -35,6 +35,7 @@ export async function logPalmEvent(event: PalmEvent) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(event),
+      credentials: "include",
     });
   } catch (error) {
     console.warn("Failed to log palm event", error);

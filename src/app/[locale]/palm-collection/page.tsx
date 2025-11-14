@@ -248,7 +248,9 @@ export default function PalmCollectionPage({ params }: PageProps) {
     setRecordsLoading(true);
     setRecordsError(null);
     try {
-      const response = await fetch("/api/palmprints");
+      const response = await fetch("/api/palmprints", {
+        credentials: "include",
+      });
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error(
@@ -332,6 +334,7 @@ export default function PalmCollectionPage({ params }: PageProps) {
       const response = await fetch("/api/palmprints/upload", {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -663,7 +666,10 @@ export default function PalmCollectionPage({ params }: PageProps) {
       return;
     }
     try {
-      const response = await fetch(`/api/palmprints/${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/palmprints/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error(await response.text());
       }
