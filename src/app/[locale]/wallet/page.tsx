@@ -359,7 +359,7 @@ export default async function WalletPage({ params }: PageProps) {
                       <span>{tx.type}</span>
                       <span>{formatCurrency(Number(tx.amount ?? 0), tx.currency ?? dashboard.currency, locale)}</span>
                       <span>{tx.reference_type ?? "-"}</span>
-                      <span>{(tx.metadata as Record<string, unknown> | null)?.reason ?? ""}</span>
+                      <span>{String((tx.metadata as Record<string, unknown> | null)?.reason ?? "")}</span>
                     </div>
                   ))}
                 </div>
