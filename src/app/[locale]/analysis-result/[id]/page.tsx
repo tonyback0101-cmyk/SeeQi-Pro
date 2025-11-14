@@ -297,6 +297,12 @@ export default function AnalysisResultPage({ params }: PageProps) {
     }
   }, [unlocking, checkingPayment, report, params.id, locale, t.paymentFailed, loadReport]);
 
+  const posterRef = useRef<SharePosterHandle | null>(null);
+
+  const handleSharePoster = useCallback(async () => {
+    await posterRef.current?.generate();
+  }, []);
+
   if (loading) {
     return (
       <main className="page page--center">
@@ -371,12 +377,6 @@ export default function AnalysisResultPage({ params }: PageProps) {
   const acupointAdvice = (report.advice?.acupoints ?? [])
     .map((item) => item?.name ?? item?.function ?? "")
     .filter((item): item is string => Boolean(item && item.trim()));
-
-  const posterRef = useRef<SharePosterHandle | null>(null);
-
-  const handleSharePoster = useCallback(async () => {
-    await posterRef.current?.generate();
-  }, []);
 
   return (
     <main className="report-page">

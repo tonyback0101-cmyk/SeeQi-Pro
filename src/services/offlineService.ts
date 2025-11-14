@@ -257,7 +257,7 @@ class OfflineService {
         break;
       case "merge":
       default:
-        merged = { ...state, [key]: deepMerge(state[key] ?? {}, value) };
+        merged = { ...state, [key]: deepMerge((state[key] ?? {}) as Payload, value) };
         break;
     }
 
@@ -283,7 +283,7 @@ function deepMerge(target: Payload, source: Payload): Payload {
     const targetValue = result[key];
     const sourceValue = source[key];
     if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
-      result[key] = [...new Set([...targetValue, ...sourceValue])];
+      result[key] = Array.from(new Set([...targetValue, ...sourceValue]));
     } else if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
       result[key] = deepMerge(targetValue as Payload, sourceValue as Payload);
     } else {

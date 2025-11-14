@@ -55,7 +55,7 @@ export default function AnalysisHubPage({ params }: PageProps) {
   const t = LABELS[locale];
   const statusMap = STATUS_LABELS[locale];
   const { data: session } = useSession();
-  const isPro = Boolean(session?.subscription?.active);
+  const isPro = Boolean((session as any)?.subscription?.active);
   const [statuses, setStatuses] = useState<Record<AssessmentModule, ModuleStatus>>({
     palm: "not_started",
     tongue: "not_started",

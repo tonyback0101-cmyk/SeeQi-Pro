@@ -22,9 +22,9 @@ const sizeStyles: Record<Size, { padding: string; fontSize: string }> = {
 };
 
 const variantColorMap: Record<Variant, ColorToken> = {
-  primary: "primary",
-  secondary: "secondary",
-  ghost: "primary",
+  primary: "primary" as ColorToken,
+  secondary: "secondary" as ColorToken,
+  ghost: "primary" as ColorToken,
 };
 
 const baseStyle: React.CSSProperties = {
@@ -43,9 +43,10 @@ const baseStyle: React.CSSProperties = {
 
 const getVariantStyles = (variant: Variant, color: ColorToken): React.CSSProperties => {
   if (variant === "ghost") {
+    const colorValue = color === "primary" ? COLORS.primary.qingzhu : color === "secondary" ? COLORS.secondary.gold : "#8DAE92";
     return {
       backgroundColor: "transparent",
-      color: COLORS[color],
+      color: colorValue,
       border: "none",
       boxShadow: "none",
     };
@@ -53,14 +54,15 @@ const getVariantStyles = (variant: Variant, color: ColorToken): React.CSSPropert
 
   if (variant === "secondary") {
     return {
-      backgroundColor: COLORS.secondary,
+      backgroundColor: COLORS.secondary.gold,
       color: "#2C3E30",
       boxShadow: "0 10px 18px rgba(198, 169, 105, 0.3)",
     };
   }
 
+  const bgColor = color === "primary" ? COLORS.primary.qingzhu : color === "secondary" ? COLORS.secondary.gold : "#8DAE92";
   return {
-    backgroundColor: COLORS[color],
+    backgroundColor: bgColor,
     color: "#fff",
   };
 };

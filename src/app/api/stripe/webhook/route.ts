@@ -124,7 +124,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+  const subscription = (invoice as any).subscription;
+  const subscriptionId = typeof subscription === "string" ? subscription : subscription?.id;
   const amountPaid = invoice.amount_paid ?? invoice.amount_due ?? 0;
   if (!subscriptionId || amountPaid <= 0) {
     return;

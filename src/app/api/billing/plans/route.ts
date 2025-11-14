@@ -12,3 +12,4 @@ export async function GET() {
     return NextResponse.json({ error: "无法获取订阅方案，请稍后再试。" }, { status: 500 });
   }
 }
+

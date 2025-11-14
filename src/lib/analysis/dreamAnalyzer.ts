@@ -738,6 +738,8 @@ function extractKeywordMatches(dreamText: string, locale: Locale = "zh"): DreamK
     gecko: ["壁虎", "壁蜥", "gecko", "lizard"],
     childNaked: ["小孩裸体", "赤裸", "naked child"],
     childLaugh: ["小孩笑", "孩子笑", "child laugh", "kid laughing"],
+    fireSymbol: ["火堆", "篝火", "bonfire", "campfire"],
+    phoenix: ["凤凰", "浴火重生", "phoenix", "rebirth"],
   };
 
   Object.entries(fallbackCategories).forEach(([key, words]) => {

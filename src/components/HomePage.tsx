@@ -126,9 +126,17 @@ import SolarCard from "./SolarCard";
       <section className="section">
         <div className="section__header">
           <h2>{content.solarTerm.title}</h2>
-          <p>{content.solarTerm.subtitle}</p>
+          <p>{content.solarTerm.description}</p>
         </div>
-        <SolarCard locale={locale} insight={solarTermInsight} />
+        <SolarCard
+          locale={locale}
+          name={solarTermInsight.name}
+          doList={solarTermInsight.favorable}
+          avoidList={solarTermInsight.avoid}
+          healthTip={solarTermInsight.qiPhrase}
+          element={null}
+          isLite={false}
+        />
       </section>
 
       <section className="section">

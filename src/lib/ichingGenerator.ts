@@ -263,6 +263,8 @@ function describeLine(position: LinePosition, type: LineType, isChangingFlag: bo
   return { classic, modern };
 }
 
+type Locale = "zh" | "en";
+
 function summarizeGuidance(meta: HexagramMeta, lines: IchingLine[], locale: Locale) {
   const changingLines = lines.filter((line) => line.isChanging);
   if (!changingLines.length) {

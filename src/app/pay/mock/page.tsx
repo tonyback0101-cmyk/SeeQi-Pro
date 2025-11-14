@@ -1,7 +1,9 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
+
+export const dynamic = 'force-dynamic';
 
 const TEXT = {
   zh: {
@@ -29,7 +31,7 @@ const TEXT = {
   },
 } as const;
 
-export default function MockCheckoutPage() {
+function MockCheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const localeParam = searchParams.get("locale");
@@ -158,6 +160,18 @@ export default function MockCheckoutPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function MockCheckoutPage() {
+  return (
+    <Suspense fallback={
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div>Loading...</div>
+      </main>
+    }>
+      <MockCheckoutContent />
+    </Suspense>
   );
 }
 

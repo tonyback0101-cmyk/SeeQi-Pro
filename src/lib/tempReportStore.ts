@@ -29,11 +29,11 @@ const store = new Map<string, StoredReport>();
 
 function cleanup(ttl = DEFAULT_TTL_MS) {
   const now = Date.now();
-  for (const [id, entry] of store.entries()) {
+  Array.from(store.entries()).forEach(([id, entry]) => {
     if (now - entry.createdAt > ttl) {
       store.delete(id);
     }
-  }
+  });
 }
 
 export function saveTemporaryReport(entry: {

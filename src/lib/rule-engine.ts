@@ -188,7 +188,7 @@ export class RuleEngine<TContext extends RuleContext = RuleContext> {
               when: { [key]: value },
               then: {},
             },
-            actual as RuleContext,
+            actual as TContext,
           ),
         );
       }

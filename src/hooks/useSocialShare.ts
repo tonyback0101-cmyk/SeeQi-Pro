@@ -194,7 +194,7 @@ export function useSocialShare({ locale = "zh", onTrackShare }: UseSocialShareOp
           break;
       }
       const response = await share(baseShare);
-      onTrackShare?.({ platform, status: response.status });
+      onTrackShare?.({ platform, status: response.status as SocialShareStatus });
       return response;
     },
     [downloadImage, onTrackShare, share, t.copied],

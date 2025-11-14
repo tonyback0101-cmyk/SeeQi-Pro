@@ -85,11 +85,12 @@ function buildResponseFromLocal(entry: ReturnType<typeof getTemporaryReport>) {
   const qiIndex = report.qi_index ?? null;
   let qiIndexResponse = qiIndex;
   if (qiIndex && !unlocked) {
+    const qi = qiIndex as { total?: number; level?: string; trend?: string; advice?: unknown[] };
     qiIndexResponse = {
-      total: qiIndex.total,
-      level: qiIndex.level,
-      trend: qiIndex.trend,
-      advice: Array.isArray(qiIndex.advice) ? qiIndex.advice.slice(0, 1) : [],
+      total: qi.total,
+      level: qi.level,
+      trend: qi.trend,
+      advice: Array.isArray(qi.advice) ? qi.advice.slice(0, 1) : [],
     };
   }
 

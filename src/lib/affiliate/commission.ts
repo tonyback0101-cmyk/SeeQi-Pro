@@ -230,7 +230,7 @@ export async function reverseCommissionsForOrder(
       continue;
     }
 
-    const runningBalance = Number(newBalance ?? 0);
+    const running_balance = Number(newBalance ?? 0);
 
     const { data: walletTx, error: walletError } = await client
       .from("wallet_transactions")

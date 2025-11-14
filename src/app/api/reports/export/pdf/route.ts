@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

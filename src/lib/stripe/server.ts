@@ -10,7 +10,7 @@ export function getStripe() {
   }
   if (!stripeSingleton) {
     stripeSingleton = new Stripe(secretKey, {
-      apiVersion: "2023-10-16",
+      apiVersion: "2025-10-29.clover" as any,
     });
   }
   return stripeSingleton;

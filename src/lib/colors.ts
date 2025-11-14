@@ -32,5 +32,5 @@ export const COLORS = {
   },
 } as const;
 
-export type ColorToken = typeof COLORS;
+export type ColorToken = keyof typeof COLORS;
 

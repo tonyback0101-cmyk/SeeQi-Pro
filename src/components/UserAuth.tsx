@@ -104,7 +104,7 @@ export default function UserAuth({
     if (!session?.user) {
       return undefined;
     }
-    const nameFallback = session.user.email?.split("@")[0] ?? session.user.phone ?? "SeeQi";
+    const nameFallback = session.user.email?.split("@")[0] ?? (session.user as any).phone ?? "SeeQi";
     return {
       name: session.user.name ?? nameFallback,
       avatarUrl: session.user.image ?? undefined,
@@ -296,16 +296,16 @@ function DesktopAuth({
                 type="button"
                 className={`seeqi-auth__menuItem ${item.key === "upgrade" ? "seeqi-auth__menuItem--upgrade" : ""}`}
                 onClick={() => {
-                  if (item.disabled) {
+                  if ('disabled' in item && item.disabled) {
                     return;
                   }
                   item.onClick();
                   setMenuOpen(false);
                 }}
-                disabled={Boolean(item.disabled)}
+                disabled={'disabled' in item ? Boolean(item.disabled) : false}
               >
                 <span>{item.label}</span>
-                {item.disabled && <Loader2 size={16} className="seeqi-auth__spinner" />}
+                {'disabled' in item && item.disabled && <Loader2 size={16} className="seeqi-auth__spinner" />}
               </button>
             </li>
           ))}
@@ -591,16 +591,16 @@ function MobileAuth({
                         item.key === "upgrade" ? "seeqi-auth-mobile__menuItem--upgrade" : ""
                       }`}
                       onClick={() => {
-                        if (item.disabled) {
+                        if ('disabled' in item && item.disabled) {
                           return;
                         }
                         item.onClick();
                         closePanel();
                       }}
-                      disabled={Boolean(item.disabled)}
+                      disabled={'disabled' in item ? Boolean(item.disabled) : false}
                     >
                       <span>{item.label}</span>
-                      {item.disabled && <Loader2 size={18} className="seeqi-auth-mobile__spinner" />}
+                      {'disabled' in item && item.disabled && <Loader2 size={18} className="seeqi-auth-mobile__spinner" />}
                     </button>
                   </li>
                 ))}
