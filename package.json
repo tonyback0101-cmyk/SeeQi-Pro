@@ -19,6 +19,7 @@
     "qi:rebuild": "tsx scripts/recalculate-qi.ts",
     "rules:pull": "tsx scripts/rules-sync.ts",
     "rules:upload": "tsx scripts/rules-upload.ts",
+    "verify:rules-storage": "tsx scripts/verify-rules-storage.ts",
     "health:orders": "tsx scripts/check-orders.ts"
   },
   "devDependencies": {

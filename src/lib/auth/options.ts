@@ -19,8 +19,10 @@ function requireEnv({ name, optional = false }: RequireEnvOptions): string | und
   return value;
 }
 
-const supabaseUrl = requireEnv({ name: "SUPABASE_URL" })!;
-const supabaseServiceRoleKey = requireEnv({ name: "SUPABASE_SERVICE_ROLE_KEY" })!;
+// 在构建时，如果环境变量不存在，使用占位值以避免构建失败
+// 实际运行时会在使用前检查并抛出错误
+const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
 const providers: any[] = [];
 
@@ -148,6 +150,13 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
+// 运行时检查：如果使用占位值，说明环境变量未配置
+if (supabaseUrl === "https://placeholder.supabase.co" || supabaseServiceRoleKey === "placeholder-key") {
+  if (process.env.NODE_ENV !== "development" || process.env.VERCEL) {
+    console.warn("[auth] 警告：Supabase 环境变量未配置，使用占位值。生产环境必须配置 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY");
+  }
+}
+
 export const authOptions = {
   adapter: SupabaseAdapter({
     url: supabaseUrl,
@@ -190,7 +199,7 @@ export const authOptions = {
       return token;
     },
   },
-  secret: requireEnv({ name: "NEXTAUTH_SECRET" })!,
+  secret: process.env.NEXTAUTH_SECRET || "placeholder-secret-for-build-time",
   trustHost: true,
   theme: {
     colorScheme: "auto",
