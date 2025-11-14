@@ -2,11 +2,11 @@ import React from "react";
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const size = {
+
+const IMAGE_SIZE = {
   width: 1200,
   height: 630,
 };
-export const contentType = "image/png";
 
 type Template = {
   background?: string;
@@ -123,7 +123,8 @@ export async function GET(request: Request) {
       </div>
     ),
     {
-      ...size,
+      width: IMAGE_SIZE.width,
+      height: IMAGE_SIZE.height,
     }
   );
 }
