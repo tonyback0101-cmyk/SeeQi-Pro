@@ -34,7 +34,9 @@ async function createDemoData() {
       perPage: 100,
     });
 
-    const existingUser = existing?.users?.find((user) => user.email === demoEmail);
+    const existingUser = existing?.users?.find(
+      (user: { email?: string | null }) => user.email === demoEmail
+    );
     let userId: string | undefined = existingUser?.id;
     if (!userId) {
       const { data, error } = await client.auth.admin.createUser({
