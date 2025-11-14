@@ -12,6 +12,7 @@ import { getSolarTermInsight } from "@/data/solarTerms";
 import { saveTemporaryReport } from "@/lib/tempReportStore";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // Vercel Pro plan allows up to 60s, Hobby plan is 10s
 
 const STORAGE_BUCKET = process.env.SUPABASE_ANALYSIS_BUCKET ?? "analysis-temp";
 const SUPABASE_ANALYZE_ENABLED = process.env.ENABLE_SUPABASE_ANALYZE === "true";
@@ -561,7 +562,32 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.stack) {
       console.error("[POST /api/analyze] stack", error.stack);
     }
-    const hint = process.env.NODE_ENV !== "production" ? `内部错误: ${message}` : "服务器处理分析请求时出错";
+    
+    // 检查是否是超时错误
+    const isTimeout = 
+      message.includes("timeout") || 
+      message.includes("TIMEOUT") ||
+      message.includes("ETIMEDOUT") ||
+      (error instanceof Error && error.name === "TimeoutError");
+    
+    // 检查是否是Supabase连接错误
+    const isSupabaseError = 
+      message.includes("Supabase") ||
+      message.includes("connection") ||
+      message.includes("ECONNREFUSED") ||
+      message.includes("ENOTFOUND");
+    
+    let hint: string;
+    if (process.env.NODE_ENV !== "production") {
+      hint = `内部错误: ${message}`;
+    } else if (isTimeout) {
+      hint = "请求处理超时，请稍后重试";
+    } else if (isSupabaseError) {
+      hint = "数据库连接异常，请稍后重试";
+    } else {
+      hint = "服务器处理分析请求时出错，请稍后重试";
+    }
+    
     return errorResponse(hint, 500, "PROCESSING_FAILED");
   }
 }

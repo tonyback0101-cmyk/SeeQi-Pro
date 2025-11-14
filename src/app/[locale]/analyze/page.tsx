@@ -245,13 +245,33 @@ export default function AnalyzePage({ params }: PageProps) {
       formData.append("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai");
       formData.append("privacy_accepted", privacyAccepted ? "true" : "false");
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        body: formData,
-      });
+      // 创建超时控制器（65秒，略大于服务器60秒超时）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 65000);
+
+      let response: Response;
+      try {
+        response = await fetch("/api/analyze", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          setStatusMessage(locale === "zh" ? "请求超时，请稍后重试" : "Request timeout, please try again");
+        } else {
+          setStatusMessage(t.errors.server);
+        }
+        setButtonState("retry");
+        setSubmitting(false);
+        return;
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        // 优先使用服务器返回的具体错误信息
         const message = data?.error || t.errors.server;
         setStatusMessage(message);
         setButtonState("retry");
@@ -283,7 +303,14 @@ export default function AnalyzePage({ params }: PageProps) {
       router.push(`/${locale}/loading?report=${reportId}`);
     } catch (error) {
       console.error("analyze-submit", error);
-      setStatusMessage(t.errors.server);
+      // 检查是否是网络错误
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        setStatusMessage(locale === "zh" ? "网络连接失败，请检查网络后重试" : "Network error, please check your connection");
+      } else if (error instanceof Error && error.name === "AbortError") {
+        setStatusMessage(locale === "zh" ? "请求超时，请稍后重试" : "Request timeout, please try again");
+      } else {
+        setStatusMessage(t.errors.server);
+      }
       setButtonState("retry");
     } finally {
       setSubmitting(false);
