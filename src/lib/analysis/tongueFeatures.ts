@@ -257,7 +257,9 @@ export async function analyzeTongueImage(
   }
 
   const qualityScore = toQualityScore(gradientMean);
-  if (qualityScore < 18) {
+  // 降低阈值从 18 到 12，以适应不同拍摄条件和设备
+  // 同时添加调试信息，帮助用户了解图片质量
+  if (qualityScore < 12) {
     throw new TongueImageError("BLURRY_TONGUE", "图片清晰度不足，请重新拍摄");
   }
 

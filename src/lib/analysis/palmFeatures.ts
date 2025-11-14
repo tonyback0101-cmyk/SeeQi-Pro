@@ -307,7 +307,9 @@ export async function analyzePalmImage(
   }
 
   const qualityScore = qualityScoreFromVariance(varianceMean / 3, gradientMean);
-  if (qualityScore < 20) {
+  // 降低阈值从 20 到 15，以适应不同拍摄条件和设备
+  // 同时添加调试信息，帮助用户了解图片质量
+  if (qualityScore < 15) {
     throw new PalmImageError("BLURRY_PALM", "图片清晰度不足，请重新拍摄");
   }
 
