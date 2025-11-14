@@ -123,7 +123,9 @@ function evaluateLines(contrastMap: number[], width: number, height: number): Pa
 }
 
 function isLikelyPalm(redRatio: number, saturationMean: number): boolean {
-  return redRatio >= 0.2 && saturationMean >= 0.22;
+  // 放宽检测条件：降低红色比例要求，降低饱和度要求
+  // 以适应不同肤色、光照条件和拍摄环境
+  return redRatio >= 0.15 && saturationMean >= 0.15;
 }
 
 function qualityScoreFromVariance(variance: number, gradientMean: number): number {
@@ -248,6 +250,7 @@ export async function analyzePalmImage(
   let pixelCount = 0;
   let gradientSum = 0;
   let varianceSum = 0;
+  let saturationSum = 0;
   const contrastMap = new Array(width * height).fill(0);
 
   const getIndex = (x: number, y: number) => (y * width + x) * channels;
@@ -263,6 +266,7 @@ export async function analyzePalmImage(
 
       const brightness = max;
       const saturation = max === 0 ? 0 : (max - min) / max;
+      saturationSum += saturation;
       varianceSum += Math.abs(r - g) + Math.abs(g - b);
 
       if (r > g + 25 && r > b + 25) {
@@ -296,8 +300,9 @@ export async function analyzePalmImage(
   const shadowRatio = shadowPixels / pixelCount;
   const gradientMean = gradientSum / pixelCount;
   const varianceMean = varianceSum / pixelCount;
+  const saturationMean = saturationSum / pixelCount;
 
-  if (!isLikelyPalm(redRatio, varianceMean / 255)) {
+  if (!isLikelyPalm(redRatio, saturationMean)) {
     throw new PalmImageError("NOT_PALM", "检测结果非手掌图片");
   }
 
