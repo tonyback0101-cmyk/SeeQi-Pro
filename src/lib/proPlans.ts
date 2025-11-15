@@ -119,3 +119,4 @@ export function getDefaultProPlan(plans: ProPlanInfo[]): ProPlanInfo | null {
   return plans[0] ?? null;
 }
 
+
