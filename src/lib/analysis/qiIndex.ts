@@ -245,6 +245,66 @@ function resolveLevel(total: number): Level {
   return "low";
 }
 
+/**
+ * 从规则引擎结果中提取 qi_index 相关字段
+ */
+type RuleResult = {
+  qi_index_base?: number;
+  qi_index_delta?: number;
+  [key: string]: unknown;
+};
+
+/**
+ * 递归收集对象中所有的 qi_index_delta 值
+ */
+function collectQiIndexDeltas(obj: unknown, deltas: number[]): void {
+  if (!obj || typeof obj !== "object") return;
+
+  if (Array.isArray(obj)) {
+    // 如果是数组，递归处理每个元素
+    obj.forEach((item) => collectQiIndexDeltas(item, deltas));
+    return;
+  }
+
+  const record = obj as Record<string, unknown>;
+
+  // 检查当前对象的 qi_index_delta
+  if (typeof record.qi_index_delta === "number") {
+    deltas.push(record.qi_index_delta);
+  }
+
+  // 递归检查所有嵌套对象
+  Object.values(record).forEach((value) => {
+    if (value && typeof value === "object") {
+      collectQiIndexDeltas(value, deltas);
+    }
+  });
+}
+
+/**
+ * 基于规则引擎结果计算 qi_index
+ * @param ruleResult 规则引擎执行结果
+ * @returns qi_index 计算结果
+ */
+export function computeQiIndexFromRules(ruleResult: RuleResult): number {
+  // 基础分：从规则结果中获取，默认为 60
+  const base = typeof ruleResult.qi_index_base === "number" ? ruleResult.qi_index_base : 60;
+
+  // 收集所有 qi_index_delta（可能来自多个规则，包括嵌套对象）
+  const deltas: number[] = [];
+  collectQiIndexDeltas(ruleResult, deltas);
+
+  // 计算总和：基础分 + 所有 delta 的和
+  const sum = deltas.reduce((acc, delta) => acc + delta, 0);
+  const total = base + sum;
+
+  // 限制在 0-100 之间
+  return clamp(total, 0, 100);
+}
+
+/**
+ * 兼容旧版本的 computeQiIndex 函数（保留用于向后兼容）
+ */
 export function computeQiIndex(inputs: QiIndexInputs): QiIndexBreakdown {
   const advice: string[] = [];
   const factors: QiIndexBreakdown["factors"] = [];

@@ -11,6 +11,7 @@ export interface RuleDefinition {
   when: Record<string, unknown>;
   then: Record<string, unknown>;
   merge?: MergeStrategy;
+  strategy?: MergeStrategy; // 支持 strategy 作为 merge 的别名
 }
 
 export type RuleContext = Record<string, unknown>;
@@ -209,7 +210,7 @@ export class RuleEngine<TContext extends RuleContext = RuleContext> {
       }
 
       matchedRules.push(rule.id);
-      const mergeStrategy: MergeStrategy = rule.merge ?? "append";
+      const mergeStrategy: MergeStrategy = rule.strategy ?? rule.merge ?? "append";
       Object.entries(rule.then ?? {}).forEach(([key, value]) => {
         const current = (result as any)[key];
         const mergedValue = this.merge(current, value, mergeStrategy);

@@ -4,7 +4,7 @@ import { analyzeTongueImage, TongueImageError } from "@/lib/analysis/tongueFeatu
 import { analyzePalmImage, PalmImageError } from "@/lib/analysis/palmFeatures";
 import { analyzeDreamText } from "@/lib/analysis/dreamFeatures";
 import { executeRules, type RuleFacts } from "@/lib/rules";
-import { computeQiIndex } from "@/lib/analysis/qiIndex";
+import { computeQiIndex, computeQiIndexFromRules } from "@/lib/analysis/qiIndex";
 import { resolveImageExtension } from "@/lib/palmprints/validation";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { resolveSolarTermCode } from "@/lib/solar/resolve";
@@ -369,6 +369,8 @@ export async function POST(request: Request) {
           )
         : undefined;
 
+    // 构建规则事实，包含所有需要的字段
+    // 手相字段映射：palm.color -> palm_color, palm.lines.life -> life_line 等
     const facts: RuleFacts = {
       locale,
       palm: palmResult
@@ -376,6 +378,13 @@ export async function POST(request: Request) {
             color: palmResult.color,
             texture: palmResult.texture,
             lines: normalizedPalmLines,
+            // 扁平化字段，方便规则匹配
+            palm_color: palmResult.color, // 顶层字段
+            line_depth: (palmResult as any).lineDepth || (palmResult as any).line_depth,
+            life_line: normalizedPalmLines?.life,
+            head_line: normalizedPalmLines?.head,
+            emotion_line: normalizedPalmLines?.heart,
+            mount_tags: (palmResult as any).mountTags || (palmResult as any).mount_tags,
           }
         : undefined,
       tongue: tongueResult
@@ -384,30 +393,60 @@ export async function POST(request: Request) {
             coating: tongueResult.coating,
             texture: tongueResult.texture,
             qualityScore: tongueResult.qualityScore,
+            // 扁平化字段，方便规则匹配
+            tongue_color: tongueResult.color, // 顶层字段
+            coating: tongueResult.coating, // 顶层字段（已存在）
           }
         : undefined,
-      dream: dreamFacts,
+      dream: {
+        ...dreamFacts,
+        // 扁平化字段，方便规则匹配
+        dream_keywords: dreamFacts?.keywords || dreamTags, // 顶层字段
+      },
       solar: {
         code: solarCode,
         name: solarInfo.name,
+        // 扁平化字段，方便规则匹配
+        solar_term: solarCode, // 顶层字段
       },
     };
 
     const { result: ruleResult, matchedRules } = await executeRules(facts);
     const constitutionName = ruleResult.constitution ?? "平和";
     const constitutionDetail = await fetchConstitutionDetail(client, constitutionName, locale);
+    
+    // 合并 advice：规则引擎的 advice + 规则引擎的 advice_append + 体质详情
+    const ruleAdvice = ruleResult.advice || {};
+    const ruleAdviceAppend = (ruleResult as any).advice_append || {};
     const mergedAdvice = {
-      ...ruleResult.advice,
+      ...ruleAdvice,
+      ...ruleAdviceAppend,
       constitution: constitutionDetail ?? undefined,
     };
 
-    const dreamRecord = dreamResult
+    // 构建 dream 记录：优先使用规则引擎的结果，否则使用分析结果
+    const ruleDream = ruleResult.dream;
+    const dreamRecord = ruleDream
+      ? {
+          summary: (ruleDream as any).summary ?? dreamResult?.summary ?? null,
+          keywords: dreamResult?.keywords ?? [],
+          interpretation: dreamResult?.interpretation ?? "",
+          advice: dreamResult?.advice ?? [],
+          tip: (ruleDream as any).tip ?? null,
+          emotion: (ruleDream as any).emotion ?? dreamResult?.mood ?? normalizedMood,
+          health_hint: (ruleDream as any).health_hint ?? null,
+          mood: dreamResult?.mood ?? normalizedMood,
+          category: dreamResult?.category ?? normalizedCategory,
+          tags: dreamResult?.tags ?? dreamTags,
+          raw_text: dreamResult?.rawText ?? (dreamText || null),
+        }
+      : dreamResult
       ? {
           summary: dreamResult.summary,
           keywords: dreamResult.keywords,
           interpretation: dreamResult.interpretation,
           advice: dreamResult.advice,
-          tip: ruleResult.dream?.tip ?? null,
+          tip: null,
           mood: dreamResult.mood ?? normalizedMood,
           category: dreamResult.category ?? normalizedCategory,
           tags: dreamResult.tags ?? dreamTags,
@@ -426,8 +465,15 @@ export async function POST(request: Request) {
           raw_text: dreamText,
         }
       : null;
+    
+    // 提取 tags（从规则结果中）
+    const tags = (ruleResult as any).tags || [];
 
-    const qiIndex = computeQiIndex({
+    // 使用规则引擎结果计算 qi_index
+    const qiIndexTotal = computeQiIndexFromRules(ruleResult);
+    
+    // 为了兼容性，保留旧的 computeQiIndex 调用（如果需要详细分解）
+    const qiIndexBreakdown = computeQiIndex({
       constitution: constitutionDetail?.name ?? constitutionName,
       palm: palmResult
         ? {
@@ -453,9 +499,25 @@ export async function POST(request: Request) {
       },
       matchedRules,
     });
+    
+    // 使用规则引擎计算的结果作为主要 qi_index
+    const qiIndex = {
+      ...qiIndexBreakdown,
+      total: qiIndexTotal,
+    };
 
     const reportId = randomUUID();
     const createdAtIso = new Date().toISOString();
+
+    // 构建 solar 对象（从规则结果中提取，或使用默认值）
+    const ruleSolar = (ruleResult as any).solar || {};
+    const solarData = {
+      title: ruleSolar.title ?? solarInfo.name,
+      advice: ruleSolar.advice ?? solarInfo.advice ?? "",
+      warning: ruleSolar.warning ?? "",
+      code: solarCode,
+      name: solarInfo.name,
+    };
 
     saveTemporaryReport({
       report: {
@@ -466,6 +528,8 @@ export async function POST(request: Request) {
         dream: dreamRecord ?? null,
         advice: mergedAdvice,
         solar_term: solarInfo.name,
+        solar: solarData, // 添加完整的 solar 对象
+        tags: tags, // 添加 tags
         quote: ruleResult.quote ?? null,
         created_at: createdAtIso,
         unlocked: false,
@@ -497,6 +561,8 @@ export async function POST(request: Request) {
             : null,
           dream: dreamRecord,
           solar_term: solarInfo.name,
+          solar: solarData,
+          tags: tags,
           advice: mergedAdvice,
           quote: ruleResult.quote ?? null,
           locale,

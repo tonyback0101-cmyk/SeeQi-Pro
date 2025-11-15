@@ -1,4 +1,24 @@
-{"id":"palm_ruddy_deep_life","priority":60,"when":{"palm.color":"pink","palm.lines.life":"deep"},"then":{"advice":{"lifestyle":["适度耐力训练"],"exercise":["快走或慢跑20-30分钟"]}},"merge":"append"}
-{"id":"palm_pale_broken_heart","priority":60,"when":{"palm.color":"pale","palm.lines.heart":"broken"},"then":{"advice":{"lifestyle":["减压与情绪管理"],"exercise":["呼吸冥想5分钟"]}},"merge":"append"}
-{"id":"palm_dark_wisdom_straight","priority":55,"when":{"palm.color":"dark","palm.lines.wisdom":"straight"},"then":{"advice":{"lifestyle":["避免久坐"],"exercise":["颈肩拉伸3组"]}},"merge":"append"}
-
+{"id":"palm_pinghe_normal","priority":100,"when":{"palm_color":"红润","line_depth":"适中"},"then":{"constitution_hint":"pinghe","tags":["手相·气血尚可"],"advice_append":{"action":["保持目前运动强度"],"note":"维持规律作息是你最大的资产。"}},"strategy":"append"}
+{"id":"palm_qixu_pale_shallow","priority":110,"when":{"palm_color":"偏白","line_depth":"浅"},"then":{"constitution_hint":"qixu","tags":["手相·气虚倾向"],"advice_append":{"food":["黄芪红枣茶"],"action":["轻快步行 15 分钟"],"acupoint":["关元"]}},"strategy":"append"}
+{"id":"palm_life_short","priority":120,"when":{"life_line":"短"},"then":{"tags":["手相·能量分配需注意"],"advice_append":{"note":"生命线短不代表寿命短，而是提醒你管理好精力和节奏。"}},"strategy":"append"}
+{"id":"palm_life_broken","priority":130,"when":{"life_line":"断续"},"then":{"tags":["手相·人生阶段起伏"],"advice_append":{"note":"注意在重大转折期提前规划体检与休息，避免过劳。"}},"strategy":"append"}
+{"id":"palm_head_drooping","priority":140,"when":{"head_line":"下垂"},"then":{"tags":["手相·感性思维"],"advice_append":{"action":["睡前写下 3 件感恩的小事"],"note":"感性是优势，但也要学会给情绪"收个尾"。"}},"strategy":"append"}
+{"id":"palm_emotion_forked","priority":150,"when":{"emotion_line":"分叉"},"then":{"tags":["手相·人缘好但易摇摆"],"advice_append":{"note":"在重要决策上，建议预留 24 小时冷静期再做选择。"}},"strategy":"append"}
+{"id":"palm_mount_venus_rich","priority":160,"when":{"mount_tags":["venus_rich"]},"then":{"tags":["手相·金星丘发达（热情型）"],"advice_append":{"health":["注意心血管和情绪起伏"],"action":["每周至少 3 次中等强度运动"]}},"strategy":"append"}
+{"id":"palm_mount_moon_rich","priority":170,"when":{"mount_tags":["moon_rich"]},"then":{"tags":["手相·月丘发达（想象力强）"],"advice_append":{"note":"灵感很强，适合创作类工作，但作息请尽量在 23:30 前完成。"}},"strategy":"append"}
+{"id":"palm_dark_deep","priority":115,"when":{"palm_color":"发暗","line_depth":"深"},"then":{"constitution_hint":"xueyu","tags":["手相·血瘀倾向"],"advice_append":{"food":["山楂黑木耳"],"action":["快走或慢跑 20 分钟"],"acupoint":["血海"]}},"strategy":"append"}
+{"id":"palm_life_long","priority":105,"when":{"life_line":"长"},"then":{"tags":["手相·能量储备较好"],"advice_append":{"note":"生命线长提示你基础能量不错，继续保持规律作息和适度运动。"}},"strategy":"append"}
+{"id":"palm_head_long","priority":125,"when":{"head_line":"长"},"then":{"tags":["手相·理性思维强"],"advice_append":{"action":["适度放松，避免过度用脑"],"note":"理性是优势，但也要给感性留出空间。"}},"strategy":"append"}
+{"id":"palm_head_short","priority":135,"when":{"head_line":"短"},"then":{"tags":["手相·直觉型思维"],"advice_append":{"action":["深呼吸训练"],"note":"直觉很强，但重要决定建议结合理性分析。"}},"strategy":"append"}
+{"id":"palm_emotion_long","priority":145,"when":{"emotion_line":"长"},"then":{"tags":["手相·情感丰富"],"advice_append":{"note":"情感丰富是你的优势，注意情绪管理，避免过度消耗。"}},"strategy":"append"}
+{"id":"palm_emotion_short","priority":155,"when":{"emotion_line":"短"},"then":{"tags":["手相·情感内敛"],"advice_append":{"action":["多与信任的人沟通"],"note":"情感内敛不是问题，但适当表达有助于身心健康。"}},"strategy":"append"}
+{"id":"palm_mount_jupiter_rich","priority":165,"when":{"mount_tags":["jupiter_rich"]},"then":{"tags":["手相·木星丘发达（自信型）"],"advice_append":{"health":["注意压力性头痛、颈椎紧"],"action":["深呼吸、颈部拉伸，减少久坐"]}},"strategy":"append"}
+{"id":"palm_mount_saturn_high","priority":175,"when":{"mount_tags":["saturn_high"]},"then":{"tags":["手相·土星丘高（思考深）"],"advice_append":{"action":["适合冥想、散步、阳光照射"],"note":"思考深是你的优势，但也要注意避免过度思虑导致焦虑。"}},"strategy":"append"}
+{"id":"palm_mount_apollo_rich","priority":180,"when":{"mount_tags":["apollo_rich"]},"then":{"tags":["手相·太阳丘发达（艺术型）"],"advice_append":{"health":["心火旺、压力大导致失眠"],"action":["早睡、避免咖啡因、听轻音乐"]}},"strategy":"append"}
+{"id":"palm_mount_mercury_rich","priority":185,"when":{"mount_tags":["mercury_rich"]},"then":{"tags":["手相·水星丘发达（聪明型）"],"advice_append":{"health":["神经紧绷、肩颈痛"],"action":["注意休息，少熬夜，做肩颈操"]}},"strategy":"append"}
+{"id":"palm_mount_venus_flat","priority":155,"when":{"mount_tags":["venus_flat"]},"then":{"tags":["手相·金星丘扁平（能量弱）"],"advice_append":{"health":["免疫力弱、畏寒"],"action":["加强运动、补气血，如红枣枸杞"]}},"strategy":"append"}
+{"id":"palm_mount_jupiter_flat","priority":160,"when":{"mount_tags":["jupiter_flat"]},"then":{"tags":["手相·木星丘平（缺乏安全感）"],"advice_append":{"health":["胃气弱、食欲差"],"action":["规律三餐、喝温水、少生冷"]}},"strategy":"append"}
+{"id":"palm_mount_saturn_low","priority":170,"when":{"mount_tags":["saturn_low"]},"then":{"tags":["手相·土星丘低（体验型）"],"advice_append":{"health":["代谢慢、体虚"],"action":["快走 20 分钟，提高心率"]}},"strategy":"append"}
+{"id":"palm_mount_apollo_weak","priority":175,"when":{"mount_tags":["apollo_weak"]},"then":{"tags":["手相·太阳丘弱（缺乏存在感）"],"advice_append":{"health":["肺弱、气短"],"action":["加强呼吸训练与心肺运动"]}},"strategy":"append"}
+{"id":"palm_mount_mercury_flat","priority":180,"when":{"mount_tags":["mercury_flat"]},"then":{"tags":["手相·水星丘扁平（沟通弱）"],"advice_append":{"health":["代谢慢"],"action":["多喝热水，轻运动开启代谢"]}},"strategy":"append"}
+{"id":"palm_mount_moon_low","priority":185,"when":{"mount_tags":["moon_low"]},"then":{"tags":["手相·月丘低（现实主义）"],"advice_append":{"health":["气血弱、手脚冰凉"],"action":["温补食物，如姜枣茶"]}},"strategy":"append"}

@@ -1,5 +1,7 @@
 import path from "node:path";
+import { promises as fs } from "node:fs";
 import { RuleEngine, type RuleExecutionResult, getDefaultRulesPath } from "@/lib/rule-engine";
+import get from "lodash.get";
 
 export interface RuleFacts {
   palm?: Record<string, unknown>;
@@ -98,13 +100,172 @@ function normalizeResult(raw: Record<string, unknown>): RuleResult {
   };
 }
 
-export async function executeRules(facts: RuleFacts): Promise<ExecuteRulesResult> {
+/**
+ * 按顺序执行多个规则文件
+ * @param facts 规则事实
+ * @param ruleFiles 要执行的规则文件列表（按顺序）
+ * @returns 合并后的规则执行结果
+ */
+export async function executeRulesSequentially(
+  facts: RuleFacts,
+  ruleFiles: string[],
+): Promise<ExecuteRulesResult> {
   const engineInstance = getEngine();
-  const { result, matchedRules }: RuleExecutionResult = await engineInstance.execute(facts);
-  return {
-    result: normalizeResult(result),
-    matchedRules,
+  let mergedResult: Record<string, unknown> = {};
+  const allMatchedRules: string[] = [];
+
+  // 准备上下文：将 facts 扁平化，支持顶层字段匹配
+  const context: Record<string, unknown> = {
+    ...facts,
+    // 扁平化字段，支持直接匹配（优先使用 facts 中已有的扁平字段）
+    tongue_color: (facts as any).tongue_color ?? facts.tongue?.color,
+    coating: (facts as any).coating ?? facts.tongue?.coating,
+    palm_color: (facts as any).palm_color ?? facts.palm?.color,
+    line_depth: (facts as any).line_depth ?? facts.palm?.line_depth,
+    life_line: (facts as any).life_line ?? facts.palm?.lines?.life,
+    head_line: (facts as any).head_line ?? facts.palm?.lines?.head,
+    emotion_line: (facts as any).emotion_line ?? facts.palm?.lines?.heart,
+    mount_tags: (facts as any).mount_tags ?? facts.palm?.mount_tags,
+    dream_keywords: (facts as any).dream_keywords ?? facts.dream?.keywords,
+    solar_term: (facts as any).solar_term ?? facts.solar?.code,
+    // 保留嵌套结构
+    tongue: facts.tongue,
+    palm: facts.palm,
+    dream: facts.dream,
+    solar: facts.solar,
+    locale: facts.locale,
   };
+
+  // 按顺序执行每个规则文件
+  for (const ruleFile of ruleFiles) {
+    // 创建临时引擎实例，只加载指定文件
+    const rulesDir = process.env.RULES_DIR_PATH ?? getDefaultRulesPath();
+    const tempEngine = new RuleEngine(rulesDir);
+    
+    // 读取规则文件
+    const filePath = path.join(rulesDir, ruleFile);
+    const fileContent = await fs.readFile(filePath, "utf8");
+    
+    // 解析该文件的规则
+    const lines = fileContent
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+    
+    const rules = lines.map((line, index) => {
+      try {
+        return JSON.parse(line);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to parse rule ${ruleFile}#${index + 1}: ${message}`);
+      }
+    });
+
+    // 按优先级排序
+    rules.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+
+    // 执行该文件的规则
+    const result: Record<string, unknown> = {};
+    const matchedRules: string[] = [];
+    const currentContext = { ...context, ...mergedResult };
+
+    rules.forEach((rule: any) => {
+      // 简化的匹配逻辑（使用 lodash.get）
+      const matches = Object.entries(rule.when ?? {}).every(([pathExpression, expected]) => {
+        const actual = get(currentContext, pathExpression);
+        
+        // 如果 expected 是数组，检查 actual 是否包含数组中的任意值
+        if (Array.isArray(expected)) {
+          if (Array.isArray(actual)) {
+            // 如果 actual 也是数组，检查是否有交集
+            return expected.some((value) => actual.includes(value));
+          }
+          // 如果 actual 不是数组，检查 actual 是否在 expected 中
+          return expected.includes(actual);
+        }
+        
+        // 如果 expected 不是数组，直接比较
+        return actual === expected;
+      });
+
+      if (matches) {
+        matchedRules.push(rule.id);
+        const mergeStrategy = rule.strategy ?? rule.merge ?? "append";
+        
+        Object.entries(rule.then ?? {}).forEach(([key, value]) => {
+          const current = (result as any)[key];
+          const mergedValue = mergeValues(current, value, mergeStrategy);
+          (result as any)[key] = mergedValue;
+        });
+      }
+    });
+
+    // 合并结果
+    mergedResult = mergeResults(mergedResult, result);
+    allMatchedRules.push(...matchedRules);
+  }
+
+  return {
+    result: normalizeResult(mergedResult),
+    matchedRules: allMatchedRules,
+  };
+}
+
+/**
+ * 合并两个值（简化版 merge）
+ */
+function mergeValues(target: any, source: any, strategy: "append" | "replace" | "skip"): any {
+  if (strategy === "skip" && target !== undefined) {
+    return target;
+  }
+
+  const hasValue = (v: unknown) => {
+    if (v === undefined || v === null) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "object") return Object.keys(v as Record<string, unknown>).length > 0;
+    return true;
+  };
+
+  if (Array.isArray(target) && Array.isArray(source)) {
+    if (strategy === "replace" && hasValue(target)) return target;
+    if (!hasValue(target)) return [...source];
+    const set = new Set(target);
+    source.forEach((item) => set.add(item));
+    return Array.from(set);
+  }
+
+  if (typeof target === "object" && target !== null && typeof source === "object" && source !== null) {
+    const result = { ...(target as Record<string, unknown>) };
+    Object.entries(source).forEach(([key, value]) => {
+      const existing = (result as any)[key];
+      if (strategy === "replace" && hasValue(existing)) return;
+      if (!hasValue(existing)) {
+        result[key] = Array.isArray(value) ? [...value] : typeof value === "object" && value !== null ? mergeValues({}, value, strategy) : value;
+      } else {
+        result[key] = mergeValues(existing, value, strategy);
+      }
+    });
+    return result;
+  }
+
+  if (strategy === "replace" && hasValue(target)) return target;
+  return source ?? target;
+}
+
+/**
+ * 合并两个结果对象（使用 append 策略）
+ */
+function mergeResults(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...target };
+  Object.entries(source).forEach(([key, value]) => {
+    result[key] = mergeValues(result[key], value, "append");
+  });
+  return result;
+}
+
+export async function executeRules(facts: RuleFacts): Promise<ExecuteRulesResult> {
+  // 按顺序执行规则文件：舌相 → 手相 → 梦境 → 节气 → global
+  return executeRulesSequentially(facts, ["tongue.jsonl", "palm.jsonl", "dream.jsonl", "solar.jsonl", "global.jsonl"]);
 }
 
 export async function reloadRules() {
