@@ -125,3 +125,4 @@ solar_term: facts.solar?.code
 5. 测试 qi_index 计算
 6. 测试报告输出格式
 
+
