@@ -395,7 +395,6 @@ export async function POST(request: Request) {
             qualityScore: tongueResult.qualityScore,
             // 扁平化字段，方便规则匹配
             tongue_color: tongueResult.color, // 顶层字段
-            coating: tongueResult.coating, // 顶层字段（已存在）
           }
         : undefined,
       dream: {
