@@ -1,7 +1,12 @@
-element,organ,emotion,personality,food,action,acupoint
-木,肝,怒,"创造力强、进取心","绿叶菜、枸杞、酸味","拉伸、舒展","太冲"
-火,心,喜,"外向、热情、有感染力","苦味、莲子、百合","快走、心肺训练","内关"
-土,脾,思,"务实、稳定","山药、薏米、南瓜","腹式呼吸、核心训练","足三里"
-金,肺,悲,"果断、有原则","梨、百合、辛味食材","深呼吸训练","迎香"
-水,肾,恐,"智慧、洞察力强","黑豆、黑芝麻、咸味","缓跑、温养运动","太溪"
-
+element,organ_zh,organ_en,emotion_zh,emotion_en,personality_zh,personality_en,food_zh,food_en,action_zh,action_en,acupoint_zh,acupoint_en
+木,肝,Liver,怒,Anger,创造力强、进取心,Creative and proactive,绿叶菜、枸杞、酸味,Leafy greens, goji, sour,拉伸、舒展,Stretching,太冲,Taichong (LR3)
+火,心,Heart,喜,Joy,外向、热情、有感染力,Outgoing and passionate,苦味、莲子、百合,Bitter foods, lotus seed,百合,快走、心肺训练,Brisk walk, cardio,内关,Neiguan (PC6)
+土,脾,Spleen,思,Overthinking,务实、稳定,Practical and stable,山药、薏米、南瓜,Yam, coix, pumpkin,腹式呼吸、核心训练,Abdominal breathing, core,足三里,Zusanli (ST36)
+金,肺,Lung,悲,Grief,果断、有原则,Decisive with principles,梨、百合、辛味食材,Pear, lily, pungent,深呼吸训练,Deep breathing,迎香,Yingxiang (LI20)
+水,肾,Kidney,恐,Fear,智慧、洞察力强,Wise and insightful,黑豆、黑芝麻、咸味,Black beans, sesame, slow jog,缓跑、温养运动,Warm-up jogging,太溪,Taixi (KI3)
+element,organ_zh,organ_en,emotion_zh,emotion_en,personality_zh,personality_en,food_zh,food_en,action_zh,action_en,acupoint_zh,acupoint_en
+木,肝,Liver,怒,Anger,"创造力强、进取心","Strong creativity, enterprising","绿叶菜、枸杞、酸味","Green leafy vegetables, goji berries, sour taste","拉伸、舒展","Stretching, extension",太冲,Taichong
+火,心,Heart,喜,Joy,"外向、热情、有感染力","Outgoing, passionate, infectious","苦味、莲子、百合","Bitter taste, lotus seeds, lily","快走、心肺训练","Fast walking, cardiopulmonary training",内关,Neiguan
+土,脾,Spleen,思,Thought,"务实、稳定","Practical, stable","山药、薏米、南瓜","Yam, coix seed, pumpkin","腹式呼吸、核心训练","Abdominal breathing, core training",足三里,Zusanli
+金,肺,Lung,悲,Sadness,"果断、有原则","Decisive, principled","梨、百合、辛味食材","Pear, lily, pungent ingredients","深呼吸训练","Deep breathing training",迎香,Yingxiang
+水,肾,Kidney,恐,Fear,"智慧、洞察力强","Wisdom, strong insight","黑豆、黑芝麻、咸味","Black beans, black sesame, salty taste","缓跑、温养运动","Slow running, warming exercise",太溪,Taixi
