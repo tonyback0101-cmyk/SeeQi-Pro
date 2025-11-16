@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
 
 // 在构建时，如果环境变量不存在，使用占位值以避免构建失败
 // 实际运行时会在使用前检查并抛出错误
-const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder.supabase.co";
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
+const supabaseUrl = getSupabaseUrl();
+const supabaseServiceRoleKey = getSupabaseServiceRoleKey();
 
 export const supabaseAdmin = createClient(
   supabaseUrl,

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
 import { analyzeDream, type DreamAnalysisResult } from "@/lib/analysis/dreamAnalyzer";
 
 export interface DreamAnalysisInput {
@@ -16,7 +17,7 @@ async function loadDreamKeywordMap() {
   if (cachedKeywords) {
     return cachedKeywords;
   }
-  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  const client = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

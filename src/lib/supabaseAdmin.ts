@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
 
 type AdminClient = SupabaseClient;
 
@@ -18,14 +19,14 @@ export function getSupabaseAdminClient(): AdminClient {
   }
   
   // 在构建时，如果环境变量不存在，返回一个模拟客户端以避免构建失败
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
   
-  if (!url || !serviceRoleKey) {
+  if (!url || !serviceRoleKey || url.includes("placeholder.supabase.co") || serviceRoleKey === "placeholder-key") {
     // 构建时环境变量可能不存在，创建一个占位客户端
     // 实际运行时会在第一次使用时检查并抛出错误
-    const placeholderUrl = url || "https://placeholder.supabase.co";
-    const placeholderKey = serviceRoleKey || "placeholder-key";
+    const placeholderUrl = url || getSupabaseUrl();
+    const placeholderKey = serviceRoleKey || getSupabaseServiceRoleKey();
     
     adminClient = createClient(placeholderUrl, placeholderKey, {
       auth: {
