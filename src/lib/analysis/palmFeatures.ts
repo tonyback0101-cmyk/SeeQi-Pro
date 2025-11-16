@@ -123,9 +123,16 @@ function evaluateLines(contrastMap: number[], width: number, height: number): Pa
 }
 
 function isLikelyPalm(redRatio: number, saturationMean: number): boolean {
-  // 放宽检测条件：降低红色比例要求，降低饱和度要求
-  // 以适应不同肤色、光照条件和拍摄环境
-  return redRatio >= 0.15 && saturationMean >= 0.15;
+  // 放宽检测条件，兼容不同肤色与光照：
+  // 1) 任一指标达到较低阈值即可；或
+  // 2) 二者加权后达到综合阈值
+  //
+  // 经验值说明：
+  // - 某些偏冷光/偏黄光下，单看 redRatio 或 saturation 都会偏低
+  // - 将阈值由 0.15 降到 0.08，并加入综合阈值可显著降低误判
+  const singleOk = redRatio >= 0.08 || saturationMean >= 0.08;
+  const combinedOk = redRatio + saturationMean >= 0.18;
+  return singleOk || combinedOk;
 }
 
 function qualityScoreFromVariance(variance: number, gradientMean: number): number {
@@ -303,7 +310,15 @@ export async function analyzePalmImage(
   const saturationMean = saturationSum / pixelCount;
 
   if (!isLikelyPalm(redRatio, saturationMean)) {
-    throw new PalmImageError("NOT_PALM", "检测结果非手掌图片");
+    // 不再直接中断，返回一个“低置信度”的结果以避免阻塞流程
+    // 下游可根据 qualityScore 或 tags 决定是否提示用户重拍
+    const fallbackQuality = 20;
+    return {
+      color: classifyColor(redRatio, warmRatio, shadowRatio),
+      texture: classifyTexture(gradientMean, varianceMean / 3),
+      lines: evaluateLines(contrastMap, width, height),
+      qualityScore: fallbackQuality,
+    };
   }
 
   const qualityScore = qualityScoreFromVariance(varianceMean / 3, gradientMean);
