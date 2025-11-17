@@ -68,19 +68,64 @@ function normalizeSupabaseError(error: unknown): Error {
   }
 }
 
-async function ensureSession(client: SupabaseAdminClient, id: string, locale: string, tz: string) {
+async function ensureSession(client: SupabaseAdminClient, id: string, locale: string, tz: string): Promise<void> {
   if (!hasSupabase(client)) return;
-  try {
-    const { data, error } = await client.from("sessions").select("id").eq("id", id).maybeSingle();
-    if (error) throw error;
-    if (!data) {
-      const { error: insertError } = await client.from("sessions").insert({ id, locale, tz });
-      if (insertError && insertError.code !== "23505") {
-        throw insertError;
+  
+  // 先检查 session 是否存在
+  const { data: existingSession, error: selectError } = await client
+    .from("sessions")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  
+  if (selectError) {
+    console.error("[POST /api/analyze] ensureSession select error:", selectError);
+    throw new Error(`无法查询 session: ${selectError.message}`);
+  }
+  
+  // 如果 session 不存在，创建它
+  if (!existingSession) {
+    console.log("[POST /api/analyze] Session not found, creating:", { id, locale, tz });
+    const { error: insertError, data: insertedSession } = await client
+      .from("sessions")
+      .insert({ id, locale, tz })
+      .select("id")
+      .single();
+    
+    if (insertError) {
+      // 如果是唯一约束冲突，说明另一个请求已经创建了，再次查询确认
+      if (insertError.code === "23505") {
+        console.log("[POST /api/analyze] Session already exists (race condition), verifying...");
+        const { data: verifiedSession, error: verifyError } = await client
+          .from("sessions")
+          .select("id")
+          .eq("id", id)
+          .maybeSingle();
+        
+        if (verifyError) {
+          console.error("[POST /api/analyze] Session verification error:", verifyError);
+          throw new Error(`无法验证 session: ${verifyError.message}`);
+        }
+        
+        if (!verifiedSession) {
+          throw new Error("Session 创建失败：唯一约束冲突但验证时不存在");
+        }
+        
+        console.log("[POST /api/analyze] Session verified after race condition");
+        return;
       }
+      
+      console.error("[POST /api/analyze] ensureSession insert error:", insertError);
+      throw new Error(`无法创建 session: ${insertError.message}`);
     }
-  } catch (sessionError) {
-    console.warn("[POST /api/analyze] ensureSession skipped", sessionError);
+    
+    if (!insertedSession) {
+      throw new Error("Session 创建失败：插入成功但未返回数据");
+    }
+    
+    console.log("[POST /api/analyze] Session created successfully:", insertedSession.id);
+  } else {
+    console.log("[POST /api/analyze] Session already exists:", existingSession.id);
   }
 }
 
@@ -266,7 +311,18 @@ export async function POST(request: Request) {
       }
     }
 
-    await ensureSession(client, sessionId, locale, tz);
+    // 确保 session 存在（如果启用 Supabase）
+    if (SUPABASE_ANALYZE_ENABLED && client) {
+      try {
+        await ensureSession(client, sessionId, locale, tz);
+      } catch (sessionError) {
+        console.error("[POST /api/analyze] ensureSession failed:", sessionError);
+        return NextResponse.json(
+          { error: "无法创建会话，请稍后重试" },
+          { status: 500 }
+        );
+      }
+    }
 
     if (privacyAccepted) {
       if (hasSupabase(client)) {
@@ -551,10 +607,50 @@ export async function POST(request: Request) {
       }
       
       try {
-        const { error: reportError } = await client.from("reports").insert({
+        // 在插入 reports 之前，再次验证 session 存在（双重保险）
+        const { data: sessionCheck, error: sessionCheckError } = await client
+          .from("sessions")
+          .select("id")
+          .eq("id", sessionId)
+          .maybeSingle();
+        
+        if (sessionCheckError) {
+          console.error("[POST /api/analyze] Session verification before insert error:", sessionCheckError);
+          throw new Error(`无法验证 session: ${sessionCheckError.message}`);
+        }
+        
+        if (!sessionCheck) {
+          console.error("[POST /api/analyze] Session not found before inserting report, creating now...");
+          // 紧急创建 session
+          const { error: emergencyInsertError } = await client
+            .from("sessions")
+            .insert({ id: sessionId, locale, tz })
+            .select("id")
+            .single();
+          
+          if (emergencyInsertError && emergencyInsertError.code !== "23505") {
+            throw new Error(`紧急创建 session 失败: ${emergencyInsertError.message}`);
+          }
+          
+          // 再次验证
+          const { data: finalCheck } = await client
+            .from("sessions")
+            .select("id")
+            .eq("id", sessionId)
+            .maybeSingle();
+          
+          if (!finalCheck) {
+            throw new Error("Session 创建后仍然无法验证");
+          }
+          
+          console.log("[POST /api/analyze] Session created in emergency and verified");
+        }
+        
+        // 准备插入数据，确保所有字段类型正确
+        const reportData: any = {
           id: reportId,
           session_id: sessionId,
-          constitution: constitutionName,
+          constitution: constitutionName || null,
           palm_result: palmResult
             ? {
                 ...palmResult,
@@ -567,26 +663,48 @@ export async function POST(request: Request) {
                 upload_id: tongueUploadId,
               }
             : null,
-          dream: dreamRecord,
-          solar_term: solarInfo.name,
-          solar: solarData,
-          tags: tags,
-          advice: mergedAdvice,
+          dream: dreamRecord || null,
+          solar_term: solarInfo.name || null,
+          solar: solarData || null,
+          tags: Array.isArray(tags) ? tags : null,
+          advice: mergedAdvice || null,
           quote: ruleResult.quote ?? null,
-          locale,
-          tz,
+          locale: locale || 'zh',
+          tz: tz || 'Asia/Shanghai',
           unlocked: false,
-          matched_rules: matchedRules,
-          qi_index: qiIndex,
+          matched_rules: Array.isArray(matchedRules) ? matchedRules : null,
+          qi_index: qiIndex || null,
           created_at: createdAtIso,
+        };
+
+        console.log("[POST /api/analyze] Inserting report with data:", {
+          id: reportData.id,
+          session_id: reportData.session_id,
+          has_palm: !!reportData.palm_result,
+          has_tongue: !!reportData.tongue_result,
+          has_dream: !!reportData.dream,
+          solar_term: reportData.solar_term,
+          locale: reportData.locale,
+          tz: reportData.tz,
         });
+
+        const { error: reportError, data: reportDataResult } = await client.from("reports").insert(reportData).select("id");
+        
         if (reportError) {
+          console.error("[POST /api/analyze] Report insert error details:", {
+            code: reportError.code,
+            message: reportError.message,
+            details: reportError.details,
+            hint: reportError.hint,
+          });
           throw reportError;
         }
+
+        console.log("[POST /api/analyze] Report inserted successfully:", reportDataResult);
         
         // 报告保存成功后，记录访问权限
         try {
-          await client.from("report_access").upsert(
+          const { error: accessError } = await client.from("report_access").upsert(
             {
               report_id: reportId,
               session_id: sessionId,
@@ -596,6 +714,17 @@ export async function POST(request: Request) {
               onConflict: "report_id,session_id",
             },
           );
+          if (accessError) {
+            console.warn("[POST /api/analyze] report_access upsert error:", {
+              code: accessError.code,
+              message: accessError.message,
+              details: accessError.details,
+              hint: accessError.hint,
+            });
+            // report_access 失败不影响主流程，继续执行
+          } else {
+            console.log("[POST /api/analyze] report_access recorded successfully");
+          }
         } catch (accessError) {
           console.warn("[POST /api/analyze] record report_access failed", accessError);
           // report_access 失败不影响主流程，继续执行
