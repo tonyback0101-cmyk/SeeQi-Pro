@@ -6,6 +6,16 @@ export const runtime = "nodejs";
 
 const SUPABASE_ANALYZE_ENABLED = process.env.ENABLE_SUPABASE_ANALYZE === "true";
 
+// 诊断信息（仅在开发环境或错误时输出）
+if (process.env.NODE_ENV !== "production") {
+  console.log("[GET /api/result/:id] Environment check:", {
+    ENABLE_SUPABASE_ANALYZE: process.env.ENABLE_SUPABASE_ANALYZE,
+    SUPABASE_ANALYZE_ENABLED,
+    SUPABASE_URL: process.env.SUPABASE_URL ? "set" : "missing",
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "set" : "missing",
+  });
+}
+
 async function fetchConstitutionDetail(
   client: ReturnType<typeof getSupabaseAdminClient>,
   constitution: string,
@@ -138,8 +148,10 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   try {
     if (!SUPABASE_ANALYZE_ENABLED) {
+      console.log("[GET /api/result/:id] SUPABASE_ANALYZE_ENABLED is false, using local storage");
       return respondWithLocal();
     }
+    console.log("[GET /api/result/:id] Querying report from Supabase:", reportId);
     const client = getSupabaseAdminClient();
     const { data, error } = await client
       .from("reports")
@@ -150,14 +162,24 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       .maybeSingle();
 
     if (error) {
+      console.error("[GET /api/result/:id] Supabase query error:", error);
       throw error;
     }
 
     if (!data) {
+      console.warn("[GET /api/result/:id] Report not found in database:", reportId);
       return NextResponse.json({ error: "报告不存在或已过期" }, { status: 404 });
     }
+    
+    console.log("[GET /api/result/:id] Report found:", data.id);
 
-    const constitutionDetail = await fetchConstitutionDetail(client, data.constitution ?? "平和", data.locale ?? "zh");
+    let constitutionDetail = null;
+    try {
+      constitutionDetail = await fetchConstitutionDetail(client, data.constitution ?? "平和", data.locale ?? "zh");
+    } catch (constitutionError) {
+      console.warn("[GET /api/result/:id] Failed to fetch constitution detail:", constitutionError);
+      // 继续处理，constitutionDetail 为 null
+    }
     const adviceCounts = getAdviceCounts(data.advice);
     const adviceForResponse = sanitizeAdvice(data.advice, Boolean(data.unlocked));
 
