@@ -112,12 +112,31 @@ async function uploadImage(
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
+  // 验证存储桶是否存在
+  const { data: buckets, error: listError } = await client.storage.listBuckets();
+  if (listError) {
+    console.warn(`[uploadImage] Failed to list buckets: ${listError.message}`);
+  } else {
+    const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
+    if (!bucketExists) {
+      console.error(`[uploadImage] Bucket '${STORAGE_BUCKET}' not found. Available buckets:`, buckets?.map(b => b.name).join(", "));
+      throw new Error(`存储桶 '${STORAGE_BUCKET}' 不存在。请检查 Supabase Storage 配置或环境变量 SUPABASE_ANALYSIS_BUCKET`);
+    }
+  }
+
   const { error: uploadErr } = await client.storage.from(STORAGE_BUCKET).upload(path, buffer, {
     contentType: imageInfo.mime,
     upsert: true,
     cacheControl: "180",
   });
-  if (uploadErr) throw uploadErr;
+  if (uploadErr) {
+    console.error(`[uploadImage] Upload failed for bucket '${STORAGE_BUCKET}':`, {
+      message: uploadErr.message,
+      error: (uploadErr as any).error,
+      statusCode: (uploadErr as any).statusCode,
+    });
+    throw uploadErr;
+  }
 
   const { error: insertErr } = await client.from("uploads").insert({
     id: uploadId,

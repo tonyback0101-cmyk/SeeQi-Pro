@@ -70,14 +70,32 @@ export async function POST(request: Request) {
     const { ext: extension } = resolveImageExtension({ type: file.type, name: file.name });
     const storagePath = `palm/${sessionId}/${uploadId}.${extension}`;
 
+    // 验证存储桶是否存在
+    const { data: buckets, error: listError } = await client.storage.listBuckets();
+    if (listError) {
+      console.warn(`[POST /api/palm/analyze] Failed to list buckets: ${listError.message}`);
+    } else {
+      const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
+      if (!bucketExists) {
+        const availableBuckets = buckets?.map(b => b.name).join(", ") || "无";
+        console.error(`[POST /api/palm/analyze] Bucket '${STORAGE_BUCKET}' not found. Available: ${availableBuckets}`);
+        return errorResponse("BAD_REQUEST", `存储桶 '${STORAGE_BUCKET}' 不存在。可用存储桶: ${availableBuckets}`, 500);
+      }
+    }
+
     const { error: uploadError } = await client.storage.from(STORAGE_BUCKET).upload(storagePath, buffer, {
       contentType: file.type,
       upsert: true,
       cacheControl: "180",
     });
     if (uploadError) {
-      console.error("[POST /api/palm/analyze] storage error", uploadError);
-      return errorResponse("BAD_REQUEST", "手掌图片暂存失败", 500);
+      console.error("[POST /api/palm/analyze] storage error", {
+        bucket: STORAGE_BUCKET,
+        path: storagePath,
+        error: uploadError.message,
+        statusCode: (uploadError as any).statusCode,
+      });
+      return errorResponse("BAD_REQUEST", `手掌图片暂存失败: ${uploadError.message}`, 500);
     }
 
     // 在插入 uploads 之前，再次验证 session 存在

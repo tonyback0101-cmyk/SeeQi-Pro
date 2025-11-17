@@ -76,6 +76,19 @@ export async function POST(request: Request) {
     const { ext: extension } = resolveImageExtension({ type: file.type, name: file.name });
     const storagePath = `tongue/${sessionId}/${uploadId}.${extension}`;
 
+    // 验证存储桶是否存在
+    const { data: buckets, error: listError } = await client.storage.listBuckets();
+    if (listError) {
+      console.warn(`[POST /api/tongue/analyze] Failed to list buckets: ${listError.message}`);
+    } else {
+      const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
+      if (!bucketExists) {
+        const availableBuckets = buckets?.map(b => b.name).join(", ") || "无";
+        console.error(`[POST /api/tongue/analyze] Bucket '${STORAGE_BUCKET}' not found. Available: ${availableBuckets}`);
+        return errorResponse("BAD_REQUEST", `存储桶 '${STORAGE_BUCKET}' 不存在。可用存储桶: ${availableBuckets}`, 500);
+      }
+    }
+
     const { error: uploadError } = await client.storage.from(STORAGE_BUCKET).upload(storagePath, buffer, {
       contentType: file.type,
       upsert: true,
@@ -83,8 +96,13 @@ export async function POST(request: Request) {
     });
 
     if (uploadError) {
-      console.error("[POST /api/tongue/analyze] storage upload error", uploadError);
-      return errorResponse("BAD_REQUEST", "舌象图片暂存失败", 500);
+      console.error("[POST /api/tongue/analyze] storage upload error", {
+        bucket: STORAGE_BUCKET,
+        path: storagePath,
+        error: uploadError.message,
+        statusCode: (uploadError as any).statusCode,
+      });
+      return errorResponse("BAD_REQUEST", `舌象图片暂存失败: ${uploadError.message}`, 500);
     }
 
     // 在插入 uploads 之前，再次验证 session 存在
