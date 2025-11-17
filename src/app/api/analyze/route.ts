@@ -943,14 +943,67 @@ export async function POST(request: Request) {
       const status = error.code === "INVALID_IMAGE" ? 400 : 422;
       return errorResponse(error.message, status, "BAD_REQUEST");
     }
-    const message = error instanceof Error ? error.message : String(error);
+    
+    // 改进错误信息提取
+    let message: string;
+    let errorName: string = "Unknown";
+    let errorStack: string | undefined;
+    let errorType: string;
+    let errorDetails: any = {};
+    
+    if (error instanceof Error) {
+      message = error.message || "未知错误";
+      errorName = error.name || "Error";
+      errorStack = error.stack;
+      errorType = error.constructor.name;
+    } else if (error && typeof error === "object") {
+      // 尝试从对象中提取错误信息
+      const errorObj = error as any;
+      message = errorObj.message || errorObj.error || errorObj.msg || JSON.stringify(errorObj);
+      errorName = errorObj.name || errorObj.code || "Object";
+      errorType = typeof error;
+      
+      // 提取其他可能的错误字段
+      if (errorObj.code) errorDetails.code = errorObj.code;
+      if (errorObj.details) errorDetails.details = errorObj.details;
+      if (errorObj.hint) errorDetails.hint = errorObj.hint;
+      if (errorObj.statusCode) errorDetails.statusCode = errorObj.statusCode;
+    } else {
+      message = String(error) || "未知错误";
+      errorType = typeof error;
+    }
+    
+    // 尝试序列化原始错误对象（用于调试）
+    let rawErrorString: string | undefined;
+    try {
+      if (error && typeof error === "object") {
+        // 尝试使用 JSON.stringify，包括所有属性
+        rawErrorString = JSON.stringify(error, (key, value) => {
+          // 处理循环引用和不可序列化的值
+          if (value instanceof Error) {
+            return {
+              name: value.name,
+              message: value.message,
+              stack: value.stack,
+            };
+          }
+          return value;
+        }, 2);
+      } else {
+        rawErrorString = String(error);
+      }
+    } catch (serializeError) {
+      rawErrorString = `无法序列化错误: ${serializeError}`;
+    }
     
     // 详细记录错误信息，包括错误类型、消息和堆栈
     console.error("[POST /api/analyze] Error occurred:", {
       message,
-      name: error instanceof Error ? error.name : "Unknown",
-      stack: error instanceof Error ? error.stack : undefined,
-      type: error instanceof Error ? error.constructor.name : typeof error,
+      name: errorName,
+      stack: errorStack,
+      type: errorType,
+      details: Object.keys(errorDetails).length > 0 ? errorDetails : undefined,
+      rawError: rawErrorString,
       SUPABASE_ANALYZE_ENABLED,
       hasClient: !!client,
       sessionId,
@@ -958,8 +1011,13 @@ export async function POST(request: Request) {
       tz,
     });
     
-    if (error instanceof Error && error.stack) {
-      console.error("[POST /api/analyze] Full stack trace:", error.stack);
+    if (errorStack) {
+      console.error("[POST /api/analyze] Full stack trace:", errorStack);
+    }
+    
+    // 如果是对象类型的错误，也单独打印原始对象（可能包含更多信息）
+    if (error && typeof error === "object" && !(error instanceof Error)) {
+      console.error("[POST /api/analyze] Raw error object:", error);
     }
     
     // 检查是否是超时错误
