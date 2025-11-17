@@ -9,11 +9,26 @@ import { ensureSession, verifyOrCreateSession } from "@/lib/supabase/sessionUtil
 export const runtime = "nodejs";
 
 // 确保存储桶名称正确，如果环境变量设置错误则使用默认值
-const STORAGE_BUCKET = (process.env.SUPABASE_ANALYSIS_BUCKET && 
-  process.env.SUPABASE_ANALYSIS_BUCKET.trim() !== "" &&
-  process.env.SUPABASE_ANALYSIS_BUCKET !== "analysis" && // 防止误设置为 "analysis"
-  process.env.SUPABASE_ANALYSIS_BUCKET !== "SUPABASE_ANALYSIS_BUCKET" // 防止误设置为变量名
-) ? process.env.SUPABASE_ANALYSIS_BUCKET.trim() : "analysis-temp";
+const getStorageBucket = () => {
+  const envValue = process.env.SUPABASE_ANALYSIS_BUCKET;
+  
+  // 如果环境变量无效，使用默认值
+  if (!envValue || 
+      envValue.trim() === "" || 
+      envValue === "analysis" || 
+      envValue === "SUPABASE_ANALYSIS_BUCKET" || 
+      envValue.toLowerCase() === "analysis") {
+    const defaultBucket = "analysis-temp";
+    if (envValue && envValue !== defaultBucket) {
+      console.warn(`[Storage Bucket Config] Invalid bucket name '${envValue}', using default '${defaultBucket}'`);
+    }
+    return defaultBucket;
+  }
+  
+  return envValue.trim();
+};
+
+const STORAGE_BUCKET = getStorageBucket();
 
 function errorResponse(code: PalmImageError["code"] | "BAD_REQUEST", message: string, status = 422) {
   return NextResponse.json(
@@ -80,10 +95,14 @@ export async function POST(request: Request) {
     if (listError) {
       console.warn(`[POST /api/palm/analyze] Failed to list buckets: ${listError.message}`);
     } else {
+      // 记录当前使用的存储桶名称和环境变量值
+      console.log(`[POST /api/palm/analyze] Using storage bucket: '${STORAGE_BUCKET}' (env: '${process.env.SUPABASE_ANALYSIS_BUCKET || "not set"}')`);
+      
       const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
       if (!bucketExists) {
         const availableBuckets = buckets?.map(b => b.name).join(", ") || "无";
         console.error(`[POST /api/palm/analyze] Bucket '${STORAGE_BUCKET}' not found. Available: ${availableBuckets}`);
+        console.error(`[POST /api/palm/analyze] Environment variable SUPABASE_ANALYSIS_BUCKET: '${process.env.SUPABASE_ANALYSIS_BUCKET || "not set"}'`);
         return errorResponse("BAD_REQUEST", `存储桶 '${STORAGE_BUCKET}' 不存在。可用存储桶: ${availableBuckets}`, 500);
       }
     }
