@@ -206,13 +206,42 @@ export async function POST(request: Request) {
       };
 
       try {
+        // 如果 session_id 不为 null，验证 session 存在
+        if (orderPayload.session_id) {
+          const { data: sessionCheck } = await supabase
+            .from("sessions")
+            .select("id")
+            .eq("id", orderPayload.session_id as string)
+            .maybeSingle();
+          
+          if (!sessionCheck) {
+            console.warn("[POST /api/pay/checkout] Session does not exist for order:", orderPayload.session_id);
+            // 将 session_id 设为 null，避免外键约束错误
+            orderPayload.session_id = null;
+          }
+        }
+        
+        // 验证 report_id 存在
+        const { data: reportCheck } = await supabase
+          .from("reports")
+          .select("id")
+          .eq("id", reportId)
+          .maybeSingle();
+        
+        if (!reportCheck) {
+          console.warn("[POST /api/pay/checkout] Report does not exist for order:", reportId);
+          // 不插入订单，因为 report_id 是必需的
+          throw new Error("报告不存在，无法创建订单");
+        }
+        
         if (existingOrder?.id) {
           await supabase.from("orders").update(orderPayload).eq("id", existingOrder.id);
         } else {
           await supabase.from("orders").insert(orderPayload);
         }
       } catch (error) {
-        console.warn("[POST /api/pay/checkout] order upsert failed", error);
+        console.error("[POST /api/pay/checkout] order upsert failed", error);
+        // 不返回错误，因为支付链接已经创建，订单记录失败不影响支付流程
       }
     }
 

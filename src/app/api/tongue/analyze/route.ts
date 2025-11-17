@@ -95,6 +95,23 @@ export async function POST(request: Request) {
       return errorResponse("BAD_REQUEST", "会话验证失败", 500);
     }
 
+    // 最终验证：确保 session 真的存在
+    const { data: sessionVerify, error: sessionVerifyError } = await client
+      .from("sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .maybeSingle();
+    
+    if (sessionVerifyError) {
+      console.error("[POST /api/tongue/analyze] Session verification error:", sessionVerifyError);
+      return errorResponse("BAD_REQUEST", `无法验证 session: ${sessionVerifyError.message}`, 500);
+    }
+    
+    if (!sessionVerify) {
+      console.error("[POST /api/tongue/analyze] Session does not exist after verifyOrCreateSession:", sessionId);
+      return errorResponse("BAD_REQUEST", `Session ${sessionId} 不存在，无法上传图片`, 500);
+    }
+
     const { error: insertUploadError } = await client.from("uploads").insert({
       id: uploadId,
       session_id: sessionId,

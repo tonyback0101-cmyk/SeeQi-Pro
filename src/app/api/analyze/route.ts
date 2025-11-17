@@ -296,13 +296,24 @@ export async function POST(request: Request) {
     if (privacyAccepted) {
       if (hasSupabase(client)) {
         try {
-          await client.from("privacy_consents").insert({
-            session_id: sessionId,
-            locale,
-            tz,
-            ip_address: ipAddress,
-            user_agent: userAgent,
-          });
+          // 验证 session 存在
+          const { data: sessionCheck } = await client
+            .from("sessions")
+            .select("id")
+            .eq("id", sessionId)
+            .maybeSingle();
+          
+          if (!sessionCheck) {
+            console.warn("[POST /api/analyze] Session does not exist for privacy_consents:", sessionId);
+          } else {
+            await client.from("privacy_consents").insert({
+              session_id: sessionId,
+              locale,
+              tz,
+              ip_address: ipAddress,
+              user_agent: userAgent,
+            });
+          }
         } catch (consentError) {
           console.warn("[POST /api/analyze] privacy consent insert failed", consentError);
         }
@@ -677,26 +688,38 @@ export async function POST(request: Request) {
         
         // 报告保存成功后，记录访问权限
         try {
-          const { error: accessError } = await client.from("report_access").upsert(
-            {
-              report_id: reportId,
-              session_id: sessionId,
-              tier: "lite",
-            },
-            {
-              onConflict: "report_id,session_id",
-            },
-          );
-          if (accessError) {
-            console.warn("[POST /api/analyze] report_access upsert error:", {
-              code: accessError.code,
-              message: accessError.message,
-              details: accessError.details,
-              hint: accessError.hint,
-            });
-            // report_access 失败不影响主流程，继续执行
+          // 再次验证 session 存在（虽然之前已经验证过，但为了保险起见）
+          const { data: sessionFinalCheck } = await client
+            .from("sessions")
+            .select("id")
+            .eq("id", sessionId)
+            .maybeSingle();
+          
+          if (!sessionFinalCheck) {
+            console.warn("[POST /api/analyze] Session does not exist for report_access:", sessionId);
+            // 不插入 report_access，但不影响主流程
           } else {
-            console.log("[POST /api/analyze] report_access recorded successfully");
+            const { error: accessError } = await client.from("report_access").upsert(
+              {
+                report_id: reportId,
+                session_id: sessionId,
+                tier: "lite",
+              },
+              {
+                onConflict: "report_id,session_id",
+              },
+            );
+            if (accessError) {
+              console.warn("[POST /api/analyze] report_access upsert error:", {
+                code: accessError.code,
+                message: accessError.message,
+                details: accessError.details,
+                hint: accessError.hint,
+              });
+              // report_access 失败不影响主流程，继续执行
+            } else {
+              console.log("[POST /api/analyze] report_access recorded successfully");
+            }
           }
         } catch (accessError) {
           console.warn("[POST /api/analyze] record report_access failed", accessError);

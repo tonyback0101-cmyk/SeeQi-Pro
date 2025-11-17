@@ -116,16 +116,27 @@ export async function GET(request: Request) {
 
       if (accessSessionId) {
         try {
-          await supabase.from("report_access").upsert(
-            {
-              report_id: reportId,
-              session_id: accessSessionId,
-              tier: "full",
-            },
-            {
-              onConflict: "report_id,session_id",
-            },
-          );
+          // 验证 session 存在
+          const { data: sessionCheck } = await supabase
+            .from("sessions")
+            .select("id")
+            .eq("id", accessSessionId)
+            .maybeSingle();
+          
+          if (!sessionCheck) {
+            console.warn("[GET /api/pay/status] Session does not exist for report_access:", accessSessionId);
+          } else {
+            await supabase.from("report_access").upsert(
+              {
+                report_id: reportId,
+                session_id: accessSessionId,
+                tier: "full",
+              },
+              {
+                onConflict: "report_id,session_id",
+              },
+            );
+          }
         } catch (accessError) {
           console.warn("[GET /api/pay/status] grant full access failed", accessError);
         }

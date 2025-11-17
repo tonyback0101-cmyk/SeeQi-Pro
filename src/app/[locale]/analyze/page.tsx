@@ -288,6 +288,16 @@ export default function AnalyzePage({ params }: PageProps) {
         return;
       }
 
+      // 验证 reportId 是有效的 UUID（不是 "local" 或其他无效值）
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(reportId)) {
+        console.error("[analyze-submit] Invalid reportId format:", reportId);
+        setStatusMessage(locale === "zh" ? "服务器返回了无效的报告ID，请重试" : "Invalid report ID from server, please try again");
+        setButtonState("retry");
+        setSubmitting(false);
+        return;
+      }
+
       const normalized = normalizeAnalyzeResponse(data, locale);
       if (!normalized || !normalized.id) {
         setStatusMessage(t.errors.unexpected);
