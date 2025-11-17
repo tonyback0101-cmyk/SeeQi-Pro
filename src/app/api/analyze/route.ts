@@ -470,7 +470,10 @@ export async function POST(request: Request) {
       dream: {
         ...dreamFacts,
         // 扁平化字段，方便规则匹配
-        dream_keywords: dreamFacts?.keywords || dreamTags, // 顶层字段
+        // 使用 ?? 而不是 ||，因为空数组 [] 是 falsy，但我们需要保留它
+        dream_keywords: (dreamFacts?.keywords && dreamFacts.keywords.length > 0) 
+          ? dreamFacts.keywords 
+          : (dreamTags && dreamTags.length > 0 ? dreamTags : []), // 顶层字段
       } as any,
       solar: {
         code: solarCode,

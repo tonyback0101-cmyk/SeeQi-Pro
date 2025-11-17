@@ -126,7 +126,7 @@ export async function executeRulesSequentially(
     head_line: (facts as any).head_line ?? (facts.palm?.lines as any)?.head,
     emotion_line: (facts as any).emotion_line ?? (facts.palm?.lines as any)?.heart,
     mount_tags: (facts as any).mount_tags ?? facts.palm?.mount_tags,
-    dream_keywords: (facts as any).dream_keywords ?? facts.dream?.keywords,
+    dream_keywords: (facts as any).dream_keywords ?? facts.dream?.keywords ?? [],
     solar_term: (facts as any).solar_term ?? facts.solar?.code,
     // 保留嵌套结构
     tongue: facts.tongue,
@@ -182,17 +182,34 @@ export async function executeRulesSequentially(
       const matches = Object.entries(rule.when ?? {}).every(([pathExpression, expected]) => {
         const actual = get(currentContext, pathExpression);
         
+        // 如果 actual 是 undefined 或 null，且 expected 不是 undefined/null，则不匹配
+        if (actual === undefined || actual === null) {
+          return expected === undefined || expected === null || (Array.isArray(expected) && expected.length === 0);
+        }
+        
         // 如果 expected 是数组，检查 actual 是否包含数组中的任意值
         if (Array.isArray(expected)) {
+          if (expected.length === 0) {
+            // 空数组表示不匹配任何值
+            return false;
+          }
           if (Array.isArray(actual)) {
             // 如果 actual 也是数组，检查是否有交集
+            if (actual.length === 0) {
+              return false;
+            }
             return expected.some((value) => actual.includes(value));
           }
           // 如果 actual 不是数组，检查 actual 是否在 expected 中
           return expected.includes(actual);
         }
         
-        // 如果 expected 不是数组，直接比较
+        // 如果 expected 不是数组，直接比较（支持字符串和数字）
+        // 对于字符串，进行 trim 和大小写不敏感比较
+        if (typeof expected === "string" && typeof actual === "string") {
+          return expected.trim().toLowerCase() === actual.trim().toLowerCase();
+        }
+        
         return actual === expected;
       });
 
