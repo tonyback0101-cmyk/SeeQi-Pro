@@ -355,7 +355,21 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const solarCode = resolveSolarTermCode(now);
-    const solarInfo = await fetchSolarTerm(client, solarCode, locale);
+    let solarInfo;
+    try {
+      solarInfo = await fetchSolarTerm(client, solarCode, locale);
+    } catch (solarError) {
+      console.error("[POST /api/analyze] Failed to fetch solar term:", solarError);
+      // 使用默认值，不中断流程
+      solarInfo = {
+        code: solarCode,
+        name: "未知节气",
+        do: [],
+        avoid: [],
+        element: null,
+        health_tip: null,
+      };
+    }
 
     const dreamFacts =
       dreamResult || dreamText
@@ -420,7 +434,14 @@ export async function POST(request: Request) {
 
     const { result: ruleResult, matchedRules } = await executeRules(facts);
     const constitutionName = ruleResult.constitution ?? "平和";
-    const constitutionDetail = await fetchConstitutionDetail(client, constitutionName, locale);
+    let constitutionDetail;
+    try {
+      constitutionDetail = await fetchConstitutionDetail(client, constitutionName, locale);
+    } catch (constitutionError) {
+      console.error("[POST /api/analyze] Failed to fetch constitution detail:", constitutionError);
+      // 使用默认值，不中断流程
+      constitutionDetail = null;
+    }
     
     // 合并 advice：规则引擎的 advice + 规则引擎的 advice_append + 体质详情
     const ruleAdvice = ruleResult.advice || {};
@@ -685,9 +706,22 @@ export async function POST(request: Request) {
       return errorResponse(error.message, status, "BAD_REQUEST");
     }
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[POST /api/analyze]", error);
+    
+    // 详细记录错误信息，包括错误类型、消息和堆栈
+    console.error("[POST /api/analyze] Error occurred:", {
+      message,
+      name: error instanceof Error ? error.name : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+      type: error instanceof Error ? error.constructor.name : typeof error,
+      SUPABASE_ANALYZE_ENABLED,
+      hasClient: !!client,
+      sessionId,
+      locale,
+      tz,
+    });
+    
     if (error instanceof Error && error.stack) {
-      console.error("[POST /api/analyze] stack", error.stack);
+      console.error("[POST /api/analyze] Full stack trace:", error.stack);
     }
     
     // 检查是否是超时错误
@@ -702,14 +736,28 @@ export async function POST(request: Request) {
       message.includes("Supabase") ||
       message.includes("connection") ||
       message.includes("ECONNREFUSED") ||
-      message.includes("ENOTFOUND");
+      message.includes("ENOTFOUND") ||
+      message.includes("无法创建 session") ||
+      message.includes("无法查询 session") ||
+      message.includes("无法验证 session") ||
+      message.includes("Foreign key violation") ||
+      message.includes("23503") ||
+      message.includes("23505");
+    
+    // 检查是否是数据库约束错误
+    const isDatabaseConstraintError =
+      message.includes("23505") || // Unique constraint violation
+      message.includes("23503") || // Foreign key violation
+      message.includes("23502") || // Not null violation
+      message.includes("constraint") ||
+      message.includes("violation");
     
     let hint: string;
     if (process.env.NODE_ENV !== "production") {
       hint = `内部错误: ${message}`;
     } else if (isTimeout) {
       hint = "请求处理超时，请稍后重试";
-    } else if (isSupabaseError) {
+    } else if (isSupabaseError || isDatabaseConstraintError) {
       hint = "数据库连接异常，请稍后重试";
     } else {
       hint = "服务器处理分析请求时出错，请稍后重试";
