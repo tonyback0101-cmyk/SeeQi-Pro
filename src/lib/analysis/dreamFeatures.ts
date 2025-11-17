@@ -22,7 +22,7 @@ async function loadDreamKeywordMap() {
   });
 
   const { data, error } = await client
-    .from("dream_keywords")
+    .from("dream_keywords_std")
     .select("keyword,locale,five_element,emotion,meaning_zh,meaning_en,health_tip_zh,health_tip_en");
 
   if (error) {
