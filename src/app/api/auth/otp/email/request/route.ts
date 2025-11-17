@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       email,
       options: {
         shouldCreateUser: true,
+        emailRedirectTo: null, // 不发送 Magic Link，改为发送验证码
         data: {
           locale,
           source: "seeqi-pwa",
