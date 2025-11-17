@@ -15,7 +15,12 @@ import { ensureSession, verifyOrCreateSession } from "@/lib/supabase/sessionUtil
 export const runtime = "nodejs";
 export const maxDuration = 60; // Vercel Pro plan allows up to 60s, Hobby plan is 10s
 
-const STORAGE_BUCKET = process.env.SUPABASE_ANALYSIS_BUCKET ?? "analysis-temp";
+// 确保存储桶名称正确，如果环境变量设置错误则使用默认值
+const STORAGE_BUCKET = (process.env.SUPABASE_ANALYSIS_BUCKET && 
+  process.env.SUPABASE_ANALYSIS_BUCKET.trim() !== "" &&
+  process.env.SUPABASE_ANALYSIS_BUCKET !== "analysis" && // 防止误设置为 "analysis"
+  process.env.SUPABASE_ANALYSIS_BUCKET !== "SUPABASE_ANALYSIS_BUCKET" // 防止误设置为变量名
+) ? process.env.SUPABASE_ANALYSIS_BUCKET.trim() : "analysis-temp";
 const SUPABASE_ANALYZE_ENABLED = process.env.ENABLE_SUPABASE_ANALYZE === "true";
 
 type SupabaseAdminClient = ReturnType<typeof getSupabaseAdminClient> | null;
@@ -119,8 +124,22 @@ async function uploadImage(
   } else {
     const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
     if (!bucketExists) {
-      console.error(`[uploadImage] Bucket '${STORAGE_BUCKET}' not found. Available buckets:`, buckets?.map(b => b.name).join(", "));
-      throw new Error(`存储桶 '${STORAGE_BUCKET}' 不存在。请检查 Supabase Storage 配置或环境变量 SUPABASE_ANALYSIS_BUCKET`);
+      const availableBuckets = buckets?.map(b => b.name).join(", ") || "无";
+      console.error(`[uploadImage] Bucket '${STORAGE_BUCKET}' not found. Available buckets: ${availableBuckets}`);
+      
+      // 尝试查找可能的正确存储桶名称
+      const possibleBuckets = buckets?.filter(b => 
+        b.name.includes("analysis") || 
+        b.name.includes("temp") ||
+        b.name === "analysis-temp"
+      );
+      
+      if (possibleBuckets && possibleBuckets.length > 0) {
+        const suggestion = possibleBuckets[0].name;
+        throw new Error(`存储桶 '${STORAGE_BUCKET}' 不存在。可用存储桶: ${availableBuckets}。建议使用: ${suggestion}`);
+      }
+      
+      throw new Error(`存储桶 '${STORAGE_BUCKET}' 不存在。可用存储桶: ${availableBuckets}。请检查环境变量 SUPABASE_ANALYSIS_BUCKET 是否正确设置为 'analysis-temp'`);
     }
   }
 

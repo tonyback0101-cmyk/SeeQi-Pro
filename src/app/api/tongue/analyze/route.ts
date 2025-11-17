@@ -14,7 +14,12 @@ import { ensureSession, verifyOrCreateSession } from "@/lib/supabase/sessionUtil
 
 export const runtime = "nodejs";
 
-const STORAGE_BUCKET = process.env.SUPABASE_ANALYSIS_BUCKET ?? "analysis-temp";
+// 确保存储桶名称正确，如果环境变量设置错误则使用默认值
+const STORAGE_BUCKET = (process.env.SUPABASE_ANALYSIS_BUCKET && 
+  process.env.SUPABASE_ANALYSIS_BUCKET.trim() !== "" &&
+  process.env.SUPABASE_ANALYSIS_BUCKET !== "analysis" && // 防止误设置为 "analysis"
+  process.env.SUPABASE_ANALYSIS_BUCKET !== "SUPABASE_ANALYSIS_BUCKET" // 防止误设置为变量名
+) ? process.env.SUPABASE_ANALYSIS_BUCKET.trim() : "analysis-temp";
 
 function errorResponse(code: TongueImageError["code"] | "BAD_REQUEST", message: string, status = 422) {
   return NextResponse.json(
