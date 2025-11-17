@@ -1,0 +1,73 @@
+﻿0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.6.1
+2 info using node@v24.11.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\cherr\Desktop\.npmrc
+5 silly config load:file:C:\Users\cherr\.npmrc
+6 silly config load:file:C:\Users\cherr\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--include" "dev" "--loglevel" "verbose"
+9 verbose logfile logs-max:10 dir:C:\Users\cherr\AppData\Local\npm-cache\_logs\2025-11-09T08_18_47_050Z-
+10 verbose logfile C:\Users\cherr\AppData\Local\npm-cache\_logs\2025-11-09T08_18_47_050Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly fetch manifest @testing-library/jest-dom@^6.4.2
+16 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fjest-dom cache-miss
+17 http cache https://registry.npmjs.org/@testing-library%2fjest-dom 11ms (cache hit)
+18 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fjest-dom set size:422105 disposed:false
+19 silly fetch manifest @testing-library/react@^14.2.1
+20 silly packumentCache full:https://registry.npmjs.org/@testing-library%2freact cache-miss
+21 http cache https://registry.npmjs.org/@testing-library%2freact 5ms (cache hit)
+22 silly packumentCache full:https://registry.npmjs.org/@testing-library%2freact set size:610461 disposed:false
+23 silly fetch manifest react@^18.2.0
+24 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+25 http cache https://registry.npmjs.org/react 16ms (cache hit)
+26 silly packumentCache full:https://registry.npmjs.org/react set size:6240403 disposed:false
+27 silly fetch manifest react-dom@^18.2.0
+28 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+29 http cache https://registry.npmjs.org/react-dom 22ms (cache hit)
+30 silly packumentCache full:https://registry.npmjs.org/react-dom set size:8165612 disposed:false
+31 silly fetch manifest @testing-library/user-event@^14.5.2
+32 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fuser-event cache-miss
+33 http cache https://registry.npmjs.org/@testing-library%2fuser-event 13ms (cache hit)
+34 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fuser-event set size:853752 disposed:false
+35 silly fetch manifest @testing-library/dom@>=7.21.4
+36 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fdom cache-miss
+37 http cache https://registry.npmjs.org/@testing-library%2fdom 6ms (cache hit)
+38 silly packumentCache full:https://registry.npmjs.org/@testing-library%2fdom set size:1097496 disposed:false
+39 silly fetch manifest @types/node@^20.11.30
+40 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+41 http cache https://registry.npmjs.org/@types%2fnode 23ms (cache hit)
+42 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:10682966 disposed:false
+43 silly fetch manifest @types/react@^18.2.67
+44 silly packumentCache full:https://registry.npmjs.org/@types%2freact cache-miss
+45 http cache https://registry.npmjs.org/@types%2freact 9ms (cache hit)
+46 silly packumentCache full:https://registry.npmjs.org/@types%2freact set size:2505103 disposed:false
+47 silly fetch manifest @types/react-dom@^18.2.22
+48 silly packumentCache full:https://registry.npmjs.org/@types%2freact-dom cache-miss
+49 http cache https://registry.npmjs.org/@types%2freact-dom 8ms (cache hit)
+50 silly packumentCache full:https://registry.npmjs.org/@types%2freact-dom set size:426214 disposed:false
+51 silly fetch manifest jsdom@^24.0.0
+52 silly packumentCache full:https://registry.npmjs.org/jsdom cache-miss
+53 http cache https://registry.npmjs.org/jsdom 8ms (cache hit)
+54 silly packumentCache full:https://registry.npmjs.org/jsdom set size:1022765 disposed:false
+55 silly fetch manifest canvas@^2.11.2
+56 silly packumentCache full:https://registry.npmjs.org/canvas cache-miss
+57 http cache https://registry.npmjs.org/canvas 4ms (cache hit)
+58 silly packumentCache full:https://registry.npmjs.org/canvas set size:363722 disposed:false
+59 silly fetch manifest next@^14.1.0
+60 silly packumentCache full:https://registry.npmjs.org/next cache-miss
+61 http cache https://registry.npmjs.org/next 58ms (cache hit)
+62 silly packumentCache full:https://registry.npmjs.org/next set size:27349193 disposed:false
+63 silly fetch manifest @opentelemetry/api@^1.1.0
+64 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi cache-miss
+65 http cache https://registry.npmjs.org/@opentelemetry%2fapi 32ms (cache hit)
+66 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi set size:455567 disposed:false
+67 silly fetch manifest @playwright/test@^1.41.2
+68 silly packumentCache full:https://registry.npmjs.org/@playwright%2ftest cache-miss
+69 http fetch GET 200 https://registry.npmjs.org/@playwright%2ftest 377ms (cache revalidated)
+70 silly packumentCache full:https://registry.npmjs.org/@playwright%2ftest set size:8431027 disposed:false
+71 silly fetch manifest sass@^1.3.0
+72 silly packumentCache full:https://registry.npmjs.org/sass cache-miss

@@ -10,6 +10,8 @@ type StoredReportPayload = {
   dream: any;
   advice: any;
   solar_term: string | null;
+  solar?: any;
+  tags?: string[];
   quote: string | null;
   created_at: string | null;
   unlocked: boolean;

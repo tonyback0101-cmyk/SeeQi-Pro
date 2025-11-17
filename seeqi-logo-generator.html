@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEEQI Logo Generator</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        button {
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #0284c7;
+        }
+        .info {
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SEEQI Logo Generator</h1>
+        <p>点击下方按钮下载符合 Google OAuth 要求的 logo（< 1MB）</p>
+        <canvas id="logoCanvas" width="512" height="512"></canvas>
+        <div>
+            <button onclick="downloadPNG()">下载 PNG (512x512)</button>
+            <button onclick="downloadPNGSmall()">下载 PNG (256x256)</button>
+        </div>
+        <div class="info">
+            <p>✅ 文件大小 < 1MB</p>
+            <p>✅ 符合 Google OAuth 要求</p>
+            <p>💡 建议使用 256x256 版本（更小）</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('logoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function drawLogo() {
+            const size = canvas.width;
+            ctx.clearRect(0, 0, size, size);
+            
+            // 背景（透明或白色）
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+
+            // 绘制 SEEQI logo
+            // 蓝色渐变背景圆形区域
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size * 0.4;
+
+            // 创建渐变
+            const gradient = ctx.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+            gradient.addColorStop(0, '#3b82f6'); // 浅蓝
+            gradient.addColorStop(1, '#1e40af'); // 深蓝
+
+            // 绘制主形状（C + 4 的组合）
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            
+            // 左侧 C 形
+            ctx.arc(centerX - radius * 0.3, centerY, radius * 0.7, Math.PI * 0.5, Math.PI * 1.5, false);
+            ctx.lineTo(centerX - radius * 0.3, centerY - radius * 0.7);
+            ctx.arc(centerX - radius * 0.3, centerY, radius * 0.7, Math.PI * 1.5, Math.PI * 0.5, true);
+            
+            // 右侧 4 形（白色切出）
+            ctx.lineTo(centerX + radius * 0.4, centerY - radius * 0.3);
+            ctx.lineTo(centerX + radius * 0.4, centerY + radius * 0.3);
+            ctx.lineTo(centerX - radius * 0.1, centerY + radius * 0.3);
+            ctx.lineTo(centerX - radius * 0.1, centerY + radius * 0.7);
+            ctx.lineTo(centerX + radius * 0.4, centerY + radius * 0.7);
+            ctx.lineTo(centerX + radius * 0.4, centerY - radius * 0.7);
+            ctx.lineTo(centerX - radius * 0.3, centerY - radius * 0.7);
+            
+            ctx.closePath();
+            ctx.fill();
+
+            // 添加 SEEQI 文字（可选，如果 logo 本身不包含文字）
+            // 这里我们只绘制图形部分，文字通常在应用中使用时单独添加
+        }
+
+        function downloadPNG() {
+            drawLogo();
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'seeqi-logo-512.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                const sizeKB = (blob.size / 1024).toFixed(2);
+                alert(`下载完成！文件大小: ${sizeKB} KB`);
+            }, 'image/png', 0.9);
+        }
+
+        function downloadPNGSmall() {
+            // 创建临时 canvas 绘制小尺寸
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 256;
+            tempCanvas.height = 256;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // 先在大 canvas 上绘制
+            drawLogo();
+            // 然后缩放到小 canvas
+            tempCtx.drawImage(canvas, 0, 0, 256, 256);
+            
+            tempCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'seeqi-logo-256.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                const sizeKB = (blob.size / 1024).toFixed(2);
+                alert(`下载完成！文件大小: ${sizeKB} KB`);
+            }, 'image/png', 0.85);
+        }
+
+        // 页面加载时绘制
+        drawLogo();
+    </script>
+</body>
+</html>
+

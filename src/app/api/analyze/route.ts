@@ -401,13 +401,13 @@ export async function POST(request: Request) {
         ...dreamFacts,
         // 扁平化字段，方便规则匹配
         dream_keywords: dreamFacts?.keywords || dreamTags, // 顶层字段
-      },
+      } as any,
       solar: {
         code: solarCode,
         name: solarInfo.name,
         // 扁平化字段，方便规则匹配
         solar_term: solarCode, // 顶层字段
-      },
+      } as any,
     };
 
     const { result: ruleResult, matchedRules } = await executeRules(facts);
@@ -512,7 +512,7 @@ export async function POST(request: Request) {
     const ruleSolar = (ruleResult as any).solar || {};
     const solarData = {
       title: ruleSolar.title ?? solarInfo.name,
-      advice: ruleSolar.advice ?? solarInfo.advice ?? "",
+      advice: ruleSolar.advice ?? (solarInfo as any).advice ?? "",
       warning: ruleSolar.warning ?? "",
       code: solarCode,
       name: solarInfo.name,

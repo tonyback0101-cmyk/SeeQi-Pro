@@ -1,0 +1,33 @@
+﻿0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.6.1
+2 info using node@v24.11.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\cherr\Desktop\.npmrc
+5 silly config load:file:C:\Users\cherr\.npmrc
+6 silly config load:file:C:\Users\cherr\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm doctor
+8 verbose argv "doctor"
+9 verbose logfile logs-max:10 dir:C:\Users\cherr\AppData\Local\npm-cache\_logs\2025-11-09T08_18_11_406Z-
+10 verbose logfile C:\Users\cherr\AppData\Local\npm-cache\_logs\2025-11-09T08_18_11_406Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly logfile done cleaning log files
+13 info doctor Running checkup
+14 info doctor Pinging registry
+15 http fetch GET 200 https://registry.npmjs.org/-/ping 386ms
+16 info doctor Getting npm package information
+17 http fetch GET 200 https://registry.npmjs.org/npm 285ms (cache miss)
+18 info doctor Getting Node.js release information
+19 info doctor Finding git in your PATH
+20 info doctor getBinPath Finding npm global bin in your PATH
+21 verbose stack Error: Some problems found. See above for recommendations.
+21 verbose stack     at Doctor.exec (C:\Program Files\nodejs\node_modules\npm\lib\commands\doctor.js:133:15)
+21 verbose stack     at async Npm.exec (C:\Program Files\nodejs\node_modules\npm\lib\npm.js:208:9)
+21 verbose stack     at async module.exports (C:\Program Files\nodejs\node_modules\npm\lib\cli\entry.js:67:5)
+22 error Some problems found. See above for recommendations.
+23 verbose cwd C:\Users\cherr\Desktop
+24 verbose os Windows_NT 10.0.26100
+25 verbose node v24.11.0
+26 verbose npm  v11.6.1
+27 verbose exit 1
+28 verbose code 1
+29 error A complete log of this run can be found in: C:\Users\cherr\AppData\Local\npm-cache\_logs\2025-11-09T08_18_11_406Z-debug-0.log

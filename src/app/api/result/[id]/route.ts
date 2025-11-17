@@ -6,16 +6,6 @@ export const runtime = "nodejs";
 
 const SUPABASE_ANALYZE_ENABLED = process.env.ENABLE_SUPABASE_ANALYZE === "true";
 
-// 诊断信息（仅在开发环境或错误时输出）
-if (process.env.NODE_ENV !== "production") {
-  console.log("[GET /api/result/:id] Environment check:", {
-    ENABLE_SUPABASE_ANALYZE: process.env.ENABLE_SUPABASE_ANALYZE,
-    SUPABASE_ANALYZE_ENABLED,
-    SUPABASE_URL: process.env.SUPABASE_URL ? "set" : "missing",
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "set" : "missing",
-  });
-}
-
 async function fetchConstitutionDetail(
   client: ReturnType<typeof getSupabaseAdminClient>,
   constitution: string,

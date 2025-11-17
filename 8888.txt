@@ -1,0 +1,8 @@
+# Supabase 配置
+SUPABASE_URL=https://bxpacjlomabmjkqzqmpf.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_Y0tw7
+NEXTAUTH_SECRET=NEXTAUTH_SECRET=Kp9RwXyZ2mNq7sTv4YcF6hJ8nLb3dE5gH
+
+# 前端配置
+NEXT_PUBLIC_SUPABASE_URL=https://bxpacjlomabmjkqzqmpf.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_Xif3tJgh76xuVFovV-RKkw_XTtlM6wM
