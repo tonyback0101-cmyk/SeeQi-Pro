@@ -122,6 +122,12 @@ function buildResponseFromLocal(entry: ReturnType<typeof getTemporaryReport>) {
   };
 }
 
+// 检查是否是有效的 UUID
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const reportId = params.id;
   if (!reportId) {
@@ -135,6 +141,12 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
     return NextResponse.json(localEntry.body, localEntry.init);
   };
+
+  // 如果 reportId 是 "local" 或不是有效的 UUID，直接使用临时存储
+  if (reportId === "local" || !isValidUUID(reportId)) {
+    console.log("[GET /api/result/:id] Invalid UUID or 'local' ID, using local storage:", reportId);
+    return respondWithLocal();
+  }
 
   try {
     if (!SUPABASE_ANALYZE_ENABLED) {

@@ -89,6 +89,23 @@ async function uploadImage(
   // 在插入 uploads 之前，确保 session 存在
   await verifyOrCreateSession(client, sessionId, locale, tz);
   
+  // 验证 session 真的存在
+  const { data: sessionVerify, error: sessionVerifyError } = await client
+    .from("sessions")
+    .select("id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  
+  if (sessionVerifyError) {
+    console.error("[uploadImage] Session verification error:", sessionVerifyError);
+    throw new Error(`无法验证 session: ${sessionVerifyError.message}`);
+  }
+  
+  if (!sessionVerify) {
+    console.error("[uploadImage] Session does not exist after verifyOrCreateSession:", sessionId);
+    throw new Error(`Session ${sessionId} 不存在，无法上传图片`);
+  }
+  
   const uploadId = randomUUID();
   const imageInfo = resolveImageExtension({ type: file.type, name: file.name });
   const path = `${type}/${sessionId}/${uploadId}.${imageInfo.ext}`;
@@ -582,6 +599,25 @@ export async function POST(request: Request) {
       try {
         // 在插入 reports 之前，再次验证 session 存在（双重保险）
         await verifyOrCreateSession(client, sessionId, locale, tz);
+        
+        // 最后一次验证：确保 session 真的存在，如果不存在则抛出错误
+        const { data: finalSessionCheck, error: finalSessionError } = await client
+          .from("sessions")
+          .select("id")
+          .eq("id", sessionId)
+          .maybeSingle();
+        
+        if (finalSessionError) {
+          console.error("[POST /api/analyze] Final session check error:", finalSessionError);
+          throw new Error(`无法验证 session 存在: ${finalSessionError.message}`);
+        }
+        
+        if (!finalSessionCheck) {
+          console.error("[POST /api/analyze] Session does not exist after verifyOrCreateSession:", sessionId);
+          throw new Error(`Session ${sessionId} 不存在，无法插入报告`);
+        }
+        
+        console.log("[POST /api/analyze] Session verified before report insert:", finalSessionCheck.id);
         
         // 准备插入数据，确保所有字段类型正确
         const reportData: any = {
