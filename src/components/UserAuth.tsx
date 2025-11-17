@@ -918,7 +918,17 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
   }, [activeMethod]);
 
   const handleGoogle = async () => {
-    await signIn("google", { callbackUrl: window.location.href });
+    try {
+      await signIn("google", { callbackUrl: window.location.href });
+    } catch (error) {
+      console.error("[auth] Google sign-in failed", error);
+      setFeedback({
+        type: "error",
+        message: locale === "zh" 
+          ? "Google 登录暂不可用，请使用邮箱或手机号登录" 
+          : "Google sign-in unavailable, please use email or phone",
+      });
+    }
   };
 
   const handleRequestOtp = async () => {
