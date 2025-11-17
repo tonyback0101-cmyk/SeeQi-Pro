@@ -142,9 +142,37 @@ export default function AnalysisResultPage({ params }: PageProps) {
       try {
         const response = await fetch(`/api/result/${params.id}`, { cache: "no-store" });
         if (!response.ok) {
-          throw new Error(await response.text().catch(() => "request-failed"));
+          // 尝试解析错误消息
+          let errorMessage = t.failed;
+          try {
+            const errorData = await response.json().catch(() => null);
+            if (errorData?.error && typeof errorData.error === "string") {
+              errorMessage = errorData.error;
+            } else {
+              const errorText = await response.text().catch(() => null);
+              if (errorText) {
+                try {
+                  const parsed = JSON.parse(errorText);
+                  if (parsed?.error && typeof parsed.error === "string") {
+                    errorMessage = parsed.error;
+                  }
+                } catch {
+                  // 如果不是 JSON，使用原始文本（如果不太长）
+                  if (errorText.length < 200) {
+                    errorMessage = errorText;
+                  }
+                }
+              }
+            }
+          } catch (parseError) {
+            console.warn("result-load: failed to parse error response", parseError);
+          }
+          throw new Error(errorMessage);
         }
         const data = (await response.json()) as ReportResponse;
+        if (!data || !data.id) {
+          throw new Error(t.failed);
+        }
         setReport(data);
         setOffline(false);
         offlineService.saveReport({
@@ -161,7 +189,8 @@ export default function AnalysisResultPage({ params }: PageProps) {
           setOffline(true);
           await fetchSolar((cached.payload as ReportResponse)?.created_at);
         } else {
-          setError(t.failed);
+          const errorMessage = err instanceof Error ? err.message : t.failed;
+          setError(errorMessage);
         }
       } finally {
         if (!silent) {

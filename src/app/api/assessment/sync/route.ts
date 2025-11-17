@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/options";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { canUseInDatabase } from "@/lib/auth/testAccount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,18 @@ export async function POST(request: Request) {
     console.warn("[POST /api/assessment/sync] Supabase unavailable, skip sync", error);
   }
   const userId = session.user.id;
+  
+  // 检查是否是测试账号，如果是则跳过数据库操作
+  if (!canUseInDatabase(userId)) {
+    console.log("[POST /api/assessment/sync] Test account detected, skipping database sync:", userId);
+    return NextResponse.json({
+      success: true,
+      synced: [],
+      skipped: "test_account",
+      message: "测试账号跳过数据库同步",
+    });
+  }
+  
   const rows: Array<{ module: string; status: string; payload: Record<string, unknown> }> = [];
 
   if (body.statuses) {

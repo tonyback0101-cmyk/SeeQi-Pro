@@ -142,7 +142,21 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       return respondWithLocal();
     }
     console.log("[GET /api/result/:id] Querying report from Supabase:", reportId);
-    const client = getSupabaseAdminClient();
+    
+    let client;
+    try {
+      client = getSupabaseAdminClient();
+    } catch (clientError) {
+      console.error("[GET /api/result/:id] Failed to get Supabase client:", clientError);
+      // 如果无法获取 Supabase client，回退到本地存储
+      const localFallback = buildResponseFromLocal(getTemporaryReport(reportId));
+      if (localFallback) {
+        console.log("[GET /api/result/:id] Using temporary storage fallback (client unavailable)");
+        return NextResponse.json(localFallback.body, localFallback.init);
+      }
+      return NextResponse.json({ error: "数据库连接失败，请稍后重试" }, { status: 500 });
+    }
+    
     const { data, error } = await client
       .from("reports")
       .select(

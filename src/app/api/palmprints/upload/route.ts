@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { authOptions } from "@/lib/auth/options";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logPalmEvent } from "@/lib/palmprints/logging";
+import { canUseInDatabase } from "@/lib/auth/testAccount";
 import {
   ensureString,
   MAX_FILE_SIZE,
@@ -21,6 +22,15 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  // 检查是否是测试账号，如果是则返回错误
+  if (!canUseInDatabase(session.user.id)) {
+    console.log("[POST /api/palmprints/upload] Test account detected, cannot upload:", session.user.id);
+    return NextResponse.json(
+      { error: "测试账号不支持此功能，请使用真实账号登录" },
+      { status: 403 }
+    );
   }
 
   const formData = await request.formData().catch(() => null);

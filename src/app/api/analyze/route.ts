@@ -81,8 +81,9 @@ async function uploadImage(
   locale: string = "zh",
   tz: string = "Asia/Shanghai",
 ) {
+  // 只有在 hasSupabase 为 true 时才会调用此函数，但为了安全起见，仍然检查
   if (!hasSupabase(client)) {
-    return randomUUID();
+    throw new Error("Supabase client is not available for image upload");
   }
   
   // 在插入 uploads 之前，确保 session 存在

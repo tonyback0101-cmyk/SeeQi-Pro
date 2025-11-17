@@ -96,7 +96,13 @@ export async function GET(request: Request) {
         await supabase.from("orders").insert(orderPayload);
       }
 
-      await supabase.from("reports").update({ unlocked: true }).eq("id", reportId);
+      // 更新报告解锁状态
+      const { error: unlockError } = await supabase.from("reports").update({ unlocked: true }).eq("id", reportId);
+      if (unlockError) {
+        console.error("[GET /api/pay/status] Failed to unlock report:", unlockError);
+        // 即使解锁失败，也返回成功，因为订单已经支付成功
+        // 可以通过其他方式（如 webhook）来解锁报告
+      }
 
       let accessSessionId = metadata.sessionId ?? null;
       if (!accessSessionId) {
