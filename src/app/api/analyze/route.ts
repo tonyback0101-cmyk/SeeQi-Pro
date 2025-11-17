@@ -540,7 +540,16 @@ export async function POST(request: Request) {
       constitution_detail: constitutionDetail ?? undefined,
     });
 
-    if (hasSupabase(client) && !supabaseUploadError) {
+    // 如果启用了 Supabase，必须成功保存到数据库才能返回 reportId
+    if (SUPABASE_ANALYZE_ENABLED) {
+      if (!client) {
+        console.error("[POST /api/analyze] Supabase client is null but ENABLE_SUPABASE_ANALYZE=true");
+        return NextResponse.json(
+          { error: "数据库连接失败，请稍后重试" },
+          { status: 500 }
+        );
+      }
+      
       try {
         const { error: reportError } = await client.from("reports").insert({
           id: reportId,
@@ -574,12 +583,8 @@ export async function POST(request: Request) {
         if (reportError) {
           throw reportError;
         }
-      } catch (reportInsertError) {
-        supabaseUploadError = normalizeSupabaseError(reportInsertError);
-        console.warn("[POST /api/analyze] insert report error", reportInsertError);
-      }
-
-      if (!supabaseUploadError) {
+        
+        // 报告保存成功后，记录访问权限
         try {
           await client.from("report_access").upsert(
             {
@@ -593,7 +598,19 @@ export async function POST(request: Request) {
           );
         } catch (accessError) {
           console.warn("[POST /api/analyze] record report_access failed", accessError);
+          // report_access 失败不影响主流程，继续执行
         }
+      } catch (reportInsertError) {
+        const normalizedError = normalizeSupabaseError(reportInsertError);
+        console.error("[POST /api/analyze] insert report error", reportInsertError);
+        // 如果启用了 Supabase 但保存失败，返回错误，不返回 reportId
+        return NextResponse.json(
+          { 
+            error: "报告保存失败，请稍后重试",
+            details: normalizedError?.message || String(reportInsertError),
+          },
+          { status: 500 }
+        );
       }
     }
 

@@ -158,6 +158,12 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
     if (!data) {
       console.warn("[GET /api/result/:id] Report not found in database:", reportId);
+      // 尝试从临时存储读取（作为 fallback）
+      const localFallback = buildResponseFromLocal(getTemporaryReport(reportId));
+      if (localFallback) {
+        console.log("[GET /api/result/:id] Using temporary storage fallback");
+        return NextResponse.json(localFallback.body, localFallback.init);
+      }
       return NextResponse.json({ error: "报告不存在或已过期" }, { status: 404 });
     }
     
