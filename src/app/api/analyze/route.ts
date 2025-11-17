@@ -218,6 +218,12 @@ async function fetchConstitutionDetail(
 }
 
 export async function POST(request: Request) {
+  // 将变量提升到函数作用域，以便在 catch 块中访问
+  let locale: "zh" | "en" = "zh";
+  let tz: string = "Asia/Shanghai";
+  let sessionId: string = randomUUID();
+  let client: SupabaseAdminClient = null;
+  
   try {
     const formData = await request.formData();
     const tongueFile = formData.get("tongue_image");
@@ -254,11 +260,11 @@ export async function POST(request: Request) {
           });
       }
     }
-    const locale = formData.get("locale")?.toString() === "en" ? "en" : "zh";
-    const tz = formData.get("tz")?.toString() ?? "Asia/Shanghai";
+    locale = formData.get("locale")?.toString() === "en" ? "en" : "zh";
+    tz = formData.get("tz")?.toString() ?? "Asia/Shanghai";
     const privacyAccepted = formData.get("privacy_accepted")?.toString() === "true";
     const sessionIdParam = formData.get("session_id")?.toString();
-    const sessionId = sessionIdParam && sessionIdParam.length > 0 ? sessionIdParam : randomUUID();
+    sessionId = sessionIdParam && sessionIdParam.length > 0 ? sessionIdParam : randomUUID();
     const ipCandidate =
       request.headers.get("x-forwarded-for") ??
       request.headers.get("x-real-ip") ??
@@ -271,7 +277,7 @@ export async function POST(request: Request) {
       return errorResponse("至少上传手相、舌相或填写梦境内容之一");
   }
 
-    let client: SupabaseAdminClient = null;
+    // client 已在函数作用域中声明
     if (SUPABASE_ANALYZE_ENABLED) {
       try {
         client = getSupabaseAdminClient();
