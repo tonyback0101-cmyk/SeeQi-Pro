@@ -70,19 +70,30 @@ export async function POST(request: Request) {
     });
   }
 
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from("assessment_records")
     .upsert(upsertPayload, { onConflict: "user_id,module_type" })
     .select("module_type");
 
   if (error) {
-    console.warn("[POST /api/assessment/sync] upsert failed", error);
+    // 记录完整的错误信息，包括代码、详细信息、提示等
+    console.error("[POST /api/assessment/sync] 更新插入失败", {
+      代码: error.code,
+      详细信息: error.details,
+      提示: error.hint,
+      消息: error.message,
+      完整错误: error,
+      尝试插入的数据: upsertPayload,
+    });
     return NextResponse.json(
       {
         success: true,
         synced: [],
         skipped: "supabase_error",
         message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
       },
       { status: 200 },
     );
