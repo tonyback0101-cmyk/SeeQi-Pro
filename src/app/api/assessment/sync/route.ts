@@ -57,23 +57,23 @@ export async function POST(request: Request) {
 
   const upsertPayload = rows.map((row) => ({
     user_id: userId,
-    module: row.module,
+    module_type: row.module, // 使用 module_type 匹配表结构
     status: row.status,
-    payload: row.payload,
+    data: row.payload, // 使用 data 匹配表结构
   }));
 
   if (!supabase) {
     return NextResponse.json({
       success: true,
-      synced: upsertPayload.map((item) => item.module),
+      synced: upsertPayload.map((item) => item.module_type),
       skipped: "supabase_disabled",
     });
   }
 
   const { error } = await supabase
     .from("assessment_records")
-    .upsert(upsertPayload, { onConflict: "user_id,module" })
-    .select("module");
+    .upsert(upsertPayload, { onConflict: "user_id,module_type" })
+    .select("module_type");
 
   if (error) {
     console.warn("[POST /api/assessment/sync] upsert failed", error);
