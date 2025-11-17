@@ -101,28 +101,65 @@ export async function verifyOrCreateSession(
   if (!sessionCheck) {
     console.error("[verifyOrCreateSession] Session not found, creating now...");
     // 紧急创建 session
-    const { error: emergencyInsertError } = await client
+    const { error: emergencyInsertError, data: emergencyInserted } = await client
       .from("sessions")
       .insert({ id: sessionId, locale, tz })
       .select("id")
       .single();
 
-    if (emergencyInsertError && emergencyInsertError.code !== "23505") {
+    if (emergencyInsertError) {
+      // 如果是唯一约束冲突，说明另一个请求已经创建了
+      if (emergencyInsertError.code === "23505") {
+        console.log("[verifyOrCreateSession] Session already exists (race condition), verifying...");
+        // 等待一小段时间，确保事务提交
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // 再次验证
+        const { data: verifiedAfterRace, error: verifyAfterRaceError } = await client
+          .from("sessions")
+          .select("id")
+          .eq("id", sessionId)
+          .maybeSingle();
+        
+        if (verifyAfterRaceError) {
+          console.error("[verifyOrCreateSession] Verification after race condition error:", verifyAfterRaceError);
+          throw new Error(`无法验证 session: ${verifyAfterRaceError.message}`);
+        }
+        
+        if (!verifiedAfterRace) {
+          throw new Error("Session 创建失败：唯一约束冲突但验证时不存在");
+        }
+        
+        console.log("[verifyOrCreateSession] Session verified after race condition");
+        return;
+      }
+      
       throw new Error(`紧急创建 session 失败: ${emergencyInsertError.message}`);
     }
 
-    // 再次验证
-    const { data: finalCheck } = await client
+    if (!emergencyInserted) {
+      throw new Error("Session 创建失败：插入成功但未返回数据");
+    }
+
+    // 再次验证，确保 session 真的存在
+    // 等待一小段时间，确保事务提交
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    const { data: finalCheck, error: finalCheckError } = await client
       .from("sessions")
       .select("id")
       .eq("id", sessionId)
       .maybeSingle();
 
+    if (finalCheckError) {
+      console.error("[verifyOrCreateSession] Final check error:", finalCheckError);
+      throw new Error(`无法验证 session: ${finalCheckError.message}`);
+    }
+
     if (!finalCheck) {
       throw new Error("Session 创建后仍然无法验证");
     }
 
-    console.log("[verifyOrCreateSession] Session created in emergency and verified");
+    console.log("[verifyOrCreateSession] Session created in emergency and verified:", finalCheck.id);
   }
 }
 

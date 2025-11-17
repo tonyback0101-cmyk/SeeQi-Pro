@@ -670,6 +670,28 @@ export async function POST(request: Request) {
         
         console.log("[POST /api/analyze] Session verified before report insert:", finalSessionCheck.id);
         
+        // 在插入前再次确认 session 存在（使用相同的查询，确保数据一致性）
+        // 添加短暂延迟，确保之前的操作已提交
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        const { data: preInsertCheck, error: preInsertError } = await client
+          .from("sessions")
+          .select("id")
+          .eq("id", sessionId)
+          .maybeSingle();
+        
+        if (preInsertError) {
+          console.error("[POST /api/analyze] Pre-insert session check error:", preInsertError);
+          throw new Error(`插入前 session 验证失败: ${preInsertError.message}`);
+        }
+        
+        if (!preInsertCheck) {
+          console.error("[POST /api/analyze] Session disappeared before insert:", sessionId);
+          throw new Error(`Session ${sessionId} 在插入前消失，无法插入报告`);
+        }
+        
+        console.log("[POST /api/analyze] Pre-insert session check passed:", preInsertCheck.id);
+        
         // 准备插入数据，确保所有字段类型正确
         const reportData: any = {
           id: reportId,
@@ -712,7 +734,50 @@ export async function POST(request: Request) {
           tz: reportData.tz,
         });
 
-        const { error: reportError, data: reportDataResult } = await client.from("reports").insert(reportData).select("id");
+        let reportError: any = null;
+        let reportDataResult: any = null;
+        let retryCount = 0;
+        const maxRetries = 2;
+        
+        while (retryCount <= maxRetries) {
+          const { error, data } = await client.from("reports").insert(reportData).select("id");
+          
+          if (!error) {
+            reportDataResult = data;
+            break;
+          }
+          
+          // 如果是外键约束错误（PGRST205 或 23503），尝试修复并重试
+          if ((error.code === "PGRST205" || error.code === "23503" || error.message?.includes("Foreign key violation")) && retryCount < maxRetries) {
+            console.warn(`[POST /api/analyze] Foreign key violation on attempt ${retryCount + 1}, attempting to fix session...`);
+            
+            // 强制创建 session
+            try {
+              const { error: forceCreateError } = await client
+                .from("sessions")
+                .insert({ id: sessionId, locale, tz })
+                .select("id")
+                .single();
+              
+              if (forceCreateError && forceCreateError.code !== "23505") {
+                console.error("[POST /api/analyze] Force create session failed:", forceCreateError);
+              } else {
+                console.log("[POST /api/analyze] Session force created, waiting before retry...");
+                // 等待事务提交
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            } catch (forceError) {
+              console.error("[POST /api/analyze] Force create session exception:", forceError);
+            }
+            
+            retryCount++;
+            continue;
+          }
+          
+          // 其他错误或重试次数用完，抛出错误
+          reportError = error;
+          break;
+        }
         
         if (reportError) {
           console.error("[POST /api/analyze] Report insert error details:", {
@@ -720,8 +785,13 @@ export async function POST(request: Request) {
             message: reportError.message,
             details: reportError.details,
             hint: reportError.hint,
+            retryCount,
           });
           throw reportError;
+        }
+        
+        if (!reportDataResult) {
+          throw new Error("报告插入失败：未返回数据且无错误信息");
         }
 
         console.log("[POST /api/analyze] Report inserted successfully:", reportDataResult);
