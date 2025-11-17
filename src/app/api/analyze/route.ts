@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { analyzeTongueImage, TongueImageError } from "@/lib/analysis/tongueFeatures";
 import { analyzePalmImage, PalmImageError } from "@/lib/analysis/palmFeatures";
 import { analyzeDreamText } from "@/lib/analysis/dreamFeatures";
-import { executeRules, type RuleFacts } from "@/lib/rules";
+import { executeRules, type RuleFacts, type RuleResult } from "@/lib/rules";
 import { computeQiIndex, computeQiIndexFromRules } from "@/lib/analysis/qiIndex";
 import { resolveImageExtension } from "@/lib/palmprints/validation";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -329,10 +329,20 @@ export async function POST(request: Request) {
     let tongueUploadId: string | null = null;
 
     if (palmFile instanceof File) {
-      palmResult = await analyzePalmImage(await palmFile.arrayBuffer().then((buf) => Buffer.from(buf)), {
-        mimeType: palmFile.type,
-        fileSize: palmFile.size,
-      });
+      try {
+        palmResult = await analyzePalmImage(await palmFile.arrayBuffer().then((buf) => Buffer.from(buf)), {
+          mimeType: palmFile.type,
+          fileSize: palmFile.size,
+        });
+      } catch (palmError) {
+        if (palmError instanceof PalmImageError) {
+          // 如果是已知的图片错误，直接抛出
+          throw palmError;
+        }
+        console.error("[POST /api/analyze] Palm image analysis failed:", palmError);
+        // 其他错误也抛出，让外层 catch 处理
+        throw palmError;
+      }
       if (hasSupabase(client)) {
         try {
           palmUploadId = await uploadImage(client, sessionId, "palm", palmFile, palmResult.qualityScore, {
@@ -349,10 +359,20 @@ export async function POST(request: Request) {
     }
 
     if (tongueFile instanceof File) {
-      tongueResult = await analyzeTongueImage(await tongueFile.arrayBuffer().then((buf) => Buffer.from(buf)), {
-        mimeType: tongueFile.type,
-        fileSize: tongueFile.size,
-      });
+      try {
+        tongueResult = await analyzeTongueImage(await tongueFile.arrayBuffer().then((buf) => Buffer.from(buf)), {
+          mimeType: tongueFile.type,
+          fileSize: tongueFile.size,
+        });
+      } catch (tongueError) {
+        if (tongueError instanceof TongueImageError) {
+          // 如果是已知的图片错误，直接抛出
+          throw tongueError;
+        }
+        console.error("[POST /api/analyze] Tongue image analysis failed:", tongueError);
+        // 其他错误也抛出，让外层 catch 处理
+        throw tongueError;
+      }
       if (hasSupabase(client)) {
         try {
           tongueUploadId = await uploadImage(client, sessionId, "tongue", tongueFile, tongueResult.qualityScore, {
@@ -460,7 +480,24 @@ export async function POST(request: Request) {
       } as any,
     };
 
-    const { result: ruleResult, matchedRules } = await executeRules(facts);
+    // 执行规则引擎
+    let ruleResult: RuleResult;
+    let matchedRules: string[];
+    try {
+      const ruleExecutionResult = await executeRules(facts);
+      ruleResult = ruleExecutionResult.result;
+      matchedRules = ruleExecutionResult.matchedRules;
+    } catch (ruleError) {
+      console.error("[POST /api/analyze] Rule engine execution failed:", ruleError);
+      // 规则引擎失败时使用默认值，不中断流程
+      ruleResult = {
+        constitution: "平和",
+        advice: {},
+      };
+      matchedRules = [];
+      console.warn("[POST /api/analyze] Using default rule result due to rule engine error");
+    }
+    
     const constitutionName = ruleResult.constitution ?? "平和";
     let constitutionDetail;
     try {

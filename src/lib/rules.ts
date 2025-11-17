@@ -138,13 +138,21 @@ export async function executeRulesSequentially(
 
   // 按顺序执行每个规则文件
   for (const ruleFile of ruleFiles) {
-    // 创建临时引擎实例，只加载指定文件
-    const rulesDir = process.env.RULES_DIR_PATH ?? getDefaultRulesPath();
-    const tempEngine = new RuleEngine(rulesDir);
-    
-    // 读取规则文件
-    const filePath = path.join(rulesDir, ruleFile);
-    const fileContent = await fs.readFile(filePath, "utf8");
+    try {
+      // 创建临时引擎实例，只加载指定文件
+      const rulesDir = process.env.RULES_DIR_PATH ?? getDefaultRulesPath();
+      const tempEngine = new RuleEngine(rulesDir);
+      
+      // 读取规则文件
+      const filePath = path.join(rulesDir, ruleFile);
+      let fileContent: string;
+      try {
+        fileContent = await fs.readFile(filePath, "utf8");
+      } catch (readError) {
+        console.warn(`[executeRulesSequentially] Failed to read rule file ${ruleFile}:`, readError);
+        // 如果文件不存在或读取失败，跳过该文件，继续执行其他文件
+        continue;
+      }
     
     // 解析该文件的规则
     const lines = fileContent
@@ -200,9 +208,14 @@ export async function executeRulesSequentially(
       }
     });
 
-    // 合并结果
-    mergedResult = mergeResults(mergedResult, result);
-    allMatchedRules.push(...matchedRules);
+      // 合并结果
+      mergedResult = mergeResults(mergedResult, result);
+      allMatchedRules.push(...matchedRules);
+    } catch (ruleFileError) {
+      console.error(`[executeRulesSequentially] Error processing rule file ${ruleFile}:`, ruleFileError);
+      // 单个规则文件失败不影响其他文件，继续执行
+      continue;
+    }
   }
 
   return {
