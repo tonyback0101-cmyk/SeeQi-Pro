@@ -4,6 +4,7 @@ import { analyzePalmImage, PalmImageError, type PalmColor, type PalmTexture } fr
 import { executeRules } from "@/lib/rules";
 import { resolveImageExtension } from "@/lib/palmprints/validation";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { ensureSession, verifyOrCreateSession } from "@/lib/supabase/sessionUtils";
 
 export const runtime = "nodejs";
 
@@ -49,39 +50,20 @@ export async function POST(request: Request) {
       },
     });
 
-    const client = getSupabaseAdminClient();
+    let client;
+    try {
+      client = getSupabaseAdminClient();
+    } catch (supabaseError) {
+      console.error("[POST /api/palm/analyze] Supabase client unavailable", supabaseError);
+      return errorResponse("BAD_REQUEST", "数据库连接失败", 500);
+    }
 
-    if (!sessionIdParam) {
-      const { error: insertSessionError } = await client.from("sessions").insert({
-        id: sessionId,
-        locale,
-        tz,
-      });
-      if (insertSessionError && insertSessionError.code !== "23505") {
-        console.error("[POST /api/palm/analyze] insert session error", insertSessionError);
-        return errorResponse("BAD_REQUEST", "会话创建失败", 500);
-      }
-    } else {
-      const { data: existingSession, error: fetchSessionError } = await client
-        .from("sessions")
-        .select("id")
-        .eq("id", sessionId)
-        .maybeSingle();
-      if (fetchSessionError) {
-        console.error("[POST /api/palm/analyze] fetch session error", fetchSessionError);
-        return errorResponse("BAD_REQUEST", "会话查询失败", 500);
-      }
-      if (!existingSession) {
-        const { error: insertMissingSessionError } = await client.from("sessions").insert({
-          id: sessionId,
-          locale,
-          tz,
-        });
-        if (insertMissingSessionError) {
-          console.error("[POST /api/palm/analyze] insert missing session error", insertMissingSessionError);
-          return errorResponse("BAD_REQUEST", "会话创建失败", 500);
-        }
-      }
+    // 确保 session 存在
+    try {
+      await ensureSession(client, sessionId, locale, tz);
+    } catch (sessionError) {
+      console.error("[POST /api/palm/analyze] ensureSession failed:", sessionError);
+      return errorResponse("BAD_REQUEST", "会话创建失败", 500);
     }
 
     const uploadId = randomUUID();
@@ -98,6 +80,14 @@ export async function POST(request: Request) {
       return errorResponse("BAD_REQUEST", "手掌图片暂存失败", 500);
     }
 
+    // 在插入 uploads 之前，再次验证 session 存在
+    try {
+      await verifyOrCreateSession(client, sessionId, locale, tz);
+    } catch (verifyError) {
+      console.error("[POST /api/palm/analyze] verifyOrCreateSession failed:", verifyError);
+      return errorResponse("BAD_REQUEST", "会话验证失败", 500);
+    }
+
     const { error: insertUploadError } = await client.from("uploads").insert({
       id: uploadId,
       session_id: sessionId,
@@ -112,7 +102,12 @@ export async function POST(request: Request) {
       },
     });
     if (insertUploadError) {
-      console.error("[POST /api/palm/analyze] insert upload error", insertUploadError);
+      console.error("[POST /api/palm/analyze] insert upload error:", {
+        code: insertUploadError.code,
+        message: insertUploadError.message,
+        details: insertUploadError.details,
+        hint: insertUploadError.hint,
+      });
       return errorResponse("BAD_REQUEST", "手掌特征写入失败", 500);
     }
 

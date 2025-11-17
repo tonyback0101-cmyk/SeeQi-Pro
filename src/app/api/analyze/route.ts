@@ -10,6 +10,7 @@ import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { resolveSolarTermCode } from "@/lib/solar/resolve";
 import { getSolarTermInsight } from "@/data/solarTerms";
 import { saveTemporaryReport } from "@/lib/tempReportStore";
+import { ensureSession, verifyOrCreateSession } from "@/lib/supabase/sessionUtils";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Vercel Pro plan allows up to 60s, Hobby plan is 10s
@@ -68,66 +69,7 @@ function normalizeSupabaseError(error: unknown): Error {
   }
 }
 
-async function ensureSession(client: SupabaseAdminClient, id: string, locale: string, tz: string): Promise<void> {
-  if (!hasSupabase(client)) return;
-  
-  // 先检查 session 是否存在
-  const { data: existingSession, error: selectError } = await client
-    .from("sessions")
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
-  
-  if (selectError) {
-    console.error("[POST /api/analyze] ensureSession select error:", selectError);
-    throw new Error(`无法查询 session: ${selectError.message}`);
-  }
-  
-  // 如果 session 不存在，创建它
-  if (!existingSession) {
-    console.log("[POST /api/analyze] Session not found, creating:", { id, locale, tz });
-    const { error: insertError, data: insertedSession } = await client
-      .from("sessions")
-      .insert({ id, locale, tz })
-      .select("id")
-      .single();
-    
-    if (insertError) {
-      // 如果是唯一约束冲突，说明另一个请求已经创建了，再次查询确认
-      if (insertError.code === "23505") {
-        console.log("[POST /api/analyze] Session already exists (race condition), verifying...");
-        const { data: verifiedSession, error: verifyError } = await client
-          .from("sessions")
-          .select("id")
-          .eq("id", id)
-          .maybeSingle();
-        
-        if (verifyError) {
-          console.error("[POST /api/analyze] Session verification error:", verifyError);
-          throw new Error(`无法验证 session: ${verifyError.message}`);
-        }
-        
-        if (!verifiedSession) {
-          throw new Error("Session 创建失败：唯一约束冲突但验证时不存在");
-        }
-        
-        console.log("[POST /api/analyze] Session verified after race condition");
-        return;
-      }
-      
-      console.error("[POST /api/analyze] ensureSession insert error:", insertError);
-      throw new Error(`无法创建 session: ${insertError.message}`);
-    }
-    
-    if (!insertedSession) {
-      throw new Error("Session 创建失败：插入成功但未返回数据");
-    }
-    
-    console.log("[POST /api/analyze] Session created successfully:", insertedSession.id);
-  } else {
-    console.log("[POST /api/analyze] Session already exists:", existingSession.id);
-  }
-}
+// ensureSession 已移至 @/lib/supabase/sessionUtils
 
 async function uploadImage(
   client: SupabaseAdminClient,
@@ -136,10 +78,16 @@ async function uploadImage(
   file: File,
   quality: number,
   features: Record<string, unknown>,
+  locale: string = "zh",
+  tz: string = "Asia/Shanghai",
 ) {
   if (!hasSupabase(client)) {
     return randomUUID();
   }
+  
+  // 在插入 uploads 之前，确保 session 存在
+  await verifyOrCreateSession(client, sessionId, locale, tz);
+  
   const uploadId = randomUUID();
   const imageInfo = resolveImageExtension({ type: file.type, name: file.name });
   const path = `${type}/${sessionId}/${uploadId}.${imageInfo.ext}`;
@@ -162,7 +110,10 @@ async function uploadImage(
     quality_score: quality,
     features,
   });
-  if (insertErr) throw insertErr;
+  if (insertErr) {
+    console.error("[uploadImage] Insert upload error:", insertErr);
+    throw insertErr;
+  }
   return uploadId;
 }
 
@@ -359,7 +310,7 @@ export async function POST(request: Request) {
             color: palmResult.color,
             texture: palmResult.texture,
             lines: palmResult.lines,
-          });
+          }, locale, tz);
         } catch (uploadErr) {
           supabaseUploadError = normalizeSupabaseError(uploadErr);
           console.warn("[POST /api/analyze] palm upload failed, falling back to local", uploadErr);
@@ -379,7 +330,7 @@ export async function POST(request: Request) {
             color: tongueResult.color,
             coating: tongueResult.coating,
             texture: tongueResult.texture,
-          });
+          }, locale, tz);
         } catch (uploadErr) {
           supabaseUploadError = normalizeSupabaseError(uploadErr);
           console.warn("[POST /api/analyze] tongue upload failed, falling back to local", uploadErr);
@@ -608,43 +559,7 @@ export async function POST(request: Request) {
       
       try {
         // 在插入 reports 之前，再次验证 session 存在（双重保险）
-        const { data: sessionCheck, error: sessionCheckError } = await client
-          .from("sessions")
-          .select("id")
-          .eq("id", sessionId)
-          .maybeSingle();
-        
-        if (sessionCheckError) {
-          console.error("[POST /api/analyze] Session verification before insert error:", sessionCheckError);
-          throw new Error(`无法验证 session: ${sessionCheckError.message}`);
-        }
-        
-        if (!sessionCheck) {
-          console.error("[POST /api/analyze] Session not found before inserting report, creating now...");
-          // 紧急创建 session
-          const { error: emergencyInsertError } = await client
-            .from("sessions")
-            .insert({ id: sessionId, locale, tz })
-            .select("id")
-            .single();
-          
-          if (emergencyInsertError && emergencyInsertError.code !== "23505") {
-            throw new Error(`紧急创建 session 失败: ${emergencyInsertError.message}`);
-          }
-          
-          // 再次验证
-          const { data: finalCheck } = await client
-            .from("sessions")
-            .select("id")
-            .eq("id", sessionId)
-            .maybeSingle();
-          
-          if (!finalCheck) {
-            throw new Error("Session 创建后仍然无法验证");
-          }
-          
-          console.log("[POST /api/analyze] Session created in emergency and verified");
-        }
+        await verifyOrCreateSession(client, sessionId, locale, tz);
         
         // 准备插入数据，确保所有字段类型正确
         const reportData: any = {
