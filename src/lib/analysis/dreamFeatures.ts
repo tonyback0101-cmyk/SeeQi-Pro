@@ -21,11 +21,13 @@ async function loadDreamKeywordMap() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  console.log("[dreamFeatures] Loading keywords from dream_keywords_std");
   const { data, error } = await client
     .from("dream_keywords_std")
     .select("keyword,locale,five_element,emotion,meaning_zh,meaning_en,health_tip_zh,health_tip_en");
 
   if (error) {
+    console.error("[dreamFeatures] Failed to load keywords:", error);
     throw error;
   }
 
