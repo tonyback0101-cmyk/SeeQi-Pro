@@ -88,5 +88,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, synced: upsertPayload.map((item) => item.module) });
+  return NextResponse.json({ success: true, synced: upsertPayload.map((item) => item.module_type) });
 }
