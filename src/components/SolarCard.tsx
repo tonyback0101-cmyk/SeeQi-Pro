@@ -3,7 +3,9 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
-import { getLunarInfo } from "@/lib/lunar/calendar";
+import { getSolarTerm } from "@/utils/solarTerm";
+import { solarToLunar } from "@/utils/lunar";
+import { getHuangli } from "@/utils/huangli";
 import { getSolarTermByDate, getSolarTermStartDate } from "@/lib/solar/simple";
 
 type Locale = "zh" | "en";
@@ -100,28 +102,39 @@ function getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number
 }
 
 export default function SolarCard({ locale, name, doList, avoidList, healthTip, element, isLite }: SolarCardProps) {
-  const [lunarInfo, setLunarInfo] = useState<{
-    lunarDate: string;
-    lunarYear: string;
-    yi: string[];
-    ji: string[];
-  } | null>(null);
+  const [lunarDate, setLunarDate] = useState<string>("");
+  const [huangliData, setHuangliData] = useState<{ yi: string[]; ji: string[]; wuxing?: string } | null>(null);
 
   useEffect(() => {
     try {
-      const info = getLunarInfo(new Date());
-      setLunarInfo({
-        lunarDate: info.lunarDate,
-        lunarYear: info.lunarYear,
-        yi: info.yi,
-        ji: info.ji,
+      const today = new Date();
+      // 使用工具函数获取农历
+      const lunar = solarToLunar(today);
+      setLunarDate(lunar);
+      
+      // 使用工具函数获取黄历
+      const huangli = getHuangli(today);
+      setHuangliData({
+        yi: huangli.yi,
+        ji: huangli.ji,
+        wuxing: huangli.wuxing,
       });
     } catch (error) {
-      console.error("[SolarCard] Failed to get lunar info:", error);
+      console.error("[SolarCard] Failed to get lunar/huangli info:", error);
     }
   }, []);
 
-  const resolvedName = name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
+  // 使用工具函数获取节气名称
+  const currentDate = useMemo(() => new Date(), []);
+  const solarTermName = useMemo(() => {
+    try {
+      return getSolarTerm(currentDate);
+    } catch {
+      return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
+    }
+  }, [currentDate, name, locale]);
+
+  const resolvedName = solarTermName;
   const gradient = SCENE_GRADIENT[resolvedName] ?? LIGHT_SCENE_GRADIENT;
   const elementColor =
     (element && ELEMENT_COLOR[element]) ||
@@ -132,13 +145,13 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     ELEMENT_LABEL[locale].default;
 
   // 计算节气天数
-  const currentTermCode = useMemo(() => getSolarTermByDate(new Date()), []);
-  const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(new Date(), currentTermCode), [currentTermCode]);
+  const currentTermCode = useMemo(() => getSolarTermByDate(currentDate), [currentDate]);
+  const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(currentDate, currentTermCode), [currentDate, currentTermCode]);
   const titleWithDays = daysSinceStart 
     ? `${resolvedName} · 第${daysSinceStart}天`
     : resolvedName;
 
-  // 固定的宜忌文案（根据用户要求）
+  // 优先使用黄历的宜忌，如果没有则使用固定的文案
   const fixedDoList = locale === "zh" 
     ? ["签约合作", "学习进修", "整理空间"]
     : ["Sign contracts", "Study & learn", "Organize space"];
@@ -146,12 +159,19 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     ? ["动土破土", "长途迁移"]
     : ["Groundbreaking", "Long relocation"];
 
-  // 使用固定的宜忌文案
-  const safeDo = fixedDoList;
-  const safeAvoid = fixedAvoidList;
+  // 使用黄历数据，如果没有则使用固定文案
+  const safeDo = (huangliData?.yi && huangliData.yi.length > 0) 
+    ? huangliData.yi 
+    : fixedDoList;
+  const safeAvoid = (huangliData?.ji && huangliData.ji.length > 0)
+    ? huangliData.ji
+    : fixedAvoidList;
 
   const liteDo = isLite ? safeDo.slice(0, 1) : safeDo;
   const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid;
+
+  // 五行信息：优先使用黄历数据，如果没有则使用固定文案
+  const wuxingText = huangliData?.wuxing || (locale === "zh" ? "水旺・金强・火衰・木弱" : "");
 
   return (
     <motion.div
@@ -177,17 +197,17 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
             <span style={{ color: "rgba(35,64,53,0.7)", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.05em" }}>
               {locale === "zh" ? "今日养生节气" : "Today's Seasonal Focus"}
             </span>
-            {lunarInfo && lunarInfo.lunarDate && (
+            {lunarDate && (
               <span style={{ color: "rgba(35,64,53,0.6)", fontSize: "0.6rem" }}>
-                {locale === "zh" ? `农历${lunarInfo.lunarDate}` : `Lunar ${lunarInfo.lunarDate}`}
+                {locale === "zh" ? `农历${lunarDate}` : `Lunar ${lunarDate}`}
               </span>
             )}
           </div>
           <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{titleWithDays}</h2>
           {/* 五行提示 */}
-          {locale === "zh" && (
+          {locale === "zh" && wuxingText && (
             <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.6)", marginTop: "0.1rem" }}>
-              今日五行：水旺・金强・火衰・木弱
+              今日五行：{wuxingText}
             </span>
           )}
         </div>
