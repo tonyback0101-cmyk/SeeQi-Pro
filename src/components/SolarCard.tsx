@@ -225,7 +225,9 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
               </span>
             )}
           </div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{titleWithDays}</h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>
+            {titleWithDays} <span style={{ fontSize: "0.7rem", color: "#ff0000", fontWeight: "bold" }}>【调试标记XYZ-133ecc5e】</span>
+          </h2>
           {/* 五行提示 */}
           {locale === "zh" && wuxingText && (
             <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.6)", marginTop: "0.1rem" }}>
