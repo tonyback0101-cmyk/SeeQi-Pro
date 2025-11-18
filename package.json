@@ -50,6 +50,7 @@
     "framer-motion": "^11.18.2",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
+    "jimp": "^0.22.10",
     "lodash.get": "^4.4.2",
     "lucide-react": "^0.553.0",
     "lunar-javascript": "^1.7.7",
@@ -57,7 +58,6 @@
     "next-pwa": "^5.6.0",
     "pdfkit": "^0.15.0",
     "qrcode": "^1.5.4",
-    "sharp": "^0.33.2",
     "stripe": "^19.3.0"
   }
 }

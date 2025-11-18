@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import jimp from "jimp";
 
 export type PalmColor = "pale" | "pink" | "red" | "dark";
 export type PalmTexture = "smooth" | "dry" | "rough";
@@ -18,6 +18,7 @@ export interface PalmFeatureSummary {
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 const MIN_DIMENSION = 480;
+const TARGET_SIZE = 320;
 
 export class PalmImageError extends Error {
   readonly code:
@@ -33,13 +34,6 @@ export class PalmImageError extends Error {
     this.code = code;
     this.name = "PalmImageError";
   }
-}
-
-function createSharpInstance(buffer: Buffer) {
-  return sharp(buffer, {
-    failOnError: false,
-    limitInputPixels: false,
-  });
 }
 
 function classifyColor(redRatio: number, warmRatio: number, shadowRatio: number): PalmColor {
@@ -145,6 +139,39 @@ export interface PalmImageAnalysisOptions {
   fileSize?: number;
 }
 
+async function readImage(buffer: Buffer) {
+  try {
+    return await jimp.read(buffer);
+  } catch (error) {
+    console.warn("[palmFeatures] unable to read image", error);
+    throw new PalmImageError("INVALID_IMAGE", "图像格式不受支持或已损坏");
+  }
+}
+
+function normalizeDimensions(image: jimp) {
+  const { width, height } = image.bitmap;
+  if (!width || !height) {
+    throw new PalmImageError("INVALID_IMAGE", "无法解析图片尺寸");
+  }
+  if (Math.max(width, height) < MIN_DIMENSION) {
+    throw new PalmImageError(
+      "LOW_RESOLUTION",
+      `图片分辨率过低（检测到 ${width}x${height}，需 ≥ ${MIN_DIMENSION}px），请重新拍摄。`,
+    );
+  }
+}
+
+function resizeImage(image: jimp) {
+  const { width, height } = image.bitmap;
+  const scale = Math.min(1, TARGET_SIZE / Math.max(width, height));
+  const resized = image
+    .clone()
+    .resize(Math.max(1, Math.round(width * scale)), jimp.AUTO, jimp.RESIZE_BICUBIC)
+    .contain(TARGET_SIZE, TARGET_SIZE, jimp.HORIZONTAL_ALIGN_CENTER | jimp.VERTICAL_ALIGN_MIDDLE)
+    .rgba(true);
+  return resized;
+}
+
 export async function analyzePalmImage(
   buffer: Buffer,
   { mimeType, fileSize }: PalmImageAnalysisOptions = {},
@@ -158,97 +185,27 @@ export async function analyzePalmImage(
   }
 
   const normalizedMime = mimeType?.toLowerCase() ?? "";
-  const isJpeg =
+  const isSupportedMime =
+    !normalizedMime ||
     normalizedMime.startsWith("image/jpeg") ||
     normalizedMime.startsWith("image/jpg") ||
-    normalizedMime.startsWith("image/pjpeg");
-  const isPng =
+    normalizedMime.startsWith("image/pjpeg") ||
     normalizedMime.startsWith("image/png") ||
     normalizedMime.startsWith("image/x-png") ||
-    normalizedMime.startsWith("image/apng");
-  const isHeic = normalizedMime.startsWith("image/heic") || normalizedMime.startsWith("image/heif");
-  if (normalizedMime && !(isJpeg || isPng || isHeic)) {
+    normalizedMime.startsWith("image/apng") ||
+    normalizedMime.startsWith("image/heic") ||
+    normalizedMime.startsWith("image/heif");
+  if (!isSupportedMime) {
     console.warn("[palmFeatures] unexpected mime type", normalizedMime);
   }
 
-  let workingBuffer = buffer;
-  let image = createSharpInstance(workingBuffer);
-  let metadata;
-  try {
-    metadata = await image.metadata();
-  } catch (error) {
-    try {
-      workingBuffer = await image.png({ compressionLevel: 6, adaptiveFiltering: true }).toBuffer();
-      image = createSharpInstance(workingBuffer);
-      metadata = await image.metadata();
-    } catch (retryError) {
-      console.warn("[palmFeatures] metadata extraction failed", retryError);
-      return {
-        color: "pink",
-        texture: "smooth",
-        lines: { life: "deep", heart: "long", wisdom: "clear" },
-        qualityScore: 58,
-      };
-    }
-  }
-
-  if (metadata.orientation) {
-    image = image.rotate();
-    metadata = await image.metadata();
-  }
-
-  if (!metadata.width || !metadata.height) {
-    console.warn("[palmFeatures] missing dimension metadata", metadata);
-    return {
-      color: "pink",
-      texture: "smooth",
-      lines: { life: "deep", heart: "long", wisdom: "clear" },
-      qualityScore: 56,
-    };
-  }
-
-  if (Math.max(metadata.width, metadata.height) < MIN_DIMENSION) {
-    throw new PalmImageError(
-      "LOW_RESOLUTION",
-      `图片分辨率过低（检测到 ${metadata.width}x${metadata.height}，需 ≥ ${MIN_DIMENSION}px），请重新拍摄。`,
-    );
-  }
-
-  let resized;
-  try {
-    resized = await image
-      .resize({ width: 320, height: 320, fit: "inside" })
-      .removeAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-  } catch (error) {
-    try {
-      const fallbackBuffer = await image.jpeg({ quality: 92 }).toBuffer();
-      const fallbackImage = createSharpInstance(fallbackBuffer);
-      resized = await fallbackImage
-        .resize({ width: 320, height: 320, fit: "inside" })
-        .removeAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-    } catch (fallbackError) {
-      console.warn("[palmFeatures] unable to convert image for analysis", fallbackError);
-      return {
-        color: "pink",
-        texture: "smooth",
-        lines: { life: "deep", heart: "long", wisdom: "clear" },
-        qualityScore: 55,
-      };
-    }
-  }
-
-  const { data, info } = resized;
-  const { width, height, channels } = info;
-
-  if (channels < 3) {
-    throw new PalmImageError(
-      "INVALID_IMAGE",
-      `图片颜色通道不足（检测到 ${channels} 个通道），请重新拍摄。`,
-    );
+  const baseImage = await readImage(buffer);
+  normalizeDimensions(baseImage);
+  const resizedImage = resizeImage(baseImage);
+  const { data, width, height } = resizedImage.bitmap;
+  const channels = 4;
+  if (!data || data.length < width * height * channels) {
+    throw new PalmImageError("INVALID_IMAGE", "图片像素数据有误");
   }
 
   let redDominant = 0;

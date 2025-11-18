@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import jimp from "jimp";
 
 export type TongueColor = "pale" | "red" | "purple";
 export type TongueCoating = "thin" | "thick" | "white" | "yellow" | "none";
@@ -29,13 +29,7 @@ export class TongueImageError extends Error {
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 const MIN_DIMENSION = 480;
-
-function createSharpInstance(buffer: Buffer) {
-  return sharp(buffer, {
-    failOnError: false,
-    limitInputPixels: false,
-  });
-}
+const TARGET_SIZE = 256;
 
 function classifyColor(redRatio: number, purpleRatio: number, whitenessRatio: number): TongueColor {
   if (purpleRatio >= 0.18) {
@@ -88,6 +82,38 @@ export interface TongueImageAnalysisOptions {
   fileSize?: number;
 }
 
+async function readImage(buffer: Buffer) {
+  try {
+    return await jimp.read(buffer);
+  } catch (error) {
+    console.warn("[tongueFeatures] unable to read image", error);
+    throw new TongueImageError("INVALID_IMAGE", "图像格式不受支持或已损坏");
+  }
+}
+
+function ensureDimensions(image: jimp) {
+  const { width, height } = image.bitmap;
+  if (!width || !height) {
+    throw new TongueImageError("INVALID_IMAGE", "无法解析图片尺寸");
+  }
+  if (Math.max(width, height) < MIN_DIMENSION) {
+    throw new TongueImageError(
+      "LOW_RESOLUTION",
+      `图片分辨率过低（检测到 ${width}x${height}，需 ≥ ${MIN_DIMENSION}px），请重新拍摄。`,
+    );
+  }
+}
+
+function resizeImage(image: jimp) {
+  const { width, height } = image.bitmap;
+  const scale = Math.min(1, TARGET_SIZE / Math.max(width, height));
+  return image
+    .clone()
+    .resize(Math.max(1, Math.round(width * scale)), jimp.AUTO, jimp.RESIZE_BICUBIC)
+    .contain(TARGET_SIZE, TARGET_SIZE, jimp.HORIZONTAL_ALIGN_CENTER | jimp.VERTICAL_ALIGN_MIDDLE)
+    .rgba(true);
+}
+
 export async function analyzeTongueImage(
   buffer: Buffer,
   { mimeType, fileSize }: TongueImageAnalysisOptions = {},
@@ -101,92 +127,27 @@ export async function analyzeTongueImage(
   }
 
   const normalizedMime = mimeType?.toLowerCase() ?? "";
-  const isJpeg =
+  const isSupportedMime =
+    !normalizedMime ||
     normalizedMime.startsWith("image/jpeg") ||
     normalizedMime.startsWith("image/jpg") ||
-    normalizedMime.startsWith("image/pjpeg");
-  const isPng =
+    normalizedMime.startsWith("image/pjpeg") ||
     normalizedMime.startsWith("image/png") ||
     normalizedMime.startsWith("image/x-png") ||
-    normalizedMime.startsWith("image/apng");
-  const isHeic = normalizedMime.startsWith("image/heic") || normalizedMime.startsWith("image/heif");
-  if (normalizedMime && !(isJpeg || isPng || isHeic)) {
+    normalizedMime.startsWith("image/apng") ||
+    normalizedMime.startsWith("image/heic") ||
+    normalizedMime.startsWith("image/heif");
+  if (!isSupportedMime) {
     console.warn("[tongueFeatures] unexpected mime type", normalizedMime);
   }
 
-  let workingBuffer = buffer;
-  let image = createSharpInstance(workingBuffer);
-  let metadata;
-  try {
-    metadata = await image.metadata();
-  } catch (error) {
-    try {
-      workingBuffer = await image.png({ compressionLevel: 6, adaptiveFiltering: true }).toBuffer();
-      image = createSharpInstance(workingBuffer);
-      metadata = await image.metadata();
-    } catch (retryError) {
-      console.warn("[tongueFeatures] metadata extraction failed", retryError);
-      return {
-        color: "pale",
-        coating: "thin",
-        texture: "smooth",
-        qualityScore: 52,
-      };
-    }
-  }
-
-  if (metadata.orientation) {
-    image = image.rotate();
-    metadata = await image.metadata();
-  }
-
-  if (!metadata.width || !metadata.height) {
-    console.warn("[tongueFeatures] missing dimension metadata", metadata);
-    return {
-      color: "pale",
-      coating: "thin",
-      texture: "smooth",
-      qualityScore: 50,
-    };
-  }
-
-  if (Math.max(metadata.width, metadata.height) < MIN_DIMENSION) {
-    throw new TongueImageError(
-      "LOW_RESOLUTION",
-      `图片分辨率过低（检测到 ${metadata.width}x${metadata.height}，需 ≥ ${MIN_DIMENSION}px），请重新拍摄。`,
-    );
-  }
-
-  let resized;
-  try {
-    resized = await image
-      .resize({ width: 256, height: 256, fit: "inside" })
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-  } catch (error) {
-    try {
-      const fallbackBuffer = await image.jpeg({ quality: 92 }).toBuffer();
-      const fallbackImage = createSharpInstance(fallbackBuffer);
-      resized = await fallbackImage
-        .resize({ width: 256, height: 256, fit: "inside" })
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-    } catch (fallbackError) {
-      console.warn("[tongueFeatures] unable to convert image for analysis", fallbackError);
-      return {
-        color: "pale",
-        coating: "thin",
-        texture: "smooth",
-        qualityScore: 51,
-      };
-    }
-  }
-
-  const { data, info } = resized;
-  const { width, height, channels } = info;
-
-  if (channels < 3) {
-    throw new TongueImageError("INVALID_IMAGE", "图片颜色通道不足");
+  const baseImage = await readImage(buffer);
+  ensureDimensions(baseImage);
+  const resizedImage = resizeImage(baseImage);
+  const { data, width, height } = resizedImage.bitmap;
+  const channels = 4;
+  if (!data || data.length < width * height * channels) {
+    throw new TongueImageError("INVALID_IMAGE", "图片像素数据有误");
   }
 
   let redDominantPixels = 0;
@@ -257,8 +218,6 @@ export async function analyzeTongueImage(
   }
 
   const qualityScore = toQualityScore(gradientMean);
-  // 降低阈值从 18 到 12，以适应不同拍摄条件和设备
-  // 同时添加调试信息，帮助用户了解图片质量
   if (qualityScore < 12) {
     throw new TongueImageError("BLURRY_TONGUE", "图片清晰度不足，请重新拍摄");
   }

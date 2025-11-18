@@ -1,0 +1,183 @@
+[1mdiff --git a/src/components/SolarCard.tsx b/src/components/SolarCard.tsx[m
+[1mindex 2a8c9dce..6a93f9ca 100644[m
+[1m--- a/src/components/SolarCard.tsx[m
+[1m+++ b/src/components/SolarCard.tsx[m
+[36m@@ -1,8 +1,7 @@[m
+[31m-// 调整今日气运指数文案与配色，使节气与宜忌更准确[m
+ "use client";[m
+ [m
+[31m-import { motion } from "framer-motion";[m
+ import { useEffect, useState, useMemo } from "react";[m
+[32m+[m[32mimport { useRouter } from "next/navigation";[m
+ import { getSolarTerm } from "@/utils/solarTerm";[m
+ import { getFullLunarDate } from "@/lib/lunar/calendar";[m
+ import { getHuangli } from "@/utils/huangli";[m
+[36m@@ -13,142 +12,14 @@[m [mtype Locale = "zh" | "en";[m
+ type SolarCardProps = {[m
+   locale: Locale;[m
+   name: string | null;[m
+[31m-  doList: string[];[m
+[31m-  avoidList: string[];[m
+[31m-  healthTip: string | null;[m
+[31m-  element: string | null;[m
+[31m-  isLite: boolean;[m
+[32m+[m[32m  // 以下 props 保留以保持向后兼容，但当前实现不再使用[m
+[32m+[m[32m  doList?: string[];[m
+[32m+[m[32m  avoidList?: string[];[m
+[32m+[m[32m  healthTip?: string | null;[m
+[32m+[m[32m  element?: string | null;[m
+[32m+[m[32m  isLite?: boolean;[m
+ };[m
+ [m
+[31m-const ELEMENT_COLOR: Record<string, string> = {[m
+[31m-  木: "#50816B",[m
+[31m-  火: "#C66A3D",[m
+[31m-  土: "#C2A05E",[m
+[31m-  金: "#8D96B1",[m
+[31m-  水: "#4F6FA6",[m
+[31m-  wood: "#50816B",[m
+[31m-  fire: "#C66A3D",[m
+[31m-  earth: "#C2A05E",[m
+[31m-  metal: "#8D96B1",[m
+[31m-  water: "#4F6FA6",[m
+[31m-};[m
+[31m-[m
+[31m-const ELEMENT_LABEL: Record<Locale, Record<string, string>> = {[m
+[31m-  zh: {[m
+[31m-    木: "木 · 生长",[m
+[31m-    火: "火 · 温阳",[m
+[31m-    土: "土 · 调中",[m
+[31m-    金: "金 · 肃杀",[m
+[31m-    水: "水 · 涵养",[m
+[31m-    default: "节气养生",[m
+[31m-  },[m
+[31m-  en: {[m
+[31m-    wood: "Wood • Growth",[m
+[31m-    fire: "Fire • Warmth",[m
+[31m-    earth: "Earth • Balance",[m
+[31m-    metal: "Metal • Clarity",[m
+[31m-    water: "Water • Nourish",[m
+[31m-    default: "Seasonal Wellness",[m
+[31m-  },[m
+[31m-};[m
+[31m-[m
+[31m-const SCENE_GRADIENT: Record<string, [string, string]> = {[m
+[31m-  立春: ["#E3F2FD", "#FFF3E0"],[m
+[31m-  雨水: ["#DDEBF7", "#E6FFFA"],[m
+[31m-  惊蛰: ["#F9F7E8", "#E8F5E9"],[m
+[31m-  春分: ["#E8F5E9", "#FFF8E1"],[m
+[31m-  清明: ["#E0F2F1", "#F3E5F5"],[m
+[31m-  谷雨: ["#E1F5FE", "#FFF3E0"],[m
+[31m-  立夏: ["#FFF3E0", "#FFE0B2"],[m
+[31m-  小满: ["#F3E5F5", "#FFFDE7"],[m
+[31m-  芒种: ["#FFFDE7", "#FFECB3"],[m
+[31m-  夏至: ["#FFEBEE", "#FFF3E0"],[m
+[31m-  小暑: ["#FFF8E1", "#FFF3E0"],[m
+[31m-  大暑: ["#FFF3E0", "#FFCCBC"],[m
+[31m-  立秋: ["#FFF3E0", "#E3F2FD"],[m
+[31m-  处暑: ["#F3E5F5", "#E1F5FE"],[m
+[31m-  白露: ["#E0F2F1", "#ECEFF1"],[m
+[31m-  秋分: ["#ECEFF1", "#FFECB3"],[m
+[31m-  寒露: ["#E1F5FE", "#ECEFF1"],[m
+[31m-  霜降: ["#E8EAF6", "#F3E5F5"],[m
+[31m-  立冬: ["#E8EAF6", "#E0F7FA"],[m
+[31m-  小雪: ["#E0F7FA", "#E3F2FD"],[m
+[31m-  大雪: ["#E3F2FD", "#F1F8E9"],[m
+[31m-  冬至: ["#ECEFF1", "#E8EAF6"],[m
+[31m-  小寒: ["#E1F5FE", "#E0F7FA"],[m
+[31m-  大寒: ["#E0F7FA", "#ECEFF1"],[m
+[31m-};[m
+[31m-[m
+[31m-const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];[m
+[31m-[m
+[31m-/**[m
+[31m- * 将传统黄历"宜"列表映射为现代行为名称[m
+[31m- * @param yiList 原始黄历"宜"列表，如 ["嫁娶","祭祀","祈福","开光","出行","交易"][m
+[31m- * @returns 现代行为名称数组，最多3条[m
+[31m- */[m
+[31m-function mapYiToModernActions(yiList: string[]): string[] {[m
+[31m-  if (!yiList || yiList.length === 0) {[m
+[31m-    return ["签约合作", "学习进修", "整理空间"];[m
+[31m-  }[m
+[31m-[m
+[31m-  const modernActions: string[] = [];[m
+[31m-[m
+[31m-  // 检查是否包含签约/交易相关[m
+[31m-  const contractKeywords = ["嫁娶", "订盟", "交易", "开市", "纳财"];[m
+[31m-  if (yiList.some((item) => contractKeywords.some((kw) => item.includes(kw)))) {[m
+[31m-    modernActions.push("签约合作");[m
+[31m-  }[m
+[31m-[m
+[31m-  // 检查是否包含祈福/祭祀相关[m
+[31m-  const blessingKeywords = ["祈福", "祭祀", "开光", "求嗣"];[m
+[31m-  if (yiList.some((item) => blessingKeywords.some((kw) => item.includes(kw)))) {[m
+[31m-    modernActions.push("身心安定 / 祈福");[m
+[31m-  }[m
+[31m-[m
+[31m-  // 检查是否包含出行相关[m
+[31m-  const travelKeywords = ["出行", "移徙", "迁徙"];[m
+[31m-  if (yiList.some((item) => travelKeywords.some((kw) => item.includes(kw)))) {[m
+[31m-    modernActions.push("短途出行");[m
+[31m-  }[m
+[31m-[m
+[31m-  // 去重并限制最多3条[m
+[31m-  const uniqueActions = Array.from(new Set(modernActions)).slice(0, 3);[m
+[31m-[m
+[31m-  // 如果没有匹配到任何项，使用默认数组[m
+[31m-  return uniqueActions.length > 0 ? uniqueActions : ["签约合作", "学习进修", "整理空间"];[m
+[31m-}[m
+[31m-[m
+[31m-/**[m
+[31m- * 将传统黄历"忌"列表映射为现代行为名称[m
+[31m- * @param jiList 原始黄历"忌"列表，如 ["动土","破土","栽种","安葬","迁徙"][m
+[31m- * @returns 现代行为名称数组，最多2条[m
+[31m- */[m
+[31m-function mapJiToModernActions(jiList: string[]): string[] {[m
+[31m-  if (!jiList || jiList.length === 0) {[m
+[31m-    return ["动土破土", "远距离搬迁"];[m
+[31m-  }[m
+[31m-[m
+[31m-  const modernActions: string[] = [];[m
+[31m-[m
+[31m-  // 检查是否包含动土/破土相关[m
+[31m-  const constructionKeywords = ["动土", "破土", "伐木"];[m
+[31m-  if (jiList.some((item) => constructionKeywords.some((kw) => item.includes(kw)))) {[m
+[31m-    modernActions.push("动土破土");[m
+[31m-  }[m
+[31m-[m
+[31m-  // 检查是否包含迁徙/远行相关[m
+[31m-  const migrationKeywords = ["迁徙", "移徙", "远行", "安葬"];[m
+[31m-  if (jiList.some((item) => migrationKeywords.some((kw) => item.includes(kw)))) {[m
+[31m-    modernActions.push("远距离搬迁 / 大动作变更");[m
+[31m-  }[m
+[31m-[m
+[31m-  // 去重并限制最多2条[m
+[31m-  const uniqueActions = Array.from(new Set(modernActions)).slice(0, 2);[m
+[31m-[m
+[31m-  // 如果没有匹配到任何项，使用默认数组[m
+[31m-  return uniqueActions.length > 0 ? uniqueActions : ["动土破土", "远距离搬迁"];[m
+[31m-}[m
+[31m-[m
+ // 计算节气天数（从节气开始日期到当前日期的天数）[m
+ function getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number | null {[m
+   try {[m
+[36m@@ -169,9 +40,11 @@[m [mfunction getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number[m
+   }[m
+ }[m
+ [m
+[31m-export default function SolarCard({ locale, name, doList, avoidList, healthTip, element, isLite }: SolarCardProps) {[m
+[31m-  const [lunarDate, setLunarDate] = useState<string>("");[m
+[31m-  const [huangliData, setHuangliData] = useState<{ yi: string[]; ji: string[]; wuxing?: string } | null>(null);[m
+[32m+[m[32mexport default function SolarCard({ locale, name }: SolarCardProps) {[m
+[32m+[m[32m  const router = useRouter();[m
+[32m+[m[32m  const [lunarDateText, setLunarDateText] = useState<string>("");[m
+[32m+[m[32m  const [fiveElementText, setFiveElementText] = useState<string>("");[m
+[32m+[m[32m  const [huangliData, setHuangliData] = useState<{ yi: string[]; ji: string[] } | null>(null);[m
+ [m
+   // 使用工具函数获取节气名称（始终使用工具函数，忽略传入的 name prop）[m
+   const currentDate = useMemo(() => new Date(), []);[m
+[36m@@ -184,7 +57,14 @@[m [mexport default function SolarCard({ locale, name, doList, avoidList, healthTip,[m
+       // 只有在工具函数失败时才使用传入的 name[m
+       return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");[m
+     }[m
+[31m-  }, [currentDate, locale, name]); // 添加 name 到依赖数组以消除�

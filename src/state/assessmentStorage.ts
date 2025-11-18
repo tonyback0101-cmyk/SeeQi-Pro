@@ -107,4 +107,53 @@ export function exportAssessmentSnapshot() {
   return { statuses, data };
 }
 
+export type AssessmentSnapshot = {
+  statuses?: Partial<Record<AssessmentModule, ModuleStatus>>;
+  data?: ModuleDataMap;
+};
+
+export async function fetchAssessmentSnapshot(modules?: AssessmentModule[]): Promise<AssessmentSnapshot | null> {
+  const params = modules && modules.length ? `?modules=${encodeURIComponent(modules.join(","))}` : "";
+  const response = await fetch(`/api/assessment/sync${params}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    console.warn("[assessmentStorage] fetch snapshot failed", response.status, await response.text().catch(() => ""));
+    return null;
+  }
+  const payload = (await response.json()) as {
+    success?: boolean;
+    statuses?: Record<string, ModuleStatus>;
+    data?: ModuleDataMap;
+  };
+  if (!payload?.success) {
+    return null;
+  }
+  return {
+    statuses: payload.statuses as AssessmentSnapshot["statuses"],
+    data: payload.data,
+  };
+}
+
+export function applyAssessmentSnapshot(snapshot: AssessmentSnapshot) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  let mergedStatuses = loadStatuses();
+  let mergedData = loadData();
+
+  if (snapshot.statuses && Object.keys(snapshot.statuses).length > 0) {
+    mergedStatuses = { ...mergedStatuses, ...snapshot.statuses };
+    window.localStorage.setItem(STORAGE_KEY_STATUS, JSON.stringify(mergedStatuses));
+  }
+
+  if (snapshot.data && Object.keys(snapshot.data).length > 0) {
+    mergedData = { ...mergedData, ...snapshot.data };
+    window.localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(mergedData));
+  }
+
+  return { statuses: mergedStatuses, data: mergedData };
+}
+
 

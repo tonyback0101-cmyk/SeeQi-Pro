@@ -1,0 +1,46 @@
+=== SolarCard.tsx 代码验证报告 ===
+
+✅ 验证时间：2024-11-18
+
+【1. 硬编码常量定义 - 已确认】
+位置：第12-14行
+const MODERN_YI_ACTIONS = ["签约合作", "学习进修", "整理空间"];
+const MODERN_JI_ACTIONS = ["动土破土", "远距离搬迁"];
+
+【2. 使用硬编码常量 - 已确认】
+位置：第118-120行
+const goodList = MODERN_YI_ACTIONS;
+const badList = MODERN_JI_ACTIONS;
+
+【3. JSX 渲染 - 已确认】
+位置：第166-185行
+- 使用 goodList.map() 渲染宜列表
+- 使用 badList.map() 渲染忌列表
+- 没有使用黄历数据渲染主列表
+
+【4. 没有旧版代码 - 已确认】
+- ✅ 没有 <details> 标签
+- ✅ 没有 "查看完整版黄历" 文本
+- ✅ 没有使用 yi.slice() 或 ji.slice() 渲染主列表
+
+【5. 组件结构 - 已确认】
+- ✅ 使用 styled-jsx
+- ✅ 左右两列卡片布局
+- ✅ 标签式展示
+
+=== 结论 ===
+代码逻辑完全正确，应该显示：
+- 宜：3条（签约合作、学习进修、整理空间）
+- 忌：2条（动土破土、远距离搬迁）
+
+如果页面仍显示旧版本，问题在于：
+1. 浏览器缓存 - 强制刷新（Ctrl+F5）
+2. Next.js 缓存 - 删除 .next 目录并重启
+3. Vercel 未部署 - 检查 Vercel Dashboard
+
+=== Git 推送替代方案 ===
+如果 Git 推送一直失败，可以：
+1. 直接在 Vercel Dashboard 中编辑文件
+2. 使用 GitHub Web 界面编辑
+3. 检查是否有 Git Hook 或 CI/CD 阻止提交
+

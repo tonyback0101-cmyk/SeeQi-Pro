@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/options";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { canUseInDatabase } from "@/lib/auth/testAccount";
+import type { AssessmentModule, ModuleStatus } from "@/types/assessment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,4 +114,86 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true, synced: upsertPayload.map((item) => item.module_type) });
+}
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
+  try {
+    supabase = getSupabaseAdminClient();
+  } catch (error) {
+    console.warn("[GET /api/assessment/sync] Supabase unavailable", error);
+  }
+
+  const userId = session.user.id;
+
+  if (!canUseInDatabase(userId)) {
+    return NextResponse.json({
+      success: true,
+      statuses: {},
+      data: {},
+      skipped: "test_account",
+    });
+  }
+
+  if (!supabase) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "supabase_unavailable",
+      },
+      { status: 503 },
+    );
+  }
+
+  const url = new URL(request.url);
+  const modulesParam = url.searchParams.get("modules");
+  let modulesFilter: AssessmentModule[] | null = null;
+  if (modulesParam) {
+    const parsed = modulesParam
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item): item is AssessmentModule => SUPPORTED_MODULES.has(item));
+    modulesFilter = parsed.length ? parsed : null;
+  }
+
+  let query = supabase.from("assessment_records").select("module_type,status,data").eq("user_id", userId);
+  if (modulesFilter) {
+    query = query.in("module_type", modulesFilter);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[GET /api/assessment/sync] 查询失败", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        code: error.code,
+      },
+      { status: 500 },
+    );
+  }
+
+  const statuses: Record<string, ModuleStatus> = {};
+  const payload: Record<string, unknown> = {};
+
+  for (const row of data ?? []) {
+    if (!SUPPORTED_MODULES.has(row.module_type as AssessmentModule)) continue;
+    const moduleKey = row.module_type as AssessmentModule;
+    statuses[moduleKey] = (row.status as ModuleStatus | null) ?? "not_started";
+    if (row.data && Object.keys(row.data).length) {
+      payload[moduleKey] = row.data;
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    statuses,
+    data: payload,
+  });
 }

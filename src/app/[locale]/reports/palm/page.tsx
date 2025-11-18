@@ -44,12 +44,46 @@ export default function PalmReportPage({ params }: PageProps) {
 
   const [palmData, setPalmData] = useState<PalmRecordData | undefined>();
   const [status, setStatus] = useState<ModuleStatus>("not_started");
+  const [restoringRemote, setRestoringRemote] = useState(false);
 
   useEffect(() => {
     const stored = loadData();
     setPalmData(stored.palm);
     setStatus(loadStatuses().palm);
   }, []);
+
+  useEffect(() => {
+    if (palmData || restoringRemote) {
+      return;
+    }
+    let cancelled = false;
+
+    const restoreFromServer = async () => {
+      setRestoringRemote(true);
+      try {
+        const { fetchAssessmentSnapshot, applyAssessmentSnapshot } = await import("@/state/assessmentStorage");
+        const snapshot = await fetchAssessmentSnapshot(["palm"]);
+        if (!snapshot) return;
+        const merged = applyAssessmentSnapshot(snapshot);
+        if (cancelled || !merged?.data?.palm) return;
+        setPalmData(merged.data.palm);
+        const nextStatus = snapshot.statuses?.palm ?? merged.statuses?.palm ?? "completed";
+        setStatus(nextStatus);
+      } catch (error) {
+        console.warn("[PalmReportPage] restore remote snapshot failed", error);
+      } finally {
+        if (!cancelled) {
+          setRestoringRemote(false);
+        }
+      }
+    };
+
+    void restoreFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [palmData, restoringRemote]);
 
   const palmInput = useMemo<PalmData | null>(() => {
     if (!palmData) return null;

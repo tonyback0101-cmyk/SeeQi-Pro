@@ -278,7 +278,16 @@ function mergeValues(target: any, source: any, strategy: "append" | "replace" | 
     return result;
   }
 
-  if (strategy === "replace" && hasValue(target)) return target;
+  if (strategy === "replace") {
+    return hasValue(target) ? target : source ?? target;
+  }
+  if (strategy === "skip") {
+    return hasValue(target) ? target : source ?? target;
+  }
+  // append 默认：已有值则保留，否则使用 source
+  if (hasValue(target)) {
+    return target;
+  }
   return source ?? target;
 }
 
