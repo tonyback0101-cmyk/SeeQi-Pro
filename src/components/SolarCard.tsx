@@ -1,8 +1,10 @@
+// 调整今日气运指数文案与配色，使节气与宜忌更准确
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getLunarInfo } from "@/lib/lunar/calendar";
+import { getSolarTermByDate } from "@/lib/solar/simple";
 
 type Locale = "zh" | "en";
 
@@ -77,6 +79,35 @@ const SCENE_GRADIENT: Record<string, [string, string]> = {
 
 const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];
 
+// 计算节气天数（从节气开始日期到当前日期的天数）
+function getDaysSinceSolarTermStart(currentDate: Date): number | null {
+  try {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+    const day = currentDate.getDate();
+    
+    const termCode = getSolarTermByDate(currentDate);
+    const SOLAR_TERM_DATES: Record<number, Record<string, [number, number]>> = {
+      2024: { lidong: [11, 7] },
+      2025: { lidong: [11, 7] },
+      2026: { lidong: [11, 7] },
+      2027: { lidong: [11, 7] },
+      2028: { lidong: [11, 7] },
+    };
+    
+    if (SOLAR_TERM_DATES[year] && SOLAR_TERM_DATES[year][termCode]) {
+      const [termMonth, termDay] = SOLAR_TERM_DATES[year][termCode];
+      const termStartDate = new Date(year, termMonth - 1, termDay);
+      const diffTime = currentDate.getTime() - termStartDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 ? diffDays + 1 : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SolarCard({ locale, name, doList, avoidList, healthTip, element, isLite }: SolarCardProps) {
   const [lunarInfo, setLunarInfo] = useState<{
     lunarDate: string;
@@ -109,16 +140,26 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     (element && (ELEMENT_LABEL[locale][element] || ELEMENT_LABEL[locale][element.toLowerCase()])) ||
     ELEMENT_LABEL[locale].default;
 
-  // 优先使用黄历的宜忌，如果没有则使用传入的 doList/avoidList
-  const safeDo = (lunarInfo?.yi && lunarInfo.yi.length > 0) 
-    ? lunarInfo.yi 
-    : (Array.isArray(doList) ? (doList.filter(Boolean) as string[]) : []);
-  const safeAvoid = (lunarInfo?.ji && lunarInfo.ji.length > 0)
-    ? lunarInfo.ji
-    : (Array.isArray(avoidList) ? (avoidList.filter(Boolean) as string[]) : []);
+  // 计算节气天数
+  const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(new Date()), []);
+  const titleWithDays = daysSinceStart 
+    ? `${resolvedName} · 第${daysSinceStart}天`
+    : resolvedName;
 
-  const liteDo = isLite ? safeDo.slice(0, 1) : safeDo.slice(0, 3);
-  const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid.slice(0, 3);
+  // 固定的宜忌文案（根据用户要求）
+  const fixedDoList = locale === "zh" 
+    ? ["签约合作", "学习进修", "整理空间"]
+    : ["Sign contracts", "Study & learn", "Organize space"];
+  const fixedAvoidList = locale === "zh"
+    ? ["动土破土", "长途迁移"]
+    : ["Groundbreaking", "Long relocation"];
+
+  // 使用固定的宜忌文案
+  const safeDo = fixedDoList;
+  const safeAvoid = fixedAvoidList;
+
+  const liteDo = isLite ? safeDo.slice(0, 1) : safeDo;
+  const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid;
 
   return (
     <motion.div
@@ -150,7 +191,13 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
               </span>
             )}
           </div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{resolvedName}</h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{titleWithDays}</h2>
+          {/* 五行提示 */}
+          {locale === "zh" && (
+            <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.6)", marginTop: "0.1rem" }}>
+              今日五行：水旺・金强・火衰・木弱
+            </span>
+          )}
         </div>
         <motion.span
           style={{
@@ -171,9 +218,10 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
         </motion.span>
       </header>
 
-      {healthTip && (
-        <p style={{ margin: 0, color: "rgba(35,64,53,0.78)", lineHeight: 1.4, fontSize: "0.75rem" }}>{healthTip}</p>
-      )}
+      {/* 节气描述：固定为"阴增阳退，宜收敛能量，稳中求进。" */}
+      <p style={{ margin: 0, color: "rgba(35,64,53,0.78)", lineHeight: 1.4, fontSize: "0.75rem" }}>
+        {locale === "zh" ? "阴增阳退，宜收敛能量，稳中求进。" : "Yin increases, yang retreats. Gather energy and progress steadily."}
+      </p>
 
       <div
         style={{
@@ -186,17 +234,19 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
           locale={locale}
           title={locale === "zh" ? "宜" : "Recommended"}
           items={liteDo}
-          accent="rgba(80,129,107,0.15)"
+          accent="#E8F5E9"
           icon="🌿"
           isLite={isLite}
+          hint={locale === "zh" ? "适合稳步推进、复盘与学习" : "Suitable for steady progress, review and learning"}
         />
         <AdviceBlock
           locale={locale}
           title={locale === "zh" ? "忌" : "Avoid"}
           items={liteAvoid}
-          accent="rgba(198,105,105,0.15)"
+          accent="#FFF3E0"
           icon="⚠️"
           isLite={isLite}
+          hint={locale === "zh" ? "今日不宜大动土、远距离搬迁" : "Avoid major construction and long-distance relocation today"}
         />
       </div>
 
@@ -216,17 +266,23 @@ type AdviceBlockProps = {
   accent: string;
   icon: string;
   isLite: boolean;
+  hint?: string;
 };
 
-function AdviceBlock({ locale, title, items, accent, icon, isLite }: AdviceBlockProps) {
+function AdviceBlock({ locale, title, items, accent, icon, isLite, hint }: AdviceBlockProps) {
   const emptyText = locale === "zh" ? "暂无建议" : "No entries";
+  // 根据背景色计算边框色（如果是十六进制颜色）
+  const borderColor = accent.startsWith("#") 
+    ? accent 
+    : accent.replace("0.15", "0.4");
+  
   return (
     <motion.div
       style={{
         borderRadius: "10px",
         padding: "0.5rem 0.7rem",
         background: accent,
-        border: `1px solid ${accent.replace("0.15", "0.4")}`,
+        border: `1px solid ${borderColor}`,
         display: "flex",
         flexDirection: "column",
         gap: "0.3rem",
@@ -245,7 +301,12 @@ function AdviceBlock({ locale, title, items, accent, icon, isLite }: AdviceBlock
           <li key={item}>{item}</li>
         ))}
       </ul>
-      {isLite && items.length > 0 ? (
+      {hint && (
+        <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.65)", fontStyle: "italic", marginTop: "0.1rem" }}>
+          {hint}
+        </span>
+      )}
+      {isLite && items.length > 0 && !hint ? (
         <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.7)", fontStyle: "italic" }}>
           {locale === "zh" ? "解锁获取更多节气要点" : "Unlock to view full seasonal checklist"}
         </span>
