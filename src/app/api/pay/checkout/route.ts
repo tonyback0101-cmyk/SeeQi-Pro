@@ -68,12 +68,15 @@ export async function POST(request: Request) {
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? undefined;
 
+    // 检查 Stripe 配置
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
         {
-          mockUrl: `${resolveAppUrl()}/pay/mock?report=${encodeURIComponent(reportId)}&locale=${checkoutLocale}&reason=missing-stripe-key`,
+          error: checkoutLocale === "zh" 
+            ? "Stripe 支付未配置，请在环境变量中设置 STRIPE_SECRET_KEY"
+            : "Stripe payment not configured. Please set STRIPE_SECRET_KEY in environment variables",
         },
-        { status: 200 },
+        { status: 500 },
       );
     }
 
@@ -85,11 +88,11 @@ export async function POST(request: Request) {
     if (priceEnv.trim().length === 0) {
       return NextResponse.json(
         {
-          mockUrl: `${resolveAppUrl()}/pay/mock?report=${encodeURIComponent(
-            reportId,
-          )}&locale=${checkoutLocale}&reason=missing-price`,
+          error: checkoutLocale === "zh"
+            ? "Stripe 价格 ID 未配置，请在环境变量中设置 STRIPE_FULL_REPORT_PRICE_ID"
+            : "Stripe price ID not configured. Please set STRIPE_FULL_REPORT_PRICE_ID in environment variables",
         },
-        { status: 200 },
+        { status: 500 },
       );
     }
 
@@ -250,14 +253,24 @@ export async function POST(request: Request) {
     console.error("[POST /api/pay/checkout]", error);
     const safeMessage =
       error instanceof Error ? error.message : "创建支付会话失败，请稍后重试";
+    
+    // 如果是 Stripe API 密钥错误，提供更明确的提示
+    if (error instanceof Error && error.message.includes("Invalid API Key")) {
+      return NextResponse.json(
+        {
+          error: checkoutLocale === "zh"
+            ? "Stripe API 密钥无效，请检查 STRIPE_SECRET_KEY 环境变量配置"
+            : "Invalid Stripe API key. Please check STRIPE_SECRET_KEY environment variable",
+        },
+        { status: 500 },
+      );
+    }
+    
     return NextResponse.json(
       {
-        mockUrl: `${resolveAppUrl()}/pay/mock?report=${encodeURIComponent(
-          new URL(request.url).searchParams.get("reportId") ?? "",
-        )}&reason=error&message=${encodeURIComponent(safeMessage)}`,
         error: safeMessage,
       },
-      { status: 200 },
+      { status: 500 },
     );
   }
 }

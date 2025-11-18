@@ -294,13 +294,8 @@ export default function AnalysisResultPage({ params }: PageProps) {
       }
 
       if (typeof data?.url === "string" && data.url.length > 0) {
+        // 跳转到 Stripe Checkout 页面
         window.location.href = data.url;
-        return;
-      }
-
-      if (typeof data?.mockUrl === "string" && data.mockUrl.length > 0) {
-        window.location.href = data.mockUrl;
-        setPaymentMessage(locale === "zh" ? "已进入模拟支付流程。" : "Opened mock checkout flow.");
         return;
       }
 
