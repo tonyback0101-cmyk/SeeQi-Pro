@@ -80,25 +80,25 @@ const SCENE_GRADIENT: Record<string, [string, string]> = {
 const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];
 
 // 计算节气天数（从节气开始日期到当前日期的天数）
-function getDaysSinceSolarTermStart(currentDate: Date): number | null {
+function getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number | null {
   try {
     const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const day = currentDate.getDate();
-    
-    const termCode = getSolarTermByDate(currentDate);
+    // 从 simple.ts 导入的日期表（简化版，只包含主要节气）
     const SOLAR_TERM_DATES: Record<number, Record<string, [number, number]>> = {
-      2024: { lidong: [11, 7] },
-      2025: { lidong: [11, 7] },
-      2026: { lidong: [11, 7] },
-      2027: { lidong: [11, 7] },
-      2028: { lidong: [11, 7] },
+      2024: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 21] },
+      2025: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
+      2026: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
+      2027: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
+      2028: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 6], dongzhi: [12, 21] },
     };
     
     if (SOLAR_TERM_DATES[year] && SOLAR_TERM_DATES[year][termCode]) {
       const [termMonth, termDay] = SOLAR_TERM_DATES[year][termCode];
       const termStartDate = new Date(year, termMonth - 1, termDay);
-      const diffTime = currentDate.getTime() - termStartDate.getTime();
+      termStartDate.setHours(0, 0, 0, 0);
+      const current = new Date(currentDate);
+      current.setHours(0, 0, 0, 0);
+      const diffTime = current.getTime() - termStartDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       return diffDays >= 0 ? diffDays + 1 : null;
     }
@@ -141,7 +141,8 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     ELEMENT_LABEL[locale].default;
 
   // 计算节气天数
-  const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(new Date()), []);
+  const currentTermCode = useMemo(() => getSolarTermByDate(new Date()), []);
+  const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(new Date(), currentTermCode), [currentTermCode]);
   const titleWithDays = daysSinceStart 
     ? `${resolvedName} · 第${daysSinceStart}天`
     : resolvedName;
