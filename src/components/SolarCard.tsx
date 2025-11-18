@@ -81,6 +81,74 @@ const SCENE_GRADIENT: Record<string, [string, string]> = {
 
 const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];
 
+/**
+ * 将传统黄历"宜"列表映射为现代行为名称
+ * @param yiList 原始黄历"宜"列表，如 ["嫁娶","祭祀","祈福","开光","出行","交易"]
+ * @returns 现代行为名称数组，最多3条
+ */
+function mapYiToModernActions(yiList: string[]): string[] {
+  if (!yiList || yiList.length === 0) {
+    return ["签约合作", "学习进修", "整理空间"];
+  }
+
+  const modernActions: string[] = [];
+
+  // 检查是否包含签约/交易相关
+  const contractKeywords = ["嫁娶", "订盟", "交易", "开市", "纳财"];
+  if (yiList.some((item) => contractKeywords.some((kw) => item.includes(kw)))) {
+    modernActions.push("签约合作");
+  }
+
+  // 检查是否包含祈福/祭祀相关
+  const blessingKeywords = ["祈福", "祭祀", "开光", "求嗣"];
+  if (yiList.some((item) => blessingKeywords.some((kw) => item.includes(kw)))) {
+    modernActions.push("身心安定 / 祈福");
+  }
+
+  // 检查是否包含出行相关
+  const travelKeywords = ["出行", "移徙", "迁徙"];
+  if (yiList.some((item) => travelKeywords.some((kw) => item.includes(kw)))) {
+    modernActions.push("短途出行");
+  }
+
+  // 去重并限制最多3条
+  const uniqueActions = Array.from(new Set(modernActions)).slice(0, 3);
+
+  // 如果没有匹配到任何项，使用默认数组
+  return uniqueActions.length > 0 ? uniqueActions : ["签约合作", "学习进修", "整理空间"];
+}
+
+/**
+ * 将传统黄历"忌"列表映射为现代行为名称
+ * @param jiList 原始黄历"忌"列表，如 ["动土","破土","栽种","安葬","迁徙"]
+ * @returns 现代行为名称数组，最多2条
+ */
+function mapJiToModernActions(jiList: string[]): string[] {
+  if (!jiList || jiList.length === 0) {
+    return ["动土破土", "远距离搬迁"];
+  }
+
+  const modernActions: string[] = [];
+
+  // 检查是否包含动土/破土相关
+  const constructionKeywords = ["动土", "破土", "伐木"];
+  if (jiList.some((item) => constructionKeywords.some((kw) => item.includes(kw)))) {
+    modernActions.push("动土破土");
+  }
+
+  // 检查是否包含迁徙/远行相关
+  const migrationKeywords = ["迁徙", "移徙", "远行", "安葬"];
+  if (jiList.some((item) => migrationKeywords.some((kw) => item.includes(kw)))) {
+    modernActions.push("远距离搬迁 / 大动作变更");
+  }
+
+  // 去重并限制最多2条
+  const uniqueActions = Array.from(new Set(modernActions)).slice(0, 2);
+
+  // 如果没有匹配到任何项，使用默认数组
+  return uniqueActions.length > 0 ? uniqueActions : ["动土破土", "远距离搬迁"];
+}
+
 // 计算节气天数（从节气开始日期到当前日期的天数）
 function getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number | null {
   try {
@@ -171,24 +239,27 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     ? `${solarTermName} · 第${daysSinceStart}天`
     : solarTermName;
 
-  // 固定文案（作为备用）
-  const fixedDoList = locale === "zh" 
-    ? ["签约合作", "学习进修", "整理空间"]
-    : ["Sign contracts", "Study & learn", "Organize space"];
-  const fixedAvoidList = locale === "zh"
-    ? ["动土破土", "长途迁移"]
-    : ["Groundbreaking", "Long relocation"];
+  // 将黄历数据映射为现代行为名称
+  const modernYiActions = useMemo(() => {
+    if (huangliData?.yi && huangliData.yi.length > 0) {
+      return mapYiToModernActions(huangliData.yi);
+    }
+    return ["签约合作", "学习进修", "整理空间"];
+  }, [huangliData?.yi]);
 
-  // 优先使用 getHuangli() 返回的数据，如果没有或为空则使用固定文案
-  const safeDo = (huangliData?.yi && huangliData.yi.length > 0) 
-    ? huangliData.yi 
-    : fixedDoList;
-  const safeAvoid = (huangliData?.ji && huangliData.ji.length > 0)
-    ? huangliData.ji
-    : fixedAvoidList;
+  const modernJiActions = useMemo(() => {
+    if (huangliData?.ji && huangliData.ji.length > 0) {
+      return mapJiToModernActions(huangliData.ji);
+    }
+    return ["动土破土", "远距离搬迁"];
+  }, [huangliData?.ji]);
 
-  const liteDo = isLite ? safeDo.slice(0, 1) : safeDo;
-  const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid;
+  // 保留原始黄历列表用于折叠展示
+  const originalYiList = huangliData?.yi || [];
+  const originalJiList = huangliData?.ji || [];
+
+  const liteDo = isLite ? modernYiActions.slice(0, 1) : modernYiActions;
+  const liteAvoid = isLite ? modernJiActions.slice(0, 1) : modernJiActions;
 
   // 五行信息：如果 getHuangli() 返回的 wuxing 为空，使用固定文案
   const wuxingText = (huangliData?.wuxing && huangliData.wuxing.trim()) 
@@ -225,9 +296,7 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
               </span>
             )}
           </div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>
-            {titleWithDays} <span style={{ fontSize: "0.7rem", color: "#ff0000", fontWeight: "bold" }}>【调试标记XYZ-133ecc5e】</span>
-          </h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{titleWithDays}</h2>
           {/* 五行提示 */}
           {locale === "zh" && wuxingText && (
             <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.6)", marginTop: "0.1rem" }}>
@@ -254,9 +323,9 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
         </motion.span>
       </header>
 
-      {/* 节气描述：固定为"阴增阳退，宜收敛能量，稳中求进。" */}
-      <p style={{ margin: 0, color: "rgba(35,64,53,0.78)", lineHeight: 1.4, fontSize: "0.75rem" }}>
-        {locale === "zh" ? "阴增阳退，宜收敛能量，稳中求进。" : "Yin increases, yang retreats. Gather energy and progress steadily."}
+      {/* 节气描述：简短总结 */}
+      <p style={{ margin: 0, color: "rgba(35,64,53,0.65)", lineHeight: 1.4, fontSize: "0.7rem" }}>
+        {locale === "zh" ? "阴增阳退，宜稳步推进，少折腾多沉淀。" : "Yin increases, yang retreats. Steady progress, less disruption, more consolidation."}
       </p>
 
       <div
@@ -269,20 +338,20 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
         <AdviceBlock
           locale={locale}
           title={locale === "zh" ? "宜" : "Recommended"}
-          items={liteDo}
+          modernItems={liteDo}
+          originalItems={originalYiList}
           accent="#E8F5E9"
           icon="🌿"
           isLite={isLite}
-          hint={locale === "zh" ? "适合稳步推进、复盘与学习" : "Suitable for steady progress, review and learning"}
         />
         <AdviceBlock
           locale={locale}
           title={locale === "zh" ? "忌" : "Avoid"}
-          items={liteAvoid}
+          modernItems={liteAvoid}
+          originalItems={originalJiList}
           accent="#FFF3E0"
           icon="⚠️"
           isLite={isLite}
-          hint={locale === "zh" ? "今日不宜大动土、远距离搬迁" : "Avoid major construction and long-distance relocation today"}
         />
       </div>
 
@@ -298,19 +367,24 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
 type AdviceBlockProps = {
   locale: Locale;
   title: string;
-  items: string[];
+  modernItems: string[];
+  originalItems: string[];
   accent: string;
   icon: string;
   isLite: boolean;
-  hint?: string;
 };
 
-function AdviceBlock({ locale, title, items, accent, icon, isLite, hint }: AdviceBlockProps) {
+function AdviceBlock({ locale, title, modernItems, originalItems, accent, icon, isLite }: AdviceBlockProps) {
   const emptyText = locale === "zh" ? "暂无建议" : "No entries";
   // 根据背景色计算边框色（如果是十六进制颜色）
   const borderColor = accent.startsWith("#") 
     ? accent 
     : accent.replace("0.15", "0.4");
+  
+  // 标签文字颜色（深色）
+  const textColor = accent === "#E8F5E9" 
+    ? "rgba(35,64,53,0.85)" // 绿色背景用深绿色文字
+    : "rgba(35,64,53,0.85)"; // 橙色背景也用深色文字
   
   return (
     <motion.div
@@ -321,7 +395,7 @@ function AdviceBlock({ locale, title, items, accent, icon, isLite, hint }: Advic
         border: `1px solid ${borderColor}`,
         display: "flex",
         flexDirection: "column",
-        gap: "0.3rem",
+        gap: "0.4rem",
       }}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
@@ -331,22 +405,81 @@ function AdviceBlock({ locale, title, items, accent, icon, isLite, hint }: Advic
         <span style={{ fontSize: "0.8rem" }}>{icon}</span>
         {title}
       </strong>
-      <ul style={{ margin: 0, paddingLeft: "0.75rem", color: "rgba(35,64,53,0.78)", display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.7rem", lineHeight: 1.3 }}>
-        {items.length === 0 ? <li>{emptyText}</li> : null}
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-      {hint && (
-        <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.65)", fontStyle: "italic", marginTop: "0.1rem" }}>
-          {hint}
-        </span>
+      
+      {/* 现代语言标签 */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+        {modernItems.length === 0 ? (
+          <span style={{ fontSize: "0.7rem", color: textColor }}>{emptyText}</span>
+        ) : (
+          modernItems.map((item) => (
+            <span
+              key={item}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "0.25rem 0.6rem",
+                borderRadius: "999px",
+                background: "rgba(255, 255, 255, 0.7)",
+                color: textColor,
+                fontSize: "0.7rem",
+                fontWeight: 500,
+                lineHeight: 1.2,
+                border: `1px solid ${borderColor}`,
+              }}
+            >
+              {item}
+            </span>
+          ))
+        )}
+      </div>
+
+      {/* 折叠的原始黄历列表 */}
+      {originalItems.length > 0 && (
+        <details style={{ marginTop: "0.2rem" }}>
+          <summary
+            style={{
+              fontSize: "0.65rem",
+              color: "rgba(35,64,53,0.6)",
+              cursor: "pointer",
+              listStyle: "none",
+              userSelect: "none",
+            }}
+          >
+            {locale === "zh" ? "查看完整黄历（传统用语）" : "View full almanac (traditional terms)"}
+          </summary>
+          <div
+            style={{
+              marginTop: "0.4rem",
+              paddingTop: "0.4rem",
+              borderTop: `1px solid ${borderColor}`,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.25rem",
+            }}
+          >
+            {originalItems.map((item, index) => (
+              <span
+                key={`${item}-${index}`}
+                style={{
+                  fontSize: "0.65rem",
+                  color: "rgba(35,64,53,0.55)",
+                  padding: "0.15rem 0.4rem",
+                  borderRadius: "4px",
+                  background: "rgba(255, 255, 255, 0.5)",
+                }}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </details>
       )}
-      {isLite && items.length > 0 && !hint ? (
+
+      {isLite && modernItems.length > 0 && (
         <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.7)", fontStyle: "italic" }}>
           {locale === "zh" ? "解锁获取更多节气要点" : "Unlock to view full seasonal checklist"}
         </span>
-      ) : null}
+      )}
     </motion.div>
   );
 }
