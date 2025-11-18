@@ -1,3 +1,6 @@
+// 导入准确的节气计算函数
+import { resolveSolarTermCode } from "@/lib/solar/resolve";
+
 export type SolarTermKey =
   | "lichun"
   | "yushui"
@@ -358,12 +361,20 @@ function getDayOfYear(date: Date) {
 }
 
 export function getSolarTermForDate(locale: "zh" | "en", date = new Date()) {
-  const keys = getOrderedKeys();
-  if (keys.length === 0) {
-    return getSolarTermInsight(locale);
+  // 使用准确的节气计算工具函数
+  try {
+    const code = resolveSolarTermCode(date);
+    return getSolarTermInsight(locale, code as any);
+  } catch (error) {
+    console.error("[getSolarTermForDate] Failed to get solar term, using fallback:", error);
+    // 备用方案：使用旧的取模算法（不准确，但至少能返回结果）
+    const keys = getOrderedKeys();
+    if (keys.length === 0) {
+      return getSolarTermInsight(locale);
+    }
+    const dayIndex = getDayOfYear(date);
+    const index = dayIndex % keys.length;
+    const key = keys[index];
+    return getSolarTermInsight(locale, key);
   }
-  const dayIndex = getDayOfYear(date);
-  const index = dayIndex % keys.length;
-  const key = keys[index];
-  return getSolarTermInsight(locale, key);
 }
