@@ -305,20 +305,32 @@ import SolarCard from "./SolarCard";
           flex-direction: column;
           gap: 1.2rem;
         }
+        .section--compact {
+          gap: 0.8rem;
+        }
         .section__header {
           display: flex;
           flex-direction: column;
           gap: 0.4rem;
+        }
+        .section__header--compact {
+          gap: 0.3rem;
         }
         .section__header h2 {
           margin: 0;
           font-size: 1.55rem;
           color: #1f2937;
         }
+        .section__header--compact h2 {
+          font-size: 1.3rem;
+        }
         .section__header p {
           margin: 0;
           color: rgba(31, 41, 55, 0.65);
           font-size: 0.98rem;
+        }
+        .section__header--compact p {
+          font-size: 0.85rem;
         }
         .promo {
           border-radius: 20px;
