@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { getSolarTerm } from "@/utils/solarTerm";
-import { solarToLunar } from "@/utils/lunar";
+import { getFullLunarDate } from "@/lib/lunar/calendar";
 import { getHuangli } from "@/utils/huangli";
 import { getSolarTermByDate, getSolarTermStartDate } from "@/lib/solar/simple";
 
@@ -105,40 +105,57 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
   const [lunarDate, setLunarDate] = useState<string>("");
   const [huangliData, setHuangliData] = useState<{ yi: string[]; ji: string[]; wuxing?: string } | null>(null);
 
-  useEffect(() => {
-    try {
-      const today = new Date();
-      // 使用工具函数获取农历
-      const lunar = solarToLunar(today);
-      setLunarDate(lunar);
-      
-      // 使用工具函数获取黄历
-      const huangli = getHuangli(today);
-      setHuangliData({
-        yi: huangli.yi,
-        ji: huangli.ji,
-        wuxing: huangli.wuxing,
-      });
-    } catch (error) {
-      console.error("[SolarCard] Failed to get lunar/huangli info:", error);
-    }
-  }, []);
-
-  // 使用工具函数获取节气名称（优先使用工具函数，忽略传入的 name prop）
+  // 使用工具函数获取节气名称（始终使用工具函数，忽略传入的 name prop）
   const currentDate = useMemo(() => new Date(), []);
   const solarTermName = useMemo(() => {
     try {
-      // 始终使用工具函数获取准确的节气名称
+      // 始终使用工具函数 getSolarTerm() 获取准确的节气名称
       return getSolarTerm(currentDate);
     } catch (error) {
       console.error("[SolarCard] Failed to get solar term:", error);
       // 只有在工具函数失败时才使用传入的 name
       return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
     }
-  }, [currentDate, locale]); // 移除 name 依赖，确保始终使用工具函数
+  }, [currentDate, locale]);
 
-  const resolvedName = solarTermName;
-  const gradient = SCENE_GRADIENT[resolvedName] ?? LIGHT_SCENE_GRADIENT;
+  useEffect(() => {
+    try {
+      const today = new Date();
+      // 使用工具函数获取完整的农历日期（如"二〇二四年十月十八"）
+      const fullLunar = getFullLunarDate(today);
+      // 提取月份和日期部分（如"十月十八"）
+      // 匹配格式：X月X日 或 X月X号
+      const lunarMatch = fullLunar.match(/([一二三四五六七八九十]+月[一二三四五六七八九十]+[日号])/);
+      if (lunarMatch && lunarMatch[1]) {
+        setLunarDate(lunarMatch[1]);
+      } else if (fullLunar) {
+        // 如果正则匹配失败，尝试直接使用完整字符串
+        // 或者提取最后一部分（月份+日期）
+        const parts = fullLunar.split(/年/);
+        if (parts.length > 1) {
+          setLunarDate(parts[parts.length - 1]);
+        } else {
+          setLunarDate(fullLunar);
+        }
+      } else {
+        setLunarDate("");
+      }
+      
+      // 使用工具函数获取黄历数据
+      const huangli = getHuangli(today);
+      setHuangliData({
+        yi: huangli.yi || [],
+        ji: huangli.ji || [],
+        wuxing: huangli.wuxing || "",
+      });
+    } catch (error) {
+      console.error("[SolarCard] Failed to get lunar/huangli info:", error);
+      setLunarDate("");
+      setHuangliData(null);
+    }
+  }, []);
+
+  const gradient = SCENE_GRADIENT[solarTermName] ?? LIGHT_SCENE_GRADIENT;
   const elementColor =
     (element && ELEMENT_COLOR[element]) ||
     (element && ELEMENT_COLOR[element.toLowerCase()]) ||
@@ -151,10 +168,10 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
   const currentTermCode = useMemo(() => getSolarTermByDate(currentDate), [currentDate]);
   const daysSinceStart = useMemo(() => getDaysSinceSolarTermStart(currentDate, currentTermCode), [currentDate, currentTermCode]);
   const titleWithDays = daysSinceStart 
-    ? `${resolvedName} · 第${daysSinceStart}天`
-    : resolvedName;
+    ? `${solarTermName} · 第${daysSinceStart}天`
+    : solarTermName;
 
-  // 优先使用黄历的宜忌，如果没有则使用固定的文案
+  // 固定文案（作为备用）
   const fixedDoList = locale === "zh" 
     ? ["签约合作", "学习进修", "整理空间"]
     : ["Sign contracts", "Study & learn", "Organize space"];
@@ -162,7 +179,7 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     ? ["动土破土", "长途迁移"]
     : ["Groundbreaking", "Long relocation"];
 
-  // 使用黄历数据，如果没有则使用固定文案
+  // 优先使用 getHuangli() 返回的数据，如果没有或为空则使用固定文案
   const safeDo = (huangliData?.yi && huangliData.yi.length > 0) 
     ? huangliData.yi 
     : fixedDoList;
@@ -173,8 +190,10 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
   const liteDo = isLite ? safeDo.slice(0, 1) : safeDo;
   const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid;
 
-  // 五行信息：优先使用黄历数据，如果没有则使用固定文案
-  const wuxingText = huangliData?.wuxing || (locale === "zh" ? "水旺・金强・火衰・木弱" : "");
+  // 五行信息：如果 getHuangli() 返回的 wuxing 为空，使用固定文案
+  const wuxingText = (huangliData?.wuxing && huangliData.wuxing.trim()) 
+    ? huangliData.wuxing 
+    : (locale === "zh" ? "水旺・金强・火衰・木弱" : "");
 
   return (
     <motion.div
@@ -202,7 +221,7 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
             </span>
             {lunarDate && (
               <span style={{ color: "rgba(35,64,53,0.6)", fontSize: "0.6rem" }}>
-                {locale === "zh" ? `农历${lunarDate}` : `Lunar ${lunarDate}`}
+                {locale === "zh" ? `农历 ${lunarDate}` : `Lunar ${lunarDate}`}
               </span>
             )}
           </div>
