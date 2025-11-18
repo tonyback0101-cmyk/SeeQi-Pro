@@ -10,12 +10,12 @@
 {"id":"solar_xiazhi","priority":145,"when":{"solar_term":"xiazhi"},"then":{"solar":{"title":"夏至 · 阳气最盛","advice":"养心护阳，避免情绪过激；午后适当小憩。","warning":"多吃苦味蔬菜，如苦瓜、芹菜；少油腻厚味。"},"qi_index_delta":-2},"strategy":"append"}
 {"id":"solar_xiaoshu","priority":150,"when":{"solar_term":"xiaoshu"},"then":{"solar":{"title":"小暑 · 高温闷热","advice":"防暑降温，谨防中暑和肠胃不适。","warning":"少食辛辣烧烤，多喝温水；可用绿豆、荷叶、薏米。"},"qi_index_delta":-3},"strategy":"append"}
 {"id":"solar_dashu","priority":155,"when":{"solar_term":"dashu"},"then":{"solar":{"title":"大暑 · 最炎热湿重","advice":"重在清热祛湿，保护心脑血管与脾胃。","warning":"粥类为主，如绿豆粥、莲子粥；避免大鱼大肉和酒精。"},"qi_index_delta":-4},"strategy":"append"}
-{"id":"solar_liqiu","priority":160,"when":{"solar_term":"liqiu"},"then":{"solar":{"title":"立秋 · 暑气未尽","advice":"防"秋老虎"，仍要注意防暑兼顾添衣。","warning":"可食莲藕、百合、银耳，起到润肺清心作用。"},"qi_index_delta":-2},"strategy":"append"}
+{"id":"solar_liqiu","priority":160,"when":{"solar_term":"liqiu"},"then":{"solar":{"title":"立秋 · 暑气未尽","advice":"防\"秋老虎\"，仍要注意防暑兼顾添衣。","warning":"可食莲藕、百合、银耳，起到润肺清心作用。"},"qi_index_delta":-2},"strategy":"append"}
 {"id":"solar_chushu","priority":165,"when":{"solar_term":"chushu"},"then":{"solar":{"title":"处暑 · 炎热渐退","advice":"注意调节免疫力，预防感冒与过敏。","warning":"饮食由清淡向适度滋养过渡，如山药、南瓜等。"},"qi_index_delta":0},"strategy":"append"}
 {"id":"solar_bailu","priority":170,"when":{"solar_term":"bailu"},"then":{"solar":{"title":"白露 · 昼夜温差明显","advice":"重在养阴润燥，防燥咳与皮肤干裂。","warning":"多吃梨、百合、蜂蜜、芝麻；少辛辣、少烟酒。"},"qi_index_delta":2},"strategy":"append"}
 {"id":"solar_qiufen","priority":175,"when":{"solar_term":"qiufen"},"then":{"solar":{"title":"秋分 · 阴阳再平衡","advice":"适合反思调整节奏，早睡早起，增加温和运动。","warning":"空气开始转燥，注意补水润肺。"},"qi_index_delta":2},"strategy":"append"}
 {"id":"solar_hanlu","priority":180,"when":{"solar_term":"hanlu"},"then":{"solar":{"title":"寒露 · 气温明显下降","advice":"注意下肢和腰背保暖，预防关节问题。","warning":"山药、羊肉、枸杞等适度温补，避免过寒食物。"},"qi_index_delta":1},"strategy":"append"}
-{"id":"solar_shuangjiang","priority":185,"when":{"solar_term":"shuangjiang"},"then":{"solar":{"title":"霜降 · 初霜出现","advice":""秋冬进补"起点，重在扶阳固本。","warning":"可食牛羊肉、黄芪、党参煲汤；少食寒凉水果。"},"qi_index_delta":0},"strategy":"append"}
+{"id":"solar_shuangjiang","priority":185,"when":{"solar_term":"shuangjiang"},"then":{"solar":{"title":"霜降 · 初霜出现","advice":"\"秋冬进补\"起点，重在扶阳固本。","warning":"可食牛羊肉、黄芪、党参煲汤；少食寒凉水果。"},"qi_index_delta":0},"strategy":"append"}
 {"id":"solar_lidong","priority":190,"when":{"solar_term":"lidong"},"then":{"solar":{"title":"立冬 · 万物闭藏","advice":"养藏为主，注意防寒保暖与情绪稳定。","warning":"多用温补食材，如羊肉、生姜、大枣；不过度油腻。"},"qi_index_delta":-1},"strategy":"append"}
 {"id":"solar_xiaoxue","priority":195,"when":{"solar_term":"xiaoxue"},"then":{"solar":{"title":"小雪 · 气温继续下降","advice":"加强御寒能力，保护心脑血管。","warning":"多喝热粥热汤，适量进补芝麻、核桃等坚果。"},"qi_index_delta":-2},"strategy":"append"}
 {"id":"solar_daxue","priority":200,"when":{"solar_term":"daxue"},"then":{"solar":{"title":"大雪 · 天气严寒","advice":"继续温补，注意防滑防寒，适当户外活动。","warning":"牛羊肉、鸡汤配当归、生姜，提升阳气。"},"qi_index_delta":-3},"strategy":"append"}
