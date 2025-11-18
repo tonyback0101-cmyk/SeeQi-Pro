@@ -2,7 +2,7 @@
 {"id":"palm_qixu_pale_shallow","priority":110,"when":{"palm_color":"偏白","line_depth":"浅"},"then":{"constitution_hint":"qixu","tags":["手相·气虚倾向"],"advice_append":{"food":["黄芪红枣茶"],"action":["轻快步行 15 分钟"],"acupoint":["关元"]}},"strategy":"append"}
 {"id":"palm_life_short","priority":120,"when":{"life_line":"短"},"then":{"tags":["手相·能量分配需注意"],"advice_append":{"note":"生命线短不代表寿命短，而是提醒你管理好精力和节奏。"}},"strategy":"append"}
 {"id":"palm_life_broken","priority":130,"when":{"life_line":"断续"},"then":{"tags":["手相·人生阶段起伏"],"advice_append":{"note":"注意在重大转折期提前规划体检与休息，避免过劳。"}},"strategy":"append"}
-{"id":"palm_head_drooping","priority":140,"when":{"head_line":"下垂"},"then":{"tags":["手相·感性思维"],"advice_append":{"action":["睡前写下 3 件感恩的小事"],"note":"感性是优势，但也要学会给情绪\"收个尾\"。"}},"strategy":"append"}
+{"id":"palm_head_drooping","priority":140,"when":{"head_line":"下垂"},"then":{"tags":["手相·感性思维"],"advice_append":{"action":["睡前写下 3 件感恩的小事"],"note":"感性是优势，但也要学会给情绪收个尾。"}},"strategy":"append"}
 {"id":"palm_emotion_forked","priority":150,"when":{"emotion_line":"分叉"},"then":{"tags":["手相·人缘好但易摇摆"],"advice_append":{"note":"在重要决策上，建议预留 24 小时冷静期再做选择。"}},"strategy":"append"}
 {"id":"palm_mount_venus_rich","priority":160,"when":{"mount_tags":["venus_rich"]},"then":{"tags":["手相·金星丘发达（热情型）"],"advice_append":{"health":["注意心血管和情绪起伏"],"action":["每周至少 3 次中等强度运动"]}},"strategy":"append"}
 {"id":"palm_mount_moon_rich","priority":170,"when":{"mount_tags":["moon_rich"]},"then":{"tags":["手相·月丘发达（想象力强）"],"advice_append":{"note":"灵感很强，适合创作类工作，但作息请尽量在 23:30 前完成。"}},"strategy":"append"}

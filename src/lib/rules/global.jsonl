@@ -3,7 +3,7 @@
 {"id":"global_qi_pinghe_bonus","priority":25,"when":{"constitution":"pinghe"},"then":{"qi_index_delta":10,"tags":["平和 ↑"],"advice_append":{"note":"你的基础状态不错，现在做的每一点小优化都会很值。"}},"strategy":"append"}
 {"id":"global_qi_qixu_penalty","priority":20,"when":{"constitution":"qixu"},"then":{"qi_index_delta":-5,"tags":["气虚 ↓"],"advice_append":{"note":"适当减负，比硬扛更有价值。"}},"strategy":"append"}
 {"id":"global_qi_yinxu_penalty","priority":21,"when":{"constitution":"yinxu"},"then":{"qi_index_delta":-4,"tags":["阴虚 ↓"],"advice_append":{"note":"减少熬夜和刺激性饮食，是最划算的投资。"}},"strategy":"append"}
-{"id":"global_qi_tanshi_penalty","priority":22,"when":{"constitution":"tanshi"},"then":{"qi_index_delta":-6,"tags":["痰湿 ↓"],"advice_append":{"note":"把\"少糖少油\"坚持三周，会明显感觉身体轻一点。"}},"strategy":"append"}
+{"id":"global_qi_tanshi_penalty","priority":22,"when":{"constitution":"tanshi"},"then":{"qi_index_delta":-6,"tags":["痰湿 ↓"],"advice_append":{"note":"把少糖少油坚持三周，会明显感觉身体轻一点。"}},"strategy":"append"}
 {"id":"global_qi_shire_penalty","priority":23,"when":{"constitution":"shire"},"then":{"qi_index_delta":-6,"tags":["湿热 ↓"],"advice_append":{"note":"湿热一多，情绪会更容易烦躁，记得多喝水、多走路。"}},"strategy":"append"}
 {"id":"global_qi_xueyu_penalty","priority":24,"when":{"constitution":"xueyu"},"then":{"qi_index_delta":-7,"tags":["血瘀 ↓"],"advice_append":{"note":"保持规律运动，促进血液循环，避免久坐久站。"}},"strategy":"append"}
 {"id":"global_qi_yangxu_penalty","priority":26,"when":{"constitution":"yangxu"},"then":{"qi_index_delta":-5,"tags":["阳虚 ↓"],"advice_append":{"note":"注意保暖，温补阳气，避免生冷寒凉食物。"}},"strategy":"append"}
