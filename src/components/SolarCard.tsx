@@ -96,36 +96,36 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     <motion.div
       className="solar-card"
       style={{
-        borderRadius: "18px",
+        borderRadius: "14px",
         background: `linear-gradient(140deg, ${gradient[0]}, ${gradient[1]})`,
         border: "1px solid rgba(141, 174, 146, 0.25)",
-        boxShadow: "0 14px 24px rgba(35, 64, 53, 0.08)",
-        padding: "1rem 1.2rem",
+        boxShadow: "0 8px 16px rgba(35, 64, 53, 0.06)",
+        padding: "0.7rem 0.9rem",
         display: "flex",
         flexDirection: "column",
-        gap: "0.8rem",
+        gap: "0.5rem",
         maxWidth: "100%",
       }}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.8rem" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", flex: 1 }}>
-          <span style={{ color: "rgba(35,64,53,0.7)", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.06em" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem", flex: 1 }}>
+          <span style={{ color: "rgba(35,64,53,0.7)", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.05em" }}>
             {locale === "zh" ? "今日养生节气" : "Today's Seasonal Focus"}
           </span>
-          <h2 style={{ margin: 0, fontSize: "1.3rem", color: "#234035", lineHeight: 1.2 }}>{resolvedName}</h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{resolvedName}</h2>
         </div>
         <motion.span
           style={{
-            padding: "0.3rem 0.85rem",
+            padding: "0.25rem 0.7rem",
             borderRadius: 999,
             background: elementColor,
             color: "#fff",
             fontWeight: 600,
-            fontSize: "0.75rem",
-            boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+            fontSize: "0.65rem",
+            boxShadow: "0 4px 8px rgba(0,0,0,0.08)",
             whiteSpace: "nowrap",
           }}
           initial={{ opacity: 0, scale: 0.9 }}
@@ -137,14 +137,14 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
       </header>
 
       {healthTip && (
-        <p style={{ margin: 0, color: "rgba(35,64,53,0.78)", lineHeight: 1.5, fontSize: "0.85rem" }}>{healthTip}</p>
+        <p style={{ margin: 0, color: "rgba(35,64,53,0.78)", lineHeight: 1.4, fontSize: "0.75rem" }}>{healthTip}</p>
       )}
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
-          gap: "0.8rem",
+          gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))",
+          gap: "0.6rem",
         }}
       >
         <AdviceBlock
@@ -166,7 +166,7 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
       </div>
 
       {isLite && (
-        <p style={{ margin: 0, color: "rgba(76,95,215,0.75)", fontWeight: 600, fontSize: "0.8rem" }}>
+        <p style={{ margin: 0, color: "rgba(76,95,215,0.75)", fontWeight: 600, fontSize: "0.7rem" }}>
           {locale === "zh" ? "解锁可查看完整节气饮食、作息与穴位指导。" : "Unlock to reveal full diet, routine and acupoint guidance."}
         </p>
       )}
@@ -188,30 +188,30 @@ function AdviceBlock({ locale, title, items, accent, icon, isLite }: AdviceBlock
   return (
     <motion.div
       style={{
-        borderRadius: "12px",
-        padding: "0.7rem 0.9rem",
+        borderRadius: "10px",
+        padding: "0.5rem 0.7rem",
         background: accent,
         border: `1px solid ${accent.replace("0.15", "0.4")}`,
         display: "flex",
         flexDirection: "column",
-        gap: "0.4rem",
+        gap: "0.3rem",
       }}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.25 }}
     >
-      <strong style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#234035", fontSize: "0.85rem" }}>
-        <span style={{ fontSize: "0.9rem" }}>{icon}</span>
+      <strong style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "#234035", fontSize: "0.75rem" }}>
+        <span style={{ fontSize: "0.8rem" }}>{icon}</span>
         {title}
       </strong>
-      <ul style={{ margin: 0, paddingLeft: "0.9rem", color: "rgba(35,64,53,0.78)", display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.8rem", lineHeight: 1.4 }}>
+      <ul style={{ margin: 0, paddingLeft: "0.75rem", color: "rgba(35,64,53,0.78)", display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.7rem", lineHeight: 1.3 }}>
         {items.length === 0 ? <li>{emptyText}</li> : null}
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
       {isLite && items.length > 0 ? (
-        <span style={{ fontSize: "0.75rem", color: "rgba(35,64,53,0.7)", fontStyle: "italic" }}>
+        <span style={{ fontSize: "0.65rem", color: "rgba(35,64,53,0.7)", fontStyle: "italic" }}>
           {locale === "zh" ? "解锁获取更多节气要点" : "Unlock to view full seasonal checklist"}
         </span>
       ) : null}

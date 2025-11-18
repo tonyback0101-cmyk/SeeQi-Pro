@@ -3,6 +3,7 @@
  * 基于天文计算，参考万年历数据
  */
 import { resolveSolarTermCodeImproved } from "./accurate";
+import { resolveSolarTermCodeFromPreciseDates } from "./preciseDates";
 
 // 保留旧的固定日期边界作为备用（仅用于向后兼容）
 const SOLAR_TERM_BOUNDARIES = [
@@ -32,17 +33,23 @@ const SOLAR_TERM_BOUNDARIES = [
 ];
 
 /**
- * 解析节气代码（使用改进的算法）
- * 优先使用基于天文计算的准确算法
+ * 解析节气代码（使用最准确的算法）
+ * 优先使用预计算的准确日期表，其次使用天文计算算法
  */
 export function resolveSolarTermCode(date: Date): string {
   try {
-    // 使用改进的算法
-    return resolveSolarTermCodeImproved(date);
+    // 优先使用准确的日期表（2024-2025年）
+    return resolveSolarTermCodeFromPreciseDates(date);
   } catch (error) {
-    console.warn("[resolveSolarTermCode] Improved algorithm failed, using fallback:", error);
-    // 如果改进算法失败，使用旧的固定日期方法作为备用
-    return resolveSolarTermCodeFallback(date);
+    console.warn("[resolveSolarTermCode] Precise dates failed, using improved algorithm:", error);
+    try {
+      // 如果日期表不可用，使用改进的天文计算算法
+      return resolveSolarTermCodeImproved(date);
+    } catch (error2) {
+      console.warn("[resolveSolarTermCode] Improved algorithm failed, using fallback:", error2);
+      // 最后使用旧的固定日期方法作为备用
+      return resolveSolarTermCodeFallback(date);
+    }
   }
 }
 
