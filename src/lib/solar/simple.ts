@@ -109,3 +109,14 @@ export function getSolarTermByDate(date: Date): string {
   return "lidong"; // 默认立冬
 }
 
+/**
+ * 获取指定节气的开始日期
+ */
+export function getSolarTermStartDate(year: number, termCode: string): Date | null {
+  if (SOLAR_TERM_DATES[year] && SOLAR_TERM_DATES[year][termCode as SolarTermCode]) {
+    const [month, day] = SOLAR_TERM_DATES[year][termCode as SolarTermCode];
+    return new Date(year, month - 1, day);
+  }
+  return null;
+}
+

@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { getLunarInfo } from "@/lib/lunar/calendar";
-import { getSolarTermByDate } from "@/lib/solar/simple";
+import { getSolarTermByDate, getSolarTermStartDate } from "@/lib/solar/simple";
 
 type Locale = "zh" | "en";
 
@@ -83,18 +83,9 @@ const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];
 function getDaysSinceSolarTermStart(currentDate: Date, termCode: string): number | null {
   try {
     const year = currentDate.getFullYear();
-    // 从 simple.ts 导入的日期表（简化版，只包含主要节气）
-    const SOLAR_TERM_DATES: Record<number, Record<string, [number, number]>> = {
-      2024: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 21] },
-      2025: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
-      2026: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
-      2027: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 7], dongzhi: [12, 22] },
-      2028: { lidong: [11, 7], xiaoxue: [11, 22], daxue: [12, 6], dongzhi: [12, 21] },
-    };
+    const termStartDate = getSolarTermStartDate(year, termCode);
     
-    if (SOLAR_TERM_DATES[year] && SOLAR_TERM_DATES[year][termCode]) {
-      const [termMonth, termDay] = SOLAR_TERM_DATES[year][termCode];
-      const termStartDate = new Date(year, termMonth - 1, termDay);
+    if (termStartDate) {
       termStartDate.setHours(0, 0, 0, 0);
       const current = new Date(currentDate);
       current.setHours(0, 0, 0, 0);
