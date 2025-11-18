@@ -256,20 +256,20 @@ do $$
 declare
   missing_tables text[] := ARRAY[]::text[];
   missing_columns text[] := ARRAY[]::text[];
-  table_name text;
+  tbl_name text;
   col_name text;
   required_columns text[];
 begin
   -- 检查表是否存在
-  for table_name in 
+  for tbl_name in 
     select unnest(ARRAY['sessions', 'uploads', 'reports', 'report_access', 'dream_keywords_std', 'dict_constitution', 'dict_solar_term'])
   loop
     if not exists (
-      select 1 from information_schema.tables 
-      where table_schema = 'public' 
-      and table_name = table_name
+      select 1 from information_schema.tables t
+      where t.table_schema = 'public' 
+      and t.table_name = tbl_name
     ) then
-      missing_tables := array_append(missing_tables, table_name);
+      missing_tables := array_append(missing_tables, tbl_name);
     end if;
   end loop;
   
@@ -278,10 +278,10 @@ begin
   for col_name in select unnest(ARRAY['id', 'locale', 'tz', 'created_at'])
   loop
     if not exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public'
-      and table_name = 'sessions'
-      and column_name = col_name
+      select 1 from information_schema.columns c
+      where c.table_schema = 'public'
+      and c.table_name = 'sessions'
+      and c.column_name = col_name
     ) then
       missing_columns := array_append(missing_columns, 'sessions.' || col_name);
     end if;
@@ -291,10 +291,10 @@ begin
   for col_name in select unnest(ARRAY['id', 'session_id', 'type', 'storage_path', 'created_at'])
   loop
     if not exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public'
-      and table_name = 'uploads'
-      and column_name = col_name
+      select 1 from information_schema.columns c
+      where c.table_schema = 'public'
+      and c.table_name = 'uploads'
+      and c.column_name = col_name
     ) then
       missing_columns := array_append(missing_columns, 'uploads.' || col_name);
     end if;
@@ -304,10 +304,10 @@ begin
   for col_name in select unnest(ARRAY['id', 'session_id', 'locale', 'tz', 'unlocked', 'created_at'])
   loop
     if not exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public'
-      and table_name = 'reports'
-      and column_name = col_name
+      select 1 from information_schema.columns c
+      where c.table_schema = 'public'
+      and c.table_name = 'reports'
+      and c.column_name = col_name
     ) then
       missing_columns := array_append(missing_columns, 'reports.' || col_name);
     end if;
@@ -317,10 +317,10 @@ begin
   for col_name in select unnest(ARRAY['id', 'keyword', 'locale', 'meaning_zh', 'meaning_en'])
   loop
     if not exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public'
-      and table_name = 'dream_keywords_std'
-      and column_name = col_name
+      select 1 from information_schema.columns c
+      where c.table_schema = 'public'
+      and c.table_name = 'dream_keywords_std'
+      and c.column_name = col_name
     ) then
       missing_columns := array_append(missing_columns, 'dream_keywords_std.' || col_name);
     end if;
@@ -408,31 +408,31 @@ end $$;
 do $$
 declare
   tables_without_rls text[] := ARRAY[]::text[];
-  table_name text;
+  tbl_name text;
 begin
-  for table_name in 
+  for tbl_name in 
     select unnest(ARRAY['sessions', 'uploads', 'reports', 'dream_keywords_std'])
   loop
     if exists (
-      select 1 from information_schema.tables
-      where table_schema = 'public'
-      and table_name = table_name
+      select 1 from information_schema.tables t
+      where t.table_schema = 'public'
+      and t.table_name = tbl_name
     ) then
       -- 检查 RLS 是否启用
       if not exists (
-        select 1 from pg_tables
-        where schemaname = 'public'
-        and tablename = table_name
-        and rowsecurity = true
+        select 1 from pg_tables pt
+        where pt.schemaname = 'public'
+        and pt.tablename = tbl_name
+        and pt.rowsecurity = true
       ) then
         -- 检查是否有 service_role 策略（至少应该有一个）
         if not exists (
-          select 1 from pg_policies
-          where schemaname = 'public'
-          and tablename = table_name
-          and roles = ARRAY['service_role']
+          select 1 from pg_policies pp
+          where pp.schemaname = 'public'
+          and pp.tablename = tbl_name
+          and pp.roles = ARRAY['service_role']
         ) then
-          tables_without_rls := array_append(tables_without_rls, table_name);
+          tables_without_rls := array_append(tables_without_rls, tbl_name);
         end if;
       end if;
     end if;
