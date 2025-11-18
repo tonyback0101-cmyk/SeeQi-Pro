@@ -70,21 +70,33 @@ export function getSolarTermByDate(date: Date): string {
   if (SOLAR_TERM_DATES[year]) {
     const yearDates = SOLAR_TERM_DATES[year];
     
-    // 找到当前日期对应的节气（最后一个小于等于当前日期的节气）
-    let currentTerm: SolarTermCode = "xiaohan"; // 默认小寒
+    // 将节气按日期排序
+    const sortedTerms = Object.entries(yearDates)
+      .map(([code, [termMonth, termDay]]) => ({
+        code: code as SolarTermCode,
+        month: termMonth,
+        day: termDay,
+      }))
+      .sort((a, b) => {
+        if (a.month !== b.month) return a.month - b.month;
+        return a.day - b.day;
+      });
     
-    for (const [code, [termMonth, termDay]] of Object.entries(yearDates)) {
+    // 找到当前日期对应的节气（最后一个小于等于当前日期的节气）
+    let currentTerm: SolarTermCode = sortedTerms[0].code; // 默认第一个
+    
+    for (const term of sortedTerms) {
       // 如果当前日期大于等于这个节气日期
-      if (month > termMonth || (month === termMonth && day >= termDay)) {
-        currentTerm = code as SolarTermCode;
+      if (month > term.month || (month === term.month && day >= term.day)) {
+        currentTerm = term.code;
       } else {
         break; // 已经找到，退出循环
       }
     }
     
     // 如果当前日期在第一个节气（小寒）之前，使用上一年的最后一个节气（大寒）
-    const firstTerm = yearDates.xiaohan;
-    if (month < firstTerm[0] || (month === firstTerm[0] && day < firstTerm[1])) {
+    const firstTerm = sortedTerms[0];
+    if (month < firstTerm.month || (month === firstTerm.month && day < firstTerm.day)) {
       if (SOLAR_TERM_DATES[year - 1]) {
         return "dahan"; // 上一年的最后一个节气
       }
