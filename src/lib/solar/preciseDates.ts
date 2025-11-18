@@ -105,24 +105,32 @@ export function resolveSolarTermCodeFromPreciseDates(date: Date): string {
       .sort((a, b) => a.date.getTime() - b.date.getTime());
     
     const currentDate = new Date(year, month - 1, day);
+    // 只比较日期部分，忽略时间
+    currentDate.setHours(0, 0, 0, 0);
     
-    // 找到当前日期对应的节气
+    // 找到当前日期对应的节气（最后一个小于等于当前日期的节气）
     let currentTerm = termDates[0].code; // 默认第一个
     
     for (let i = 0; i < termDates.length; i++) {
-      if (currentDate >= termDates[i].date) {
+      const termDate = termDates[i].date;
+      termDate.setHours(0, 0, 0, 0);
+      
+      if (currentDate.getTime() >= termDate.getTime()) {
         currentTerm = termDates[i].code;
       } else {
+        // 如果当前日期小于这个节气日期，说明应该使用前一个节气
         break;
       }
     }
     
-    // 如果当前日期在第一个节气之前，使用上一年的最后一个节气
-    if (currentDate < termDates[0].date) {
+    // 如果当前日期在第一个节气（小寒）之前，使用上一年的最后一个节气（大寒）
+    const firstTermDate = termDates[0].date;
+    firstTermDate.setHours(0, 0, 0, 0);
+    if (currentDate.getTime() < firstTermDate.getTime()) {
       const lastYear = year - 1;
       if (PRECISE_SOLAR_TERM_DATES[lastYear]) {
-        const lastYearTerms = PRECISE_SOLAR_TERM_DATES[lastYear];
-        return "dahan"; // 大寒通常是上一年的最后一个节气
+        // 返回上一年的最后一个节气（大寒）
+        return "dahan";
       }
     }
     
