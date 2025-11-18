@@ -124,15 +124,18 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     }
   }, []);
 
-  // 使用工具函数获取节气名称
+  // 使用工具函数获取节气名称（优先使用工具函数，忽略传入的 name prop）
   const currentDate = useMemo(() => new Date(), []);
   const solarTermName = useMemo(() => {
     try {
+      // 始终使用工具函数获取准确的节气名称
       return getSolarTerm(currentDate);
-    } catch {
+    } catch (error) {
+      console.error("[SolarCard] Failed to get solar term:", error);
+      // 只有在工具函数失败时才使用传入的 name
       return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
     }
-  }, [currentDate, name, locale]);
+  }, [currentDate, locale]); // 移除 name 依赖，确保始终使用工具函数
 
   const resolvedName = solarTermName;
   const gradient = SCENE_GRADIENT[resolvedName] ?? LIGHT_SCENE_GRADIENT;
