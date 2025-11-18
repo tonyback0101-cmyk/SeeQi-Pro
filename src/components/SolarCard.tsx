@@ -116,7 +116,7 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
       // 只有在工具函数失败时才使用传入的 name
       return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
     }
-  }, [currentDate, locale]);
+  }, [currentDate, locale, name]); // 添加 name 到依赖数组以消除警告（虽然实际不使用）
 
   useEffect(() => {
     try {

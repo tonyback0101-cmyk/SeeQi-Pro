@@ -56,6 +56,9 @@ async function loadPrice(): Promise<PriceCache> {
 }
 
 export async function POST(request: Request) {
+  // 在函数作用域中定义 checkoutLocale，以便在 catch 块中也能访问
+  let checkoutLocale: "zh" | "en" = "zh";
+  
   try {
     const body = (await request.json().catch(() => ({}))) as CheckoutRequestBody;
     const reportId = body.reportId;
@@ -63,7 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少 reportId" }, { status: 400 });
     }
 
-    const checkoutLocale = body.locale === "en" ? "en" : "zh";
+    checkoutLocale = body.locale === "en" ? "en" : "zh";
     const session = await getServerSession(authOptions).catch(() => null);
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? undefined;
