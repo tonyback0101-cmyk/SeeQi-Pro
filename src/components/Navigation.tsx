@@ -196,9 +196,15 @@ export default function Navigation({ initialLanguage = "zh" }: NavigationProps) 
           :global(.seeqi-nav__hamburger) {
             display: inline-flex !important;
           }
-          .seeqi-nav__language,
           .seeqi-nav__authDesktop {
             display: none !important;
+          }
+          /* 移动端也显示语言切换按钮 */
+          .seeqi-nav__language {
+            display: inline-flex !important;
+            font-size: 0.875rem;
+            padding: 0.4rem 0.85rem;
+            min-height: 40px;
           }
           .seeqi-nav__mobileMeta {
             display: flex;
