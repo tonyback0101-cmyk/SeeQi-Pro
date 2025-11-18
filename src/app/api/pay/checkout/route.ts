@@ -251,20 +251,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: checkoutSession.url }, { status: 200 });
   } catch (error) {
     console.error("[POST /api/pay/checkout]", error);
-    const safeMessage =
-      error instanceof Error ? error.message : "创建支付会话失败，请稍后重试";
     
-    // 如果是 Stripe API 密钥错误，提供更明确的提示
-    if (error instanceof Error && error.message.includes("Invalid API Key")) {
+    // 检查是否是 Stripe 认证错误
+    const isStripeAuthError = 
+      (error as any)?.type === "StripeAuthenticationError" ||
+      (error as any)?.rawType === "invalid_request_error" ||
+      (error instanceof Error && (
+        error.message.includes("Invalid API Key") ||
+        error.message.includes("Invalid API") ||
+        error.message.includes("authentication")
+      ));
+    
+    if (isStripeAuthError) {
+      const errorMessage = (error as any)?.raw?.message || (error as Error)?.message || "";
+      const isPlaceholder = errorMessage.includes("sk_test_xxx") || errorMessage.includes("sk_live_xxx");
+      
       return NextResponse.json(
         {
           error: checkoutLocale === "zh"
-            ? "Stripe API 密钥无效，请检查 STRIPE_SECRET_KEY 环境变量配置"
-            : "Invalid Stripe API key. Please check STRIPE_SECRET_KEY environment variable",
+            ? isPlaceholder
+              ? "Stripe API 密钥配置错误：检测到占位值 'sk_test_xxx'。请在 Vercel 环境变量中设置真实的 Stripe 密钥（从 Stripe Dashboard > Developers > API keys 获取）"
+              : "Stripe API 密钥无效或已过期。请检查 Vercel 环境变量中的 STRIPE_SECRET_KEY 是否正确（从 Stripe Dashboard 获取）"
+            : isPlaceholder
+              ? "Stripe API key misconfigured: placeholder 'sk_test_xxx' detected. Please set a real Stripe key in Vercel environment variables (get it from Stripe Dashboard > Developers > API keys)"
+              : "Stripe API key is invalid or expired. Please check STRIPE_SECRET_KEY in Vercel environment variables (get it from Stripe Dashboard)",
         },
         { status: 500 },
       );
     }
+    
+    const safeMessage =
+      error instanceof Error ? error.message : "创建支付会话失败，请稍后重试";
     
     return NextResponse.json(
       {
