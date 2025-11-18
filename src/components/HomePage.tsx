@@ -123,20 +123,22 @@ import SolarCard from "./SolarCard";
         </div>
       </section>
 
-      <section className="section">
-        <div className="section__header">
+      <section className="section section--compact">
+        <div className="section__header section__header--compact">
           <h2>{content.solarTerm.title}</h2>
           <p>{content.solarTerm.description}</p>
         </div>
-        <SolarCard
-          locale={locale}
-          name={solarTermInsight.name}
-          doList={solarTermInsight.favorable}
-          avoidList={solarTermInsight.avoid}
-          healthTip={solarTermInsight.qiPhrase}
-          element={null}
-          isLite={false}
-        />
+        <div style={{ maxWidth: "100%" }}>
+          <SolarCard
+            locale={locale}
+            name={solarTermInsight.name}
+            doList={solarTermInsight.favorable}
+            avoidList={solarTermInsight.avoid}
+            healthTip={solarTermInsight.qiPhrase}
+            element={null}
+            isLite={false}
+          />
+        </div>
       </section>
 
       <section className="section">

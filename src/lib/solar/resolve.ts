@@ -1,3 +1,10 @@
+/**
+ * 使用准确的节气计算算法
+ * 基于天文计算，参考万年历数据
+ */
+import { resolveSolarTermCodeImproved } from "./accurate";
+
+// 保留旧的固定日期边界作为备用（仅用于向后兼容）
 const SOLAR_TERM_BOUNDARIES = [
   { code: "xiaohan", month: 1, day: 5 },
   { code: "dahan", month: 1, day: 20 },
@@ -24,7 +31,25 @@ const SOLAR_TERM_BOUNDARIES = [
   { code: "dongzhi", month: 12, day: 21 },
 ];
 
+/**
+ * 解析节气代码（使用改进的算法）
+ * 优先使用基于天文计算的准确算法
+ */
 export function resolveSolarTermCode(date: Date): string {
+  try {
+    // 使用改进的算法
+    return resolveSolarTermCodeImproved(date);
+  } catch (error) {
+    console.warn("[resolveSolarTermCode] Improved algorithm failed, using fallback:", error);
+    // 如果改进算法失败，使用旧的固定日期方法作为备用
+    return resolveSolarTermCodeFallback(date);
+  }
+}
+
+/**
+ * 备用方法：使用固定日期边界（向后兼容）
+ */
+function resolveSolarTermCodeFallback(date: Date): string {
   const year = date.getUTCFullYear();
 
   const getBoundaryDate = (month: number, day: number, yearOffset = 0) =>
