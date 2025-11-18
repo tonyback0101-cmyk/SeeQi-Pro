@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { getLunarInfo } from "@/lib/lunar/calendar";
 
 type Locale = "zh" | "en";
 
@@ -76,6 +78,27 @@ const SCENE_GRADIENT: Record<string, [string, string]> = {
 const LIGHT_SCENE_GRADIENT: [string, string] = ["#F8F9FA", "#F1F8E9"];
 
 export default function SolarCard({ locale, name, doList, avoidList, healthTip, element, isLite }: SolarCardProps) {
+  const [lunarInfo, setLunarInfo] = useState<{
+    lunarDate: string;
+    lunarYear: string;
+    yi: string[];
+    ji: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const info = getLunarInfo(new Date());
+      setLunarInfo({
+        lunarDate: info.lunarDate,
+        lunarYear: info.lunarYear,
+        yi: info.yi,
+        ji: info.ji,
+      });
+    } catch (error) {
+      console.error("[SolarCard] Failed to get lunar info:", error);
+    }
+  }, []);
+
   const resolvedName = name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
   const gradient = SCENE_GRADIENT[resolvedName] ?? LIGHT_SCENE_GRADIENT;
   const elementColor =
@@ -86,8 +109,13 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     (element && (ELEMENT_LABEL[locale][element] || ELEMENT_LABEL[locale][element.toLowerCase()])) ||
     ELEMENT_LABEL[locale].default;
 
-  const safeDo = Array.isArray(doList) ? (doList.filter(Boolean) as string[]) : [];
-  const safeAvoid = Array.isArray(avoidList) ? (avoidList.filter(Boolean) as string[]) : [];
+  // 优先使用黄历的宜忌，如果没有则使用传入的 doList/avoidList
+  const safeDo = (lunarInfo?.yi && lunarInfo.yi.length > 0) 
+    ? lunarInfo.yi 
+    : (Array.isArray(doList) ? (doList.filter(Boolean) as string[]) : []);
+  const safeAvoid = (lunarInfo?.ji && lunarInfo.ji.length > 0)
+    ? lunarInfo.ji
+    : (Array.isArray(avoidList) ? (avoidList.filter(Boolean) as string[]) : []);
 
   const liteDo = isLite ? safeDo.slice(0, 1) : safeDo.slice(0, 3);
   const liteAvoid = isLite ? safeAvoid.slice(0, 1) : safeAvoid.slice(0, 3);
@@ -112,9 +140,16 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
     >
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem", flex: 1 }}>
-          <span style={{ color: "rgba(35,64,53,0.7)", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.05em" }}>
-            {locale === "zh" ? "今日养生节气" : "Today's Seasonal Focus"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <span style={{ color: "rgba(35,64,53,0.7)", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.05em" }}>
+              {locale === "zh" ? "今日养生节气" : "Today's Seasonal Focus"}
+            </span>
+            {lunarInfo && lunarInfo.lunarDate && (
+              <span style={{ color: "rgba(35,64,53,0.6)", fontSize: "0.6rem" }}>
+                {locale === "zh" ? `农历${lunarInfo.lunarDate}` : `Lunar ${lunarInfo.lunarDate}`}
+              </span>
+            )}
+          </div>
           <h2 style={{ margin: 0, fontSize: "1.1rem", color: "#234035", lineHeight: 1.2 }}>{resolvedName}</h2>
         </div>
         <motion.span

@@ -33,23 +33,18 @@ const SOLAR_TERM_BOUNDARIES = [
 ];
 
 /**
- * 解析节气代码（使用最准确的算法）
- * 优先使用预计算的准确日期表，其次使用天文计算算法
+ * 解析节气代码（使用简化的日期匹配）
  */
+import { getSolarTermByDate } from "./simple";
+
 export function resolveSolarTermCode(date: Date): string {
   try {
-    // 优先使用准确的日期表（2024-2025年）
-    return resolveSolarTermCodeFromPreciseDates(date);
+    // 使用简化的日期匹配方法
+    return getSolarTermByDate(date);
   } catch (error) {
-    console.warn("[resolveSolarTermCode] Precise dates failed, using improved algorithm:", error);
-    try {
-      // 如果日期表不可用，使用改进的天文计算算法
-      return resolveSolarTermCodeImproved(date);
-    } catch (error2) {
-      console.warn("[resolveSolarTermCode] Improved algorithm failed, using fallback:", error2);
-      // 最后使用旧的固定日期方法作为备用
-      return resolveSolarTermCodeFallback(date);
-    }
+    console.warn("[resolveSolarTermCode] Simple date matching failed, using fallback:", error);
+    // 使用旧的固定日期方法作为备用
+    return resolveSolarTermCodeFallback(date);
   }
 }
 
