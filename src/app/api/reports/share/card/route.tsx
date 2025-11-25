@@ -102,7 +102,7 @@ export async function GET(request: Request) {
         </div>
         <div style={{ marginTop: "auto", fontSize: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span>seeqi.app</span>
+            <span>www.seeqicloud.com</span>
             <span style={{ fontSize: 18, color: subtitleColor }}>Oriental wisdom · AI-powered wellness insights</span>
           </div>
           {ref && (

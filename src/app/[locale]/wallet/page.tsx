@@ -176,7 +176,11 @@ export default async function WalletPage({ params }: PageProps) {
                 : "Upgrade to SeeQi Pro to accumulate earnings and enable withdrawal requests."}
             </span>
             <Link
-              href={`/${locale}/pricing`}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                alert(locale === "zh" ? "升级功能暂未开放" : "Upgrade feature coming soon");
+              }}
               style={{
                 borderRadius: "999px",
                 padding: "0.45rem 1.1rem",

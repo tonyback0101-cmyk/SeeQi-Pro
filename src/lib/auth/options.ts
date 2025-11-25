@@ -4,7 +4,7 @@ import type { JWT } from "next-auth/jwt";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getLatestSubscriptionStatus } from "@/lib/server/subscription";
+import { getLatestSubscriptionStatus, getCurrentUserPlan } from "@/lib/server/subscription";
 
 type RequireEnvOptions = {
   name: string;
@@ -110,46 +110,6 @@ providers.push(
   })
 );
 
-const testUsername = requireEnv({ name: "NEXTAUTH_TEST_USERNAME", optional: true }) ?? "test@seeqi.app";
-const testPassword = requireEnv({ name: "NEXTAUTH_TEST_PASSWORD", optional: true }) ?? "SeeQiTest123";
-
-if (process.env.NODE_ENV !== "production") {
-  providers.push(
-    CredentialsProvider({
-      id: "test-account",
-      name: "Test Account",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          throw new Error("missing_credentials");
-        }
-
-        console.log("[test-account] attempt", {
-          receivedUsername: credentials.username,
-          expectedUsername: testUsername,
-          receivedPassword: credentials.password,
-          expectedPassword: testPassword,
-        });
-
-        if (credentials.username !== testUsername || credentials.password !== testPassword) {
-          throw new Error("invalid_test_credentials");
-        }
-
-        return {
-          id: `test-${Buffer.from(testUsername).toString("base64")}`,
-          email: testUsername,
-          name: "SeeQi QA Tester",
-          phone: null,
-          image: undefined,
-        } as any;
-      },
-    })
-  );
-}
-
 // 运行时检查：如果使用占位值，说明环境变量未配置
 if (supabaseUrl === "https://placeholder.supabase.co" || supabaseServiceRoleKey === "placeholder-key") {
   if (process.env.NODE_ENV !== "development" || process.env.VERCEL) {
@@ -166,6 +126,35 @@ export const authOptions = {
     strategy: "jwt",
     maxAge: 60 * 60 * 24 * 30,
   },
+  cookies: {
+    sessionToken: {
+      // 在开发环境（HTTP）不使用 __Secure- 前缀，避免警告
+      // __Secure- 前缀要求 secure 标志为 true，且只能在 HTTPS 上使用
+      name: process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL?.startsWith("https://")
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        // 明确检查是否为 HTTPS，在开发环境（localhost）不使用 secure
+        // 使用 NEXTAUTH_URL 或检查协议，明确禁用 localhost 的 secure
+        secure: (() => {
+          // 检查是否为 localhost 或 127.0.0.1
+          const url = process.env.NEXTAUTH_URL || "";
+          const isLocalhost = url.includes("localhost") || url.includes("127.0.0.1") || !url;
+          const isHttps = url.startsWith("https://");
+          const isProduction = process.env.NODE_ENV === "production";
+          // 如果是 localhost 或开发环境，明确禁用 secure
+          if (isLocalhost || !isProduction) {
+            return false;
+          }
+          // 只在生产环境且明确使用 HTTPS 时使用 secure
+          return isProduction && isHttps;
+        })(),
+      },
+    },
+  },
   providers,
   callbacks: {
     async session({ session, token, user }: { session: Session; token: JWT; user?: any }) {
@@ -176,6 +165,9 @@ export const authOptions = {
       }
       if (token.subscription) {
         session.subscription = token.subscription;
+      }
+      if (token.proStatus) {
+        session.proStatus = token.proStatus;
       }
       return session;
     },
@@ -188,6 +180,10 @@ export const authOptions = {
         const shouldRefresh = Boolean(user) || !token.subscriptionCheckedAt || Date.now() - token.subscriptionCheckedAt > 5 * 60 * 1000;
         if (shouldRefresh) {
           try {
+            // V2 统一使用 getCurrentUserPlan 获取 Pro 状态
+            const proStatus = await getCurrentUserPlan(userId);
+            token.proStatus = proStatus;
+            // 保留旧的 subscription 字段以兼容现有代码
             const subscription = await getLatestSubscriptionStatus(userId);
             token.subscription = subscription;
             token.subscriptionCheckedAt = Date.now();

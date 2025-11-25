@@ -45,7 +45,7 @@ const SharePoster = forwardRef<SharePosterHandle, SharePosterProps>(({ report },
   const drawQr = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const url = typeof window !== "undefined" ? window.location.href : "https://seeqi.app";
+    const url = typeof window !== "undefined" ? window.location.href : "https://www.seeqicloud.com";
     await QRCode.toCanvas(canvas, url, { margin: 0, width: 124 });
   }, []);
 
@@ -60,7 +60,7 @@ const SharePoster = forwardRef<SharePosterHandle, SharePosterProps>(({ report },
 
     if (typeof navigator !== "undefined" && navigator.share && (navigator as any).canShare?.({ files: [] })) {
       try {
-        const file = dataURLtoFile(dataUrl, `seeqi-${report.id}.png`);
+        const file = dataURLtoFile(dataUrl, `seeqicloud-${report.id}.png`);
         await navigator.share({
           title: "SeeQi 报告",
           files: [file],
@@ -74,7 +74,7 @@ const SharePoster = forwardRef<SharePosterHandle, SharePosterProps>(({ report },
 
     const link = document.createElement("a");
     link.href = dataUrl;
-    link.download = `seeqi-${report.id}.png`;
+    link.download = `seeqicloud-${report.id}.png`;
     link.click();
   }, [drawQr, report.id]);
 
@@ -103,7 +103,7 @@ const SharePoster = forwardRef<SharePosterHandle, SharePosterProps>(({ report },
             </ul>
           </div>
         ) : null}
-        <p className="mt-6 text-xs text-gray-400">SeeQi · 东方智慧与健康能量 · seeqi.app</p>
+        <p className="mt-6 text-xs text-gray-400">SeeQi · 东方智慧与健康能量 · www.seeqicloud.com</p>
       </div>
     </div>
   );

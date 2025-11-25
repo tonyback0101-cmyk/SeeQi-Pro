@@ -236,6 +236,7 @@ export default function Navigation({ initialLanguage = "zh" }: NavigationProps) 
             display: none;
             padding: 0.5rem 1.5rem;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            -webkit-backdrop-filter: blur(12px);
             backdrop-filter: blur(12px);
           }
           .seeqi-nav__menu--open {

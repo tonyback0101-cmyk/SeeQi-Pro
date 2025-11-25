@@ -56,6 +56,7 @@ export default function QiGauge({ score, level, trend, locked = false }: QiGauge
           fill="transparent"
           style={{
             transition: "stroke-dashoffset 0.8s ease",
+            WebkitFilter: locked ? "none" : "drop-shadow(0 8px 18px rgba(76, 95, 215, 0.2))",
             filter: locked ? "none" : "drop-shadow(0 8px 18px rgba(76, 95, 215, 0.2))",
           }}
           transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}

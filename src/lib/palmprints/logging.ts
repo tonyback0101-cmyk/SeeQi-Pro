@@ -9,7 +9,7 @@ function resolveBaseUrl(): string | null {
     return window.location.origin.replace(/\/$/, "");
   }
   if (typeof process !== "undefined") {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
+    const base = process.env.NEXT_PUBLIC_APP_URL;
     if (base) {
       return base.replace(/\/$/, "");
     }

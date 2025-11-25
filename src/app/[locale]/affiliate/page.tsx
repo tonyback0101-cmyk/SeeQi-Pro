@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth/options";
 import { fetchAffiliateDashboard } from "@/lib/server/affiliate";
 import { COLORS } from "@/lib/colors";
 import AffiliateShareTools from "@/components/affiliate/AffiliateShareTools";
+import { getPublicAppUrl } from "@/lib/env/urls";
 
 const PRIMARY_COLOR = COLORS.primary.qingzhu;
 const SECONDARY_COLOR = COLORS.secondary.gold;
@@ -146,8 +147,8 @@ export default async function AffiliatePage({ params }: PageProps) {
   }
 
   const dashboard = await fetchAffiliateDashboard(session.user.id);
-  const shareBase = process.env.NEXT_PUBLIC_APP_URL ?? "https://seeqi.app";
-  const shareLink = dashboard.refCode ? `${shareBase.replace(/\/$/, "")}/?ref=${dashboard.refCode}` : `${shareBase}`;
+  const shareBase = getPublicAppUrl();
+  const shareLink = dashboard.refCode ? `${shareBase}/?ref=${dashboard.refCode}` : `${shareBase}`;
 
   const summaryCards = [
     { key: "balance" as const, value: formatCurrency(dashboard.balance, dashboard.currency, locale) },
@@ -224,7 +225,11 @@ export default async function AffiliatePage({ params }: PageProps) {
                 : "Upgrade to SeeQi Pro to unlock tracked commissions and premium promo assets."}
             </span>
             <Link
-              href={`/${locale}/pricing`}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                alert(locale === "zh" ? "升级功能暂未开放" : "Upgrade feature coming soon");
+              }}
               style={{
                 borderRadius: "999px",
                 padding: "0.45rem 1.1rem",

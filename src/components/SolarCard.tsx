@@ -173,18 +173,27 @@ export default function SolarCard({ locale, name, doList, avoidList, healthTip, 
   const [lunarDate, setLunarDate] = useState<string>("");
   const [huangliData, setHuangliData] = useState<{ yi: string[]; ji: string[]; wuxing?: string } | null>(null);
 
-  // 使用工具函数获取节气名称（始终使用工具函数，忽略传入的 name prop）
-  const currentDate = useMemo(() => new Date(), []);
-  const solarTermName = useMemo(() => {
+  // 使用 useState 来避免服务器端和客户端日期不一致导致的 hydration 错误
+  const [currentDate] = useState(() => new Date());
+  const [solarTermName, setSolarTermName] = useState<string>(() => {
     try {
-      // 始终使用工具函数 getSolarTerm() 获取准确的节气名称
-      return getSolarTerm(currentDate);
+      return getSolarTerm(new Date());
     } catch (error) {
       console.error("[SolarCard] Failed to get solar term:", error);
-      // 只有在工具函数失败时才使用传入的 name
       return name ?? (locale === "zh" ? "今日节气" : "Current Solar Term");
     }
-  }, [currentDate, locale, name]); // 添加 name 到依赖数组以消除警告（虽然实际不使用）
+  });
+
+  useEffect(() => {
+    // 客户端 hydration 后更新为当前日期和节气名称
+    const today = new Date();
+    try {
+      setSolarTermName(getSolarTerm(today));
+    } catch (error) {
+      console.error("[SolarCard] Failed to get solar term:", error);
+      setSolarTermName(name ?? (locale === "zh" ? "今日节气" : "Current Solar Term"));
+    }
+  }, [locale, name]);
 
   useEffect(() => {
     try {

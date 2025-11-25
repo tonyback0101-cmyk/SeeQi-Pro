@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/options";
 import { getStripeClient } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getTemporaryReport } from "@/lib/tempReportStore";
+import { getPublicAppUrl } from "@/lib/env/urls";
 
 export const runtime = "nodejs";
 
@@ -28,14 +29,6 @@ function requireEnv(name: string): string {
     throw new Error(`缺少环境变量 ${name}`);
   }
   return value;
-}
-
-function resolveAppUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    "http://localhost:3001"
-  ).replace(/\/$/, "");
 }
 
 async function loadPrice(): Promise<PriceCache> {
@@ -83,12 +76,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const priceEnv =
-      process.env.STRIPE_FULL_REPORT_PRICE_ID ||
-      process.env.NEXT_PUBLIC_STRIPE_PRICE_ONE ||
-      process.env.NEXT_PUBLIC_STRIPE_FULL_PRICE_ID ||
-      "";
-    if (priceEnv.trim().length === 0) {
+    // 统一使用 V2 标准环境变量
+    const priceEnv = process.env.STRIPE_FULL_REPORT_PRICE_ID;
+    if (!priceEnv || priceEnv.trim().length === 0) {
+      console.error("[POST /api/pay/checkout] 缺少环境变量 STRIPE_FULL_REPORT_PRICE_ID，请在 .env.local 或 Vercel 环境变量中配置");
       return NextResponse.json(
         {
           error: checkoutLocale === "zh"
@@ -111,7 +102,7 @@ export async function POST(request: Request) {
     if (supabase) {
       try {
         const { data, error } = await supabase
-          .from("reports")
+          .from("report_v2")
           .select("id, unlocked, session_id")
           .eq("id", reportId)
           .maybeSingle();
@@ -148,12 +139,12 @@ export async function POST(request: Request) {
 
     const priceInfo = await loadPrice();
     let existingOrder:
-      | { id: string; status: string | null; provider_intent_id: string | null; user_id: string | null }
+      | { id: string; status: string | null; stripe_checkout_session_id: string | null; user_id: string | null }
       | null = null;
     if (supabase) {
       const { data: order, error: orderQueryError } = await supabase
         .from("orders")
-        .select("id, status, provider_intent_id, user_id")
+        .select("id, status, stripe_checkout_session_id, user_id")
         .eq("report_id", reportId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -168,9 +159,31 @@ export async function POST(request: Request) {
       if (existingOrder?.status === "paid") {
         return NextResponse.json({ alreadyUnlocked: true }, { status: 200 });
       }
+
+      // 如果存在 pending 订单且有 checkout_session_id，检查是否仍有效
+      if (existingOrder?.status === "pending" && existingOrder.stripe_checkout_session_id) {
+        try {
+          const session = await stripeClient.checkout.sessions.retrieve(
+            existingOrder.stripe_checkout_session_id
+          );
+          if (session.status === "complete" || session.payment_status === "paid") {
+            // 支付已完成，但订单状态未更新，返回已解锁
+            return NextResponse.json({ alreadyUnlocked: true }, { status: 200 });
+          }
+          if (session.status === "open") {
+            // 支付会话仍有效，返回现有会话 URL
+            if (session.url) {
+              return NextResponse.json({ url: session.url }, { status: 200 });
+            }
+          }
+        } catch (error) {
+          console.warn("[POST /api/pay/checkout] Failed to retrieve existing session", error);
+          // 继续创建新会话
+        }
+      }
     }
 
-    const appUrl = resolveAppUrl();
+    const appUrl = getPublicAppUrl();
     const checkoutSession = await stripeClient.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -180,11 +193,14 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/${checkoutLocale}/analysis-result/${reportId}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/${checkoutLocale}/analysis-result/${reportId}`,
+      success_url: `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&success=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&canceled=1`,
       customer_email: userEmail,
       metadata: {
-        reportId,
+        user_id: userId ?? "", // V2 统一格式：user_id
+        mode: "single", // V2 统一格式：标记为单次报告购买
+        report_id: reportId, // V2 统一格式：report_id
+        reportId, // 兼容旧格式
         sessionId: report.session_id ?? "",
         orderId: existingOrder?.id ?? "",
         locale: checkoutLocale,
@@ -202,52 +218,74 @@ export async function POST(request: Request) {
         report_id: reportId,
         status: "pending",
         currency: priceInfo.currency,
-        amount_cents: priceInfo.unit_amount,
+        amount: priceInfo.unit_amount, // 金额（分），使用 amount 字段（与 webhook 一致）
+        kind: "single", // V2 统一格式：标记为单次报告购买
         payment_provider: "stripe",
-        provider_intent_id: checkoutSession.id,
+        stripe_checkout_session_id: checkoutSession.id, // V2 统一格式：使用 stripe_checkout_session_id
+        stripe_payment_intent_id: null, // 支付成功后由 webhook 更新
         metadata: {
           locale: checkoutLocale,
           priceId: priceInfo.id,
         },
       };
 
-      try {
-        // 如果 session_id 不为 null，验证 session 存在
-        if (orderPayload.session_id) {
-          const { data: sessionCheck } = await supabase
-            .from("sessions")
+      // 订单插入重试机制
+      let orderInserted = false;
+      const maxRetries = 3;
+      let retryCount = 0;
+      
+      while (!orderInserted && retryCount < maxRetries) {
+        try {
+          // 如果 session_id 不为 null，验证 session 存在
+          if (orderPayload.session_id) {
+            const { data: sessionCheck } = await supabase
+              .from("sessions")
+              .select("id")
+              .eq("id", orderPayload.session_id as string)
+              .maybeSingle();
+            
+            if (!sessionCheck) {
+              console.warn("[POST /api/pay/checkout] Session does not exist for order:", orderPayload.session_id);
+              // 将 session_id 设为 null，避免外键约束错误
+              orderPayload.session_id = null;
+            }
+          }
+          
+          // 验证 report_id 存在
+          const { data: reportCheck } = await supabase
+            .from("report_v2")
             .select("id")
-            .eq("id", orderPayload.session_id as string)
+            .eq("id", reportId)
             .maybeSingle();
           
-          if (!sessionCheck) {
-            console.warn("[POST /api/pay/checkout] Session does not exist for order:", orderPayload.session_id);
-            // 将 session_id 设为 null，避免外键约束错误
-            orderPayload.session_id = null;
+          if (!reportCheck) {
+            console.warn("[POST /api/pay/checkout] Report does not exist for order:", reportId);
+            // 不插入订单，因为 report_id 是必需的
+            throw new Error("报告不存在，无法创建订单");
+          }
+          
+          if (existingOrder?.id) {
+            const { error: updateError } = await supabase.from("orders").update(orderPayload).eq("id", existingOrder.id);
+            if (updateError) throw updateError;
+          } else {
+            const { error: insertError } = await supabase.from("orders").insert(orderPayload);
+            if (insertError) throw insertError;
+          }
+          
+          orderInserted = true;
+          console.log("[POST /api/pay/checkout] Order successfully saved");
+        } catch (error) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            console.error("[POST /api/pay/checkout] order upsert failed after retries", error);
+            // 最后一次重试失败，记录警告但不阻止支付流程
+            // 因为支付链接已经创建，订单记录失败可以通过 webhook 补充
+          } else {
+            console.warn(`[POST /api/pay/checkout] order upsert failed, retrying (${retryCount}/${maxRetries})`, error);
+            // 等待后重试（指数退避）
+            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
           }
         }
-        
-        // 验证 report_id 存在
-        const { data: reportCheck } = await supabase
-          .from("reports")
-          .select("id")
-          .eq("id", reportId)
-          .maybeSingle();
-        
-        if (!reportCheck) {
-          console.warn("[POST /api/pay/checkout] Report does not exist for order:", reportId);
-          // 不插入订单，因为 report_id 是必需的
-          throw new Error("报告不存在，无法创建订单");
-        }
-        
-        if (existingOrder?.id) {
-          await supabase.from("orders").update(orderPayload).eq("id", existingOrder.id);
-        } else {
-          await supabase.from("orders").insert(orderPayload);
-        }
-      } catch (error) {
-        console.error("[POST /api/pay/checkout] order upsert failed", error);
-        // 不返回错误，因为支付链接已经创建，订单记录失败不影响支付流程
       }
     }
 

@@ -38,6 +38,7 @@
     "node_modules",
     "vitest.config.ts",
     "vitest.setup.ts",
-    "test/**/*"
+    "test/**/*",
+    "src/legacy"
   ]
 }

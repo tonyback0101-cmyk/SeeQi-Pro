@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@/lib/server/subscription";
+import type { SubscriptionStatus, UserProStatus } from "@/lib/server/subscription";
 
 declare module "next-auth" {
   interface Session {
@@ -10,6 +10,7 @@ declare module "next-auth" {
       phone?: string | null;
     };
     subscription?: SubscriptionStatus;
+    proStatus?: UserProStatus;
   }
 
   interface User {
@@ -21,6 +22,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     phone?: string | null;
     subscription?: SubscriptionStatus;
+    proStatus?: UserProStatus;
     subscriptionCheckedAt?: number;
   }
 }

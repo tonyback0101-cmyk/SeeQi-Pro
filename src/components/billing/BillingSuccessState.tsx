@@ -43,25 +43,18 @@ export default function BillingSuccessState({ locale }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchStatus = useCallback(async () => {
+    // TODO: 旧版订阅 API 已废弃，功能暂未开放
     setIsRefreshing(true);
     try {
-      const response = await fetch("/api/billing/refresh-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = (await response.json()) as ApiResponse;
-      if (!response.ok) {
-        throw new Error(data?.error ?? "Network error");
-      }
-      if (data.subscription?.active) {
-        setState("active");
-        setMessage(copy.success);
-      } else {
-        setState("pending");
-        setMessage(copy.pending);
-      }
+      // 旧版 API 已移动到 legacy，不再使用
+      // const response = await fetch("/api/billing/refresh-subscription", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      // });
+      // const data = (await response.json()) as ApiResponse;
+      throw new Error("Subscription feature not available");
     } catch (error) {
       console.error("BillingSuccessState", error);
       setState("error");
@@ -166,6 +159,11 @@ export default function BillingSuccessState({ locale }: Props) {
     </div>
   );
 }
+
+
+
+
+
 
 
 

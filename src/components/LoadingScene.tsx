@@ -74,6 +74,7 @@ export default function LoadingScene({ locale }: { locale: Locale }) {
           top: -20%;
           left: 50%;
           transform: translateX(-50%);
+          -webkit-filter: blur(60px);
           filter: blur(60px);
         }
         .orb {
@@ -83,6 +84,7 @@ export default function LoadingScene({ locale }: { locale: Locale }) {
           aspect-ratio: 1/1;
           border-radius: 50%;
           background: radial-gradient(circle, rgba(141, 174, 146, 0.35), rgba(141, 174, 146, 0));
+          -webkit-filter: blur(40px);
           filter: blur(40px);
           animation: float 8s ease-in-out infinite alternate;
         }
@@ -108,6 +110,7 @@ export default function LoadingScene({ locale }: { locale: Locale }) {
           z-index: 1;
           width: min(520px, 100%);
           background: rgba(255, 255, 255, 0.86);
+          -webkit-backdrop-filter: blur(12px);
           backdrop-filter: blur(12px);
           border-radius: 28px;
           padding: 2.4rem 2rem;

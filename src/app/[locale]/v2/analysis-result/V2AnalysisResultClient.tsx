@@ -1,0 +1,899 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import { fadeUp, stagger } from "@/lib/motion";
+import { buildHomePage, buildV2ResultPage } from "@/lib/v2/routes";
+import FiveAspectOverview from "./components/FiveAspectOverview";
+import PalmistryBlock from "./components/PalmistryBlock";
+import TongueBlock from "./components/TongueBlock";
+import DreamBlock from "./components/DreamBlock";
+import CalendarAndStatusBlock from "./components/CalendarAndStatusBlock";
+import ProFullReportSection from "./components/ProFullReportSection";
+import type { V2AccessResult } from "@/lib/access/v2Access";
+import type { AnalysisV2Result } from "@/lib/analysis/v2/reportStore";
+import UnlockModal from "@/components/v2/UnlockModal";
+
+type Locale = "zh" | "en";
+
+/**
+ * 访问级别类型
+ */
+export type AccessLevel = "preview" | "full";
+
+/**
+ * 统一判断访问级别
+ * 判断规则：
+ * 1. 是否有针对该 reportId 的单次购买记录
+ * 2. 或者是否是有效订阅用户
+ * 3. 否则为 preview
+ */
+function getAccessLevel(
+  report: AnalysisV2Result,
+  access: V2AccessResult,
+): AccessLevel {
+  // 如果 access.hasFullAccess 为 true，说明有单次购买或有效订阅
+  if (access.hasFullAccess) {
+    return "full";
+  }
+  // 否则为预览模式
+  return "preview";
+}
+
+/**
+ * 统一判断是否为付费用户（Pro）
+ * 保留现有 computeV2Access / V2AccessResult 的实现逻辑，只做使用
+ */
+function getIsPro(access: V2AccessResult, user?: { is_pro?: boolean } | null): boolean {
+  // 检查 access.level 是否为付费级别（single_paid, sub_month, sub_year 都视为 full）
+  const isFullLevel = access.level === "single_paid" || access.level === "sub_month" || access.level === "sub_year";
+  
+  // 统一计算 isPro
+  return (
+    isFullLevel ||
+    access.hasFullAccess === true ||
+    (user?.is_pro === true)
+  );
+}
+
+type V2AnalysisResultClientProps = {
+  locale: Locale;
+  report: AnalysisV2Result;
+  access: V2AccessResult;
+  userId: string | null;
+  isLoggedIn: boolean;
+  user?: { is_pro?: boolean } | null;
+};
+
+type TongueResult = {
+  color: string;
+  coating: string;
+  texture: string;
+  qualityScore: number;
+};
+
+type V2ReportResponse = {
+  id: string;
+  created_at: string;
+  normalized?: {
+    palm_insight?: {
+      life_rhythm: string;
+      emotion_pattern: string;
+      thought_style: string;
+      palm_overview_summary: string;
+      palm_advice: string[];
+    } | null;
+    palm_result?: {
+      color: string;
+      texture: string;
+      lines: {
+        life?: string;
+        heart?: string;
+        wisdom?: string;
+        wealth?: string;
+      };
+      qualityScore: number;
+    } | null;
+    body_tongue?: {
+      qi_pattern: string;
+      energy_state: string;
+      body_trend: string;
+      health_care_advice: string[];
+    } | null;
+    constitution?: {
+      type: string;
+      name: string;
+      name_en: string;
+      description_paragraphs: string[];
+      constitution_advice: string[];
+    } | null;
+    dream_insight?: {
+      archetype?: {
+        type?: string;
+        symbol_meaning?: string;
+        mood_pattern?: string;
+        trend_hint?: string;
+        suggestion_tags?: string[];
+      } | null;
+      llm?: {
+        ImageSymbol?: string | null;
+        MindState?: string | null;
+        Trend?: string | null;
+        Advice?: string[];
+        symbolic?: string | null;
+        psychological?: string | null;
+        trend?: string | null;
+        actions?: string[];
+      } | null;
+    } | null;
+    qi_rhythm?: {
+      index: number;
+      tag: string;
+      trend: "up" | "down" | "flat";
+      summary?: string;
+      trendText?: string;
+      advice?: string[];
+      description?: string;
+      suggestions?: string[];
+    } | null;
+    advice?: {
+      actions: string[];
+    } | null;
+  };
+  palm_insight?: {
+    life_rhythm?: string;
+    emotion_pattern?: string;
+    thought_style?: string;
+    palm_overview_summary?: string;
+    palm_advice?: string[];
+  } | null;
+  palm_result?: {
+    color: string;
+    texture: string;
+    lines: {
+      life?: string;
+      heart?: string;
+      wisdom?: string;
+      wealth?: string;
+    };
+    qualityScore: number;
+  } | null;
+  body_tongue?: {
+    qi_pattern?: string;
+    energy_state?: string;
+    body_trend?: string;
+    health_care_advice?: string[];
+    summary?: string;
+    suggestions?: string[];
+  } | null;
+  constitution?: {
+    type?: string;
+    name?: string;
+    name_en?: string;
+    description_paragraphs?: string[];
+    constitution_advice?: string[];
+    feature?: string;
+    advice?: string;
+    adviceSummary?: string;
+  } | null;
+  dream_insight?: {
+    archetype?: {
+      type?: string;
+      symbol_meaning?: string;
+      mood_pattern?: string;
+      trend_hint?: string;
+      suggestion_tags?: string[];
+    } | null;
+    llm?: {
+      ImageSymbol?: string | null;
+      MindState?: string | null;
+      Trend?: string | null;
+      Advice?: string[];
+      symbolic?: string | null;
+      psychological?: string | null;
+      trend?: string | null;
+      actions?: string[];
+    } | null;
+  } | null;
+  qi_rhythm?: {
+    index: number;
+    tag: string;
+    trend: "up" | "down" | "flat";
+    summary?: string;
+    trendText?: string;
+    advice?: string[];
+  } | null;
+  advice?: {
+    actions: string[];
+  } | null;
+};
+
+const TEXT = {
+  zh: {
+    title: "综合测评报告（预览版）",
+    subtitle: "基于掌纹、舌象、体质、梦境与气运的综合分析",
+    loading: "正在加载报告…",
+    failed: "抱歉，报告暂时无法加载，请稍后再试。",
+    disclaimer:
+      "本报告基于东方象学与现代算法，仅供自我理解与生活启发，不构成医疗或确定性预测，如有健康或心理困扰请遵循专业意见。",
+    unlockHint: "想看完整掌纹 / 舌苔 / 梦境 / 气运详情？",
+    unlockDesc: "可一次解锁本账户（US$1.99），或开通月/年订阅。",
+    unlockButton: "解锁完整报告 · 查看财富线与今日详细建议",
+  },
+  en: {
+    title: "Comprehensive Report (Preview)",
+    subtitle: "Integrated analysis based on palmistry, tongue, constitution, dreams, and qi rhythm",
+    loading: "Loading report…",
+    failed: "Sorry, we couldn't load this report. Please try again later.",
+    disclaimer:
+      "This report draws on Eastern symbolism plus modern modeling for self-understanding only; it is not medical advice or a deterministic prediction.",
+    unlockHint: "Want to see full palm / tongue / dream / qi details?",
+    unlockDesc: "Unlock this account once (US$1.99) or subscribe monthly/yearly.",
+    unlockButton: "Unlock Full Report · View Wealth Line & Detailed Suggestions",
+  },
+} as const;
+
+export default function V2AnalysisResultClient({
+  locale,
+  report,
+  access,
+  userId,
+  isLoggedIn,
+  user,
+}: V2AnalysisResultClientProps) {
+  const t = TEXT[locale];
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [paymentFeedback, setPaymentFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // 获取当前 reportId 与 locale
+  const reportId = searchParams?.get("reportId") ?? report?.id ?? "";
+  const effectiveLocale = locale ?? "zh";
+
+  // 构建当前页面的 URL（用于 UnlockModal 的登录回调）
+  const currentUrl = buildV2ResultPage(effectiveLocale, reportId);
+
+  // 处理支付成功/取消后的回跳
+  // 支付成功后的回跳地址：/${locale}/v2/analysis-result?reportId=<id>&success=1
+  // 支付取消后的回跳地址：/${locale}/v2/analysis-result?reportId=<id>&canceled=1
+  const [urlCleaned, setUrlCleaned] = useState(false);
+  useEffect(() => {
+    if (urlCleaned) return; // 避免重复执行
+    
+    const success = searchParams?.get("success");
+    const canceled = searchParams?.get("canceled");
+    const sessionId = searchParams?.get("session_id");
+    
+    if (success === "1" || canceled === "1") {
+      // 支付成功或取消，清理 URL 参数
+      // 服务器端已经通过 computeV2Access 获取了最新的 access 状态
+      const cleanUrl = buildV2ResultPage(effectiveLocale, reportId);
+      setUrlCleaned(true);
+      // 延迟执行，避免在渲染过程中触发导航
+      setTimeout(() => {
+        router.replace(cleanUrl);
+      }, 100);
+    }
+  }, [searchParams, effectiveLocale, reportId, router, urlCleaned]);
+
+  // 统一访问控制变量：判断是否为付费用户（Pro）
+  // 保留现有 computeV2Access / V2AccessResult 的实现逻辑，只做使用
+  const isPro = getIsPro(access, user);
+
+  // 统一使用 getAccessLevel 判断访问级别（用于向后兼容）
+  const accessLevel = getAccessLevel(report, access);
+  const resolvedAccessLevel = isPro ? "full" : accessLevel;
+  const showPaywall = !isPro;
+
+  // 调试：确保组件正常渲染 - 将 useEffect 移到早期返回之前
+  useEffect(() => {
+    console.log("[V2AnalysisResultClient] Component mounted/updated", {
+      hasReport: !!report,
+      isPro,
+      reportId,
+      effectiveLocale,
+    });
+  }, [report, isPro, reportId, effectiveLocale]);
+
+  if (!report) {
+    return (
+      <div className="min-h-screen bg-mystic-primary text-light-secondary flex items-center justify-center" style={{ backgroundColor: '#0D1B2A', color: '#AABBC9' }}>
+        <div className="text-center">
+          <p style={{ color: '#AABBC9' }}>{t.failed}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 获取报告数据（优先使用 normalized，兼容旧格式）
+  const reportData = report?.normalized ?? report;
+  
+  // 安全地提取数据，所有字段都使用空值处理
+  const palmInsight = reportData?.palm_insight ?? null;
+  const bodyTongue = reportData?.body_tongue ?? null;
+  const constitution = reportData?.constitution ?? null;
+  const dreamInsight = reportData?.dream_insight ?? null;
+  const qiRhythm = reportData?.qi_rhythm ?? null;
+  const advice = reportData?.advice ?? null;
+  
+  // 提取原始结果数据（用于获取 color 等字段）
+  const rawTongueData = (report as any)?.raw_data?.tongue ?? (report as any)?.raw_features?.tongue ?? null;
+  const rawTongueResult = rawTongueData ?? (report as any)?.tongue_result ?? null;
+  const tongueResult = bodyTongue ?? rawTongueResult;
+  
+  // 提取掌纹结果（V2 结构：包含 wealth 字段）
+  const palmResultV2 = (reportData as any)?.palm_result as any; // PalmResultV2 类型
+  const palmResult = (report as any)?.palm_result ?? null; // 旧格式兼容
+
+  // 提取 dream LLM 数据（带空值处理）
+  const dreamLLM = dreamInsight?.llm ?? dreamInsight?.archetype ?? null;
+
+  // 检查数据缺失情况（用于显示警告）
+  const hasDataMissing =
+    !constitution?.type ||
+    (!bodyTongue?.qi_pattern && !rawTongueResult?.color) ||
+    !palmInsight?.life_rhythm ||
+    (!dreamInsight?.llm && !dreamInsight?.archetype) ||
+    (qiRhythm?.index === undefined || qiRhythm?.index === null);
+
+  // 处理 fallback 逻辑
+  const palmFallback = !palmInsight?.life_rhythm && !palmInsight?.palm_overview_summary;
+  const tongueFallback = !bodyTongue?.qi_pattern && !bodyTongue?.summary;
+  const dreamFallback = !dreamLLM?.symbolic && !dreamLLM?.symbol_meaning;
+
+  const fallbackTexts = {
+    zh: {
+      palm: "本次掌纹数据暂未生成完整洞察，可在下一次上传更清晰的掌纹照片。",
+      tongue: "本次舌象数据暂未生成完整洞察，可在下一次上传更清晰的舌象照片。",
+      dream: "本次梦境数据暂未生成完整洞察，可在下一次记录更详细的梦境内容。",
+    },
+    en: {
+      palm: "Palm insight not fully generated this time. Try uploading a clearer palm photo next round.",
+      tongue: "Tongue insight not fully generated this time. Try uploading a clearer tongue photo next round.",
+      dream: "Dream insight not fully generated this time. Try recording more detailed dream content next time.",
+    },
+  };
+
+  const previewHighlights = locale === "zh"
+    ? ["掌纹 / 舌苔 / 梦境三大模块概览", "今日气运节奏 + 公历宜忌提示", "基础建议（3-4 条，供日常参考）"]
+    : ["Palm / tongue / dream quick overview", "Today's qi rhythm + calendar tips", "Baseline advice (3-4 items for daily use)"];
+
+  const proHighlights = locale === "zh"
+    ? ["掌纹财富线 · 事业线深度解读", "舌象体质调理方案（饮食 / 作息 / 情绪）", "梦境象意 + 心绪趋势 + 行动建议", "体质类型 + 今日节律安排"]
+    : ["Deep dive on wealth & career lines", "Tongue-based regimen (diet / rest / emotion)", "Dream symbolism + mood trend + actions", "Constitution type + detailed rhythm planning"];
+
+  const unlockPerks = locale === "zh"
+    ? ["一次解锁本报告", "或订阅 PRO（月/年）", "解锁历史报告与新分析"]
+    : ["Unlock this report once", "Or subscribe PRO (monthly / yearly)", "Access history + new analyses"];
+
+  // 统一的「解锁完整报告」按钮点击处理函数
+  const handleUnlockClick = async () => {
+    if (isSubmitting) return; // 防连点
+    if (!reportId) return;
+
+    if (!isLoggedIn) {
+      const callbackUrl = `/${effectiveLocale}/v2/analysis-result?reportId=${reportId}&intent=unlock`;
+      router.push(`/${effectiveLocale}/auth/sign-in?redirect=${encodeURIComponent(callbackUrl)}`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/pay/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+          locale: effectiveLocale,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        // 跳转到 Stripe 支付页面
+        window.location.href = data.url;
+      } else if (data.alreadyUnlocked) {
+        // 报告已解锁，刷新页面
+        router.refresh();
+      } else {
+        // 显示错误信息
+        const errorMessage = data.error || (effectiveLocale === "zh" ? "创建支付会话失败" : "Failed to create checkout session");
+        setPaymentFeedback({ type: "error", message: errorMessage });
+      }
+    } catch (error) {
+      console.error("[PAY] Checkout error", error);
+      const errorMessage = effectiveLocale === "zh" ? "网络错误，请稍后重试" : "Network error, please try again";
+      setPaymentFeedback({ type: "error", message: errorMessage });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 提取节气和干支信息（从 qi_rhythm.calendar 中获取）
+  const calendarData = (report as any)?.normalized?.qi_rhythm?.calendar ?? 
+                       qiRhythm?.calendar ?? 
+                       (report as any)?.qi_rhythm?.calendar ?? 
+                       null;
+  const solarTerm = calendarData?.solarTerm ?? null;
+  const dayGanzhi = calendarData?.dayGanzhi ?? null;
+
+  return (
+    <>
+    <div className="relative z-10" style={{ backgroundColor: '#0D1B2A', color: '#AABBC9', minHeight: '100vh', width: '100%', position: 'relative', zIndex: 10, display: 'block', visibility: 'visible' }}>
+      {/* 返回链接 - 固定顶部导航 */}
+      {/* bg-mystic-primary/80: 半透明背景，让下面的玄幻背景若隐若现 */}
+      {/* backdrop-blur-sm: 增加模糊效果，增强玄幻感 */}
+      {/* border-b border-card-border: 底部边框使用卡片边框色，形成统一感 */}
+      <header className="sticky top-0 z-50 bg-mystic-primary/80 backdrop-blur-sm px-4 h-12 flex items-center border-b border-card-border-light" style={{ backgroundColor: 'rgba(13, 27, 42, 0.8)', borderBottom: '1px solid rgba(80, 120, 160, 0.4)', color: '#AABBC9' }}>
+        <Link
+          href={buildHomePage(locale)}
+          className="back-link"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-light-secondary">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          {locale === "zh" ? "返回首页" : "Back to Home"}
+        </Link>
+      </header>
+
+      {/* 主要内容区域 */}
+      <main className="container pt-6 space-y-6 relative z-10 pb-24" style={{ backgroundColor: 'transparent', color: '#AABBC9', position: 'relative', zIndex: 10, display: 'block', visibility: 'visible' }}>
+        {/* 数据缺失警告提示 */}
+        {hasDataMissing && (
+          <motion.div
+            variants={fadeUp(0.05)}
+            initial="hidden"
+            animate="visible"
+            className="mb-6 card bg-card-bg-dark border border-card-border-light rounded-lg px-4 py-3 text-left"
+          >
+            <p className="text-sm font-medium text-accent-red">
+              ⚠ {locale === "zh" ? "数据缺失（测试环境）— 显示降级内容。" : "Data Missing (Test Environment) — Showing Fallback Content."}
+            </p>
+          </motion.div>
+        )}
+
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6 w-full max-w-3xl mx-auto px-6 sm:px-10"
+          style={{ color: '#AABBC9' }}
+        >
+        {/* ① 头部信息 + 今日气运节奏（预览可见） */}
+        <section className="report-section" style={{ color: '#AABBC9' }}>
+          <h1 className="report-title">
+            {isPro ? (locale === "zh" ? "综合测评报告" : "Comprehensive Report") : t.title}
+          </h1>
+          <p className="report-subtitle">{t.subtitle}</p>
+          
+          <div className="report-content mt-4 flex justify-between items-center">
+            <div>
+              <div className="text-xs text-light-secondary mb-1">
+                {locale === "zh" ? "今日气运节奏" : "Today's Qi Rhythm"}
+              </div>
+              {dayGanzhi && (
+                <div className="font-serif font-bold text-light-highlight">
+                  {locale === "zh" ? `当天干支为「${dayGanzhi}」` : `Day Ganzhi: ${dayGanzhi}`}
+                </div>
+              )}
+              {!dayGanzhi && solarTerm && (
+                <div className="font-serif font-bold text-light-highlight">
+                  {locale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`}
+                </div>
+              )}
+            </div>
+            <div className="text-2xl opacity-30 text-light-highlight">☯</div>
+          </div>
+        </section>
+
+        {/* ② 五象总览（预览可见） */}
+        <FiveAspectOverview
+          qi="中"
+          shen="中"
+          xing="中-"
+          ming="中+"
+          cai={palmResultV2?.wealth?.level === "high" ? "高" : palmResultV2?.wealth?.level === "low" ? "低" : "中"}
+          delay={0.1}
+          locale={locale}
+        />
+
+        {/* ③ 掌纹简批（预览可见） */}
+        <PalmistryBlock
+          lifeLine={
+            palmResultV2?.life?.interpretation ??
+            palmInsight?.life_rhythm?.split(/[。！？.!?\n]/)[0] ??
+            (locale === "zh" ? "纹路尚清，早岁略虚，后半程有回升之势。" : "Lines are clear; early years slightly weak, with recovery in later stages.")
+          }
+          wisdomLine={
+            palmResultV2?.wisdom?.interpretation ??
+            palmInsight?.thought_style?.split(/[。！？.!?\n]/)[0] ??
+            (locale === "zh" ? "智慧纹清晰，思维敏捷，适合学习与决策。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making.")
+          }
+          heartLine={
+            palmResultV2?.emotion?.interpretation ??
+            palmInsight?.emotion_pattern?.split(/[。！？.!?\n]/)[0] ??
+            (locale === "zh" ? "尾端略有分支，情感上易多思，宜坦诚沟通。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly.")
+          }
+          wealthLine={
+            // 预览版：优先从 palm_result.features.moneyLine 或 AI summaries 读取
+            (report as any)?.palm_result?.features?.moneyLine ??
+            (palmInsight as any)?.wealth?.summary ??
+            palmResultV2?.wealth?.summary ??
+            palmInsight?.wealth_insight ??
+            palmResult?.lines?.wealth ??
+            (locale === "zh" ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。" : "Wealth lines are slightly shallow and straight, indicating 'steady accumulation and gradual growth'; should focus on stable management, less gambling, more accumulation.")
+          }
+          fullData={
+            isPro
+              ? {
+                  life: palmResultV2?.life ?? null,
+                  emotion: palmResultV2?.emotion ?? null,
+                  wisdom: palmResultV2?.wisdom ?? null,
+                  // 完整版：从 palm_insight.wealth 或 palmResultV2.wealth 读取完整数据
+                  wealth: (palmInsight as any)?.wealth
+                    ? {
+                        level: (palmInsight as any).wealth.level ?? palmResultV2?.wealth?.level ?? "medium",
+                        pattern: (palmInsight as any).wealth.pattern ?? palmResultV2?.wealth?.pattern ?? "",
+                        risk: (palmInsight as any).wealth.risk ?? palmResultV2?.wealth?.risk ?? [],
+                        potential: (palmInsight as any).wealth.potential ?? palmResultV2?.wealth?.potential ?? [],
+                        summary: (palmInsight as any).wealth.summary ?? palmResultV2?.wealth?.summary ?? "",
+                      }
+                    : palmResultV2?.wealth ?? null,
+                }
+              : null
+          }
+          accessLevel={resolvedAccessLevel}
+          delay={0.15}
+          locale={locale}
+          reportId={report.id}
+          notice={palmFallback ? fallbackTexts[locale].palm : null}
+          onUnlock={handleUnlockClick}
+        />
+
+        {/* ④ 舌象简批（预览可见） */}
+        <TongueBlock
+          tongueColor={
+            rawTongueResult?.color 
+              ? (locale === "zh" ? `舌色：${rawTongueResult.color}` : `Tongue color: ${rawTongueResult.color}`)
+              : bodyTongue?.tongue_color_signal ??
+                (locale === "zh" ? "舌色偏淡，主气血不足。" : "Tongue color is pale, indicating qi and blood deficiency.")
+          }
+          tongueCoating={
+            rawTongueResult?.coating
+              ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
+              : bodyTongue?.tongue_coating_signal ??
+                (locale === "zh" ? "苔薄略白，寒湿稍重。" : "Coating is thin and slightly white, indicating slight cold-dampness.")
+          }
+          cracks={
+            rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
+              ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
+              : (rawTongueResult?.texture && rawTongueResult.texture !== "cracked") || (rawTongueResult?.shape && rawTongueResult.shape !== "cracked")
+                ? (locale === "zh" ? "无明显裂纹。" : "No obvious cracks.")
+                : null
+          }
+          swelling={
+            rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
+              ? (locale === "zh" ? rawTongueResult.shape === "swollen" ? "舌体偏肿，提示脾虚水湿。" : "舌边有齿痕，提示脾气不足。" : rawTongueResult.shape === "swollen" ? "Tongue is swollen, indicating spleen deficiency with dampness." : "Teeth marks present, indicating spleen qi deficiency.")
+              : rawTongueResult?.shape === "thin"
+                ? (locale === "zh" ? "舌体偏薄，提示阴血不足。" : "Tongue is thin, indicating yin blood deficiency.")
+                : rawTongueResult?.shape === "normal"
+                  ? (locale === "zh" ? "舌体形态正常。" : "Tongue shape is normal.")
+                  : null
+          }
+          redPoints={
+            rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
+              ? (locale === "zh" 
+                  ? rawTongueResult.color === "purple" 
+                    ? "舌色偏紫，提示血瘀。" 
+                    : "舌色偏红，提示内热。" 
+                  : rawTongueResult.color === "purple"
+                    ? "Purple tongue color indicates blood stasis."
+                    : "Red tongue color indicates internal heat.")
+              : null
+          }
+          moisture={
+            bodyTongue?.tongue_moisture_signal ??
+            bodyTongue?.moisture_pattern ??
+            (rawTongueResult?.texture === "moist" 
+              ? (locale === "zh" ? "湿度：湿润" : "Moisture: Moist")
+              : rawTongueResult?.texture === "cracked"
+                ? (locale === "zh" ? "湿度：偏燥" : "Moisture: Dry")
+                : (locale === "zh" ? "湿度：正常" : "Moisture: Normal"))
+          }
+          temperatureTrend={
+            bodyTongue?.heat_pattern ??
+            (locale === "zh" ? "寒热趋势：中性" : "Temperature trend: Neutral")
+          }
+          accessLevel={resolvedAccessLevel}
+          fullContent={
+            isPro
+              ? {
+                  qiPattern: bodyTongue?.qi_pattern ?? null,
+                  energyState: bodyTongue?.energy_state ?? null,
+                  bodyTrend: bodyTongue?.body_trend ?? null,
+                  healthCareAdvice: bodyTongue?.health_care_advice ?? [],
+                  summary: bodyTongue?.summary ?? null,
+                  suggestions: bodyTongue?.suggestions ?? [],
+                }
+              : null
+          }
+          delay={0.2}
+          locale={locale}
+          reportId={report.id}
+          notice={tongueFallback ? fallbackTexts[locale].tongue : null}
+          onUnlock={handleUnlockClick}
+        />
+
+        {/* ⑤ 梦境简批（预览可见） */}
+        <DreamBlock
+          dreamSummary={
+            (dreamInsight as any)?.summary ??
+            null
+          }
+          accessLevel={resolvedAccessLevel}
+          fullContent={
+            isPro
+              ? {
+                  // 象义说明（符号）- 周公解梦风格
+                  imageSymbol: dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? dreamInsight?.symbol ?? null,
+                  symbol: dreamInsight?.symbol ?? dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? null,
+                  // 趋势/吉凶预兆
+                  trend: dreamLLM?.Trend ?? dreamLLM?.trend ?? dreamInsight?.trend ?? null,
+                  // 含义（吉凶）
+                  meaning: dreamLLM?.meaning ?? null,
+                  // 化解建议（禁止心理学相关字段）
+                  advice: dreamLLM?.Advice ?? dreamLLM?.advice ?? dreamInsight?.suggestions ?? dreamInsight?.advice ?? [],
+                  suggestions: dreamInsight?.suggestions ?? dreamLLM?.Advice ?? dreamLLM?.actions ?? [],
+                }
+              : null
+          }
+          delay={0.25}
+          locale={locale}
+          reportId={report.id}
+          notice={dreamFallback ? fallbackTexts[locale].dream : null}
+          onUnlock={handleUnlockClick}
+        />
+
+        {/* ⑥ 吉凶提示 + 身心状态（预览可见） */}
+        <CalendarAndStatusBlock
+          date={report.created_at}
+          solarTerm={solarTerm}
+          dayGanzhi={dayGanzhi}
+          todayYi={
+            calendarData?.yi ??
+            (report as any)?.normalized?.qi_rhythm?.calendar?.yi ??
+            (report as any)?.qi_rhythm?.calendar?.yi ??
+            []
+          }
+          todayJi={
+            calendarData?.ji ??
+            (report as any)?.normalized?.qi_rhythm?.calendar?.ji ??
+            (report as any)?.qi_rhythm?.calendar?.ji ??
+            []
+          }
+          bodyMindStatus={
+            qiRhythm?.summary?.split(/[。！？.!?\n]/)[0] ??
+            bodyTongue?.energy_state?.split(/[。！？.!?\n]/)[0] ??
+            (locale === "zh" ? "身心状态平稳，适合日常节奏。" : "Body-mind state is stable, suitable for daily rhythm.")
+          }
+          delay={0.3}
+          locale={locale}
+          isFullAccess={resolvedAccessLevel === "full"}
+        />
+
+        {/* 付费版内容：仅 isPro 时渲染 */}
+        {isPro && <ProFullReportSection report={report} locale={locale} />}
+
+        {/* 统一解锁按钮（仅非 Pro 用户显示） */}
+        {showPaywall && (
+          <motion.section
+            variants={fadeUp(0.4)}
+            initial="hidden"
+            animate="visible"
+            className="report-section paywall-section"
+          >
+            <div className="paywall-upgrade-card">
+              <div className="paywall-upgrade-header">
+                <span className="paywall-tag emphasize">
+                  {locale === "zh" ? "完整报告" : "Full Report"}
+                </span>
+                <h3 className="paywall-panel-title">
+                  {locale === "zh" ? "升级即可获得" : "Unlock to receive"}
+                </h3>
+              </div>
+              <ul className="paywall-list">
+                {proHighlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <div className="paywall-price-row">
+                <div>
+                  <p className="paywall-price-label">{locale === "zh" ? "解锁方式" : "Options"}</p>
+                  <p className="paywall-price-main">{locale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
+                </div>
+                <div className="paywall-chip-list">
+                  {unlockPerks.map((perk) => (
+                    <span key={perk}>{perk}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="paywall-action-row">
+                <button
+                  type="button"
+                  onClick={handleUnlockClick}
+                  className="paywall-button"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+                  </svg>
+                  {locale === "zh"
+                    ? "解锁完整报告 · 查看财富线与今日修身方案"
+                    : "Unlock full report · detailed plan today"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUnlockClick}
+                  className="paywall-secondary-link"
+                >
+                  {locale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+        </motion.div>
+
+        {/* 免责声明 */}
+        <motion.section
+          variants={fadeUp(0.45)}
+          initial="hidden"
+          animate="visible"
+          className="disclaimer-area"
+        >
+          <p>{t.disclaimer}</p>
+        </motion.section>
+      </main>
+
+      <footer>
+        <p>
+          {locale === "zh"
+            ? "© 2025 SeeQi · 东方玄学洞察系统"
+            : "© 2025 SeeQi · Eastern Insight System"}
+        </p>
+        <p>
+          {locale === "zh"
+            ? "本报告仅供东方象学学习参考，不构成医疗诊断或确定性预测。"
+            : "For Eastern symbolism study only; not medical diagnosis or deterministic prediction."}
+        </p>
+      </footer>
+
+      {/* 固定底部解锁按钮（仅非 Pro 用户显示） */}
+      {/* fixed bottom-0: 确保按钮始终在屏幕底部 */}
+      {/* bg-mystic-primary/90 backdrop-blur-sm: 与顶部导航类似，半透明背景带模糊 */}
+      {!isPro && (
+        <div className="fixed bottom-0 left-0 right-0 bg-mystic-primary/90 backdrop-blur-sm border-t border-card-border-light p-4 shadow-lg z-50">
+          <div className="max-w-md mx-auto">
+            {/* 按钮颜色: bg-accent-gold text-mystic-primary: 强烈的金色按钮，配上深色文字，形成醒目的视觉焦点，引导用户点击解锁 */}
+                   <button
+                     type="button"
+                     onClick={handleUnlockClick}
+                     className="w-full bg-accent-gold text-mystic-primary py-3.5 rounded-full font-bold text-sm shadow-xl hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2"
+                   >
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                       <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+                     </svg>
+                     {locale === "zh" ? "解锁完整报告：查看精密象与今日修身建议" : "Unlock Full Report: View Detailed Insights & Today's Guidance"}
+                   </button>
+          </div>
+        </div>
+      )}
+
+      {/* 解锁 Modal */}
+      {!isPro && (
+        <UnlockModal
+          locale={locale}
+          reportId={reportId}
+          isOpen={unlockModalOpen}
+          onClose={() => setUnlockModalOpen(false)}
+          isLoggedIn={isLoggedIn}
+          currentUrl={currentUrl}
+        />
+      )}
+      {/* 支付反馈 Toast */}
+      {paymentFeedback && (
+        <PaymentFeedbackToast feedback={paymentFeedback} onClose={() => setPaymentFeedback(null)} />
+      )}
+    </div>
+    </>
+  );
+}
+
+/**
+ * 支付反馈 Toast 组件
+ */
+function PaymentFeedbackToast({
+  feedback,
+  onClose,
+}: {
+  feedback: { type: "error" | "success"; message: string };
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    // 只有成功信息自动关闭，错误信息保持可见直到用户手动关闭
+    if (feedback.type === "success") {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+    // 错误信息不自动关闭，需要用户手动关闭
+  }, [feedback.type, onClose]);
+
+  return (
+    <div className={`payment-feedback-toast payment-feedback-toast--${feedback.type}`}>
+      <span>{feedback.message}</span>
+      <button type="button" onClick={onClose} aria-label="关闭">
+        ×
+      </button>
+      <style jsx>{`
+        .payment-feedback-toast {
+          position: fixed;
+          bottom: 1.5rem;
+          right: 1.5rem;
+          padding: 0.85rem 1.2rem;
+          border-radius: 12px;
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+          font-weight: 600;
+          z-index: 2200;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          max-width: 400px;
+        }
+        .payment-feedback-toast--success {
+          background: rgba(141, 174, 146, 0.95);
+          color: #0f2618;
+        }
+        .payment-feedback-toast--error {
+          background: rgba(198, 105, 105, 0.95);
+          color: #fff;
+        }
+        .payment-feedback-toast button {
+          background: transparent;
+          border: none;
+          color: inherit;
+          font-size: 1.5rem;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.8;
+        }
+        .payment-feedback-toast button:hover {
+          opacity: 1;
+        }
+        @media (max-width: 768px) {
+          .payment-feedback-toast {
+            left: 1rem;
+            right: 1rem;
+            max-width: none;
+            bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+

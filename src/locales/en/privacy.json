@@ -28,13 +28,13 @@
       "title": "Your Rights",
       "items": [
         "Withdraw assessments and delete reports at any time. Registered users can manage this in “My Reports”.",
-        "Request data export or deletion by contacting privacy@seeqi.app. We respond within five business days.",
+        "Request data export or deletion by contacting privacy@seeqicloud.com. We respond within five business days.",
         "If you sign in via third-party providers (e.g. Google, Apple), please also follow their privacy policies."
       ]
     },
     "contact": {
       "title": "Contact Us",
-      "description": "Questions about this statement? Email privacy@seeqi.app and we will respond within five business days."
+      "description": "Questions about this statement? Email privacy@seeqicloud.com and we will respond within five business days."
     }
   }
 }

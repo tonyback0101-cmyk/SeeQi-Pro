@@ -1,0 +1,24 @@
+/* 临时测试文件 - 确保玄幻风格样式能显示 */
+/* 如果页面还是黑屏，这个文件可以帮助诊断问题 */
+
+/* 强制所有元素可见 */
+* {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 强制背景色 */
+html, body {
+  background-color: #1C2B3A !important;
+  color: #AABBC9 !important;
+}
+
+/* 强制主容器可见 */
+div[class*="relative"], main {
+  background-color: transparent !important;
+  color: #AABBC9 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+

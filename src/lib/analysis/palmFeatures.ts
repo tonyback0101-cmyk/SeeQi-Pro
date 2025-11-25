@@ -7,6 +7,7 @@ export interface PalmLineSummary {
   life?: "deep" | "shallow" | "broken";
   heart?: "long" | "short" | "curved";
   wisdom?: "clear" | "wavy" | "broken";
+  wealth?: string;
 }
 
 export interface PalmFeatureSummary {

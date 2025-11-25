@@ -1,15 +1,31 @@
-const CACHE_VERSION = "seeqi-v1";
+const CACHE_VERSION = "seeqi-v2";
 const REPORT_CACHE = `${CACHE_VERSION}-reports`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 
 const ASSET_PATTERNS = ["/icons/", "/images/", "/fonts/"];
-const REPORT_PATHS = ["/api/analyze", "/api/result"];
+const REPORT_PATHS = [
+  "/zh/v2/analyze",
+  "/zh/v2/analysis-result",
+  "/zh/v2/reports/palm",
+  "/zh/v2/reports/tongue",
+  "/zh/v2/reports/dream",
+  "/zh/v2/reports/qi",
+  "/en/v2/analyze",
+  "/en/v2/analysis-result",
+  "/en/v2/reports/palm",
+  "/en/v2/reports/tongue",
+  "/en/v2/reports/dream",
+  "/en/v2/reports/qi",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(ASSET_CACHE).then((cache) =>
-      cache.addAll(["/", "/zh", "/en", "/manifest.json"].filter(Boolean)),
-    ),
+    Promise.all([
+      caches.open(ASSET_CACHE).then((cache) =>
+        cache.addAll(["/", "/zh", "/en", "/manifest.json"].filter(Boolean)),
+      ),
+      caches.open(REPORT_CACHE).then((cache) => cache.addAll(REPORT_PATHS)),
+    ]),
   );
   self.skipWaiting();
 });

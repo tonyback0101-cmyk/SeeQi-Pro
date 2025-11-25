@@ -31,8 +31,8 @@ type PageProps = {
 };
 
 export default function DreamShareViewer({ params }: PageProps) {
-  const { locale: localeParam, id } = params;
-  const locale: Locale = localeParam === "en" ? "en" : "zh";
+  const locale: Locale = params.locale === "en" ? "en" : "zh";
+  const id = params.id;
   const copy = COPY[locale];
   const searchParams = useSearchParams();
   const tags = useMemo(() => {

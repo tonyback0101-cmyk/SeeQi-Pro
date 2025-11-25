@@ -31,8 +31,8 @@ type SharePayload = {
 };
 
 type PageProps = {
-  params: { locale: Locale };
-  searchParams: Record<string, string | string[] | undefined>;
+  params: Promise<{ locale: Locale }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function decodePayload(encoded?: string | string[]): SharePayload | null {
@@ -48,9 +48,11 @@ function decodePayload(encoded?: string | string[]): SharePayload | null {
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const locale: Locale = params.locale === "zh" ? "zh" : "en";
+  const { locale: localeParam } = await params;
+  const locale: Locale = localeParam === "zh" ? "zh" : "en";
+  const resolvedSearchParams = await searchParams;
   const base = STRINGS[locale];
-  const payload = decodePayload(searchParams.payload);
+  const payload = decodePayload(resolvedSearchParams.payload);
 
   return {
     title: payload?.title ?? base.title,
@@ -63,12 +65,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   };
 }
 
-export default function SharedReportPage({ params, searchParams }: PageProps) {
-  const locale: Locale = params.locale === "zh" ? "zh" : "en";
+export default async function SharedReportPage({ params, searchParams }: PageProps) {
+  const { locale: localeParam } = await params;
+  const locale: Locale = localeParam === "zh" ? "zh" : "en";
+  const resolvedSearchParams = await searchParams;
   const baseCopy = STRINGS[locale];
-  const payload = decodePayload(searchParams.payload);
-  const ref = typeof searchParams.ref === "string" ? searchParams.ref : undefined;
-  const reportId = typeof searchParams.report === "string" ? searchParams.report : undefined;
+  const payload = decodePayload(resolvedSearchParams.payload);
+  const ref = typeof resolvedSearchParams.ref === "string" ? resolvedSearchParams.ref : undefined;
+  const reportId = typeof resolvedSearchParams.report === "string" ? resolvedSearchParams.report : undefined;
 
   const shareTitle = payload?.title ?? baseCopy.title;
   const shareSubtitle = payload?.summary ?? baseCopy.subtitle;

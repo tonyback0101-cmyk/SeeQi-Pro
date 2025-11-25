@@ -44,22 +44,30 @@ export function saveTemporaryReport(entry: {
 }) {
   const ttl = Number(process.env.TEMP_REPORT_TTL_MS ?? DEFAULT_TTL_MS);
   cleanup(ttl);
-  store.set(entry.report.id, {
+  const reportId = entry.report.id;
+  store.set(reportId, {
     report: entry.report,
     constitution_detail: entry.constitution_detail,
     createdAt: Date.now(),
   });
+  console.log(`[tempReportStore] Saved report: ${reportId}, store size: ${store.size}`);
 }
 
 export function getTemporaryReport(id: string) {
   const ttl = Number(process.env.TEMP_REPORT_TTL_MS ?? DEFAULT_TTL_MS);
   cleanup(ttl);
   const entry = store.get(id);
-  if (!entry) return null;
-  if (Date.now() - entry.createdAt > ttl) {
+  if (!entry) {
+    console.warn(`[tempReportStore] Report not found: ${id}, store size: ${store.size}, available IDs: ${Array.from(store.keys()).slice(0, 5).join(", ")}`);
+    return null;
+  }
+  const age = Date.now() - entry.createdAt;
+  if (age > ttl) {
+    console.warn(`[tempReportStore] Report expired: ${id}, age: ${Math.round(age / 1000)}s, ttl: ${Math.round(ttl / 1000)}s`);
     store.delete(id);
     return null;
   }
+  console.log(`[tempReportStore] Retrieved report: ${id}, age: ${Math.round(age / 1000)}s`);
   return entry;
 }
 

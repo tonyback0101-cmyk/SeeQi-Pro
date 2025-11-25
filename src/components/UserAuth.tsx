@@ -9,9 +9,10 @@ import {
   type MouseEvent as ReactMouseEvent,
   type TouchEvent as ReactTouchEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Loader2, UserRound } from "lucide-react";
+import { buildV2AnalyzePage } from "@/lib/v2/routes";
 
 type AuthStatus = "authenticated" | "guest";
 
@@ -79,6 +80,7 @@ export default function UserAuth({
   onAuthComplete,
 }: UserAuthProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [checkoutFeedback, setCheckoutFeedback] = useState<Feedback | null>(null);
@@ -174,7 +176,7 @@ export default function UserAuth({
   };
 
   const handleUpgrade = useCallback(() => {
-    router.push(`/${locale}/pricing?plans=open`);
+    router.push(`/${locale}/pro`);
     onAuthComplete?.();
   }, [locale, onAuthComplete, router]);
 
@@ -202,6 +204,15 @@ export default function UserAuth({
           setAuthModalOpen(false);
           onAuthComplete?.();
           void runPostSignInTasks();
+          
+          // 登录成功后检查 redirect 参数并重定向
+          const redirect = searchParams.get("redirect");
+          if (redirect) {
+            router.push(redirect);
+          } else {
+            // 默认跳转到 V2 分析页面
+            router.push(buildV2AnalyzePage(locale));
+          }
         }}
       />
       {checkoutFeedback && <FeedbackToast feedback={checkoutFeedback} />}
@@ -254,6 +265,7 @@ function DesktopAuth({
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
           }
           .seeqi-auth__signin:hover {
@@ -358,6 +370,7 @@ function DesktopAuth({
           padding: 0.75rem;
           border-radius: 20px;
           background: rgba(255, 255, 255, 0.88);
+          -webkit-backdrop-filter: blur(16px);
           backdrop-filter: blur(16px);
           box-shadow: 0 24px 48px rgba(25, 34, 28, 0.18);
           opacity: 0;
@@ -656,6 +669,7 @@ function MobileAuth({
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.45);
+          -webkit-backdrop-filter: blur(4px);
           backdrop-filter: blur(4px);
           display: flex;
           align-items: flex-end;
@@ -783,11 +797,8 @@ const authModalCopy = {
     google: "使用 Google 登录",
     phoneTab: "手机号登录",
     emailTab: "邮箱登录",
-    testTab: "测试账号",
     phoneLabel: "手机号（包含国际区号）",
     emailLabel: "邮箱地址",
-    testUsernameLabel: "测试账号",
-    testPasswordLabel: "测试密码",
     emailPlaceholder: "name@example.com",
     requestCode: "获取验证码",
     requestEmailCode: "发送验证码",
@@ -798,9 +809,7 @@ const authModalCopy = {
     success: "登录成功，欢迎回来。",
     invalidPhone: "请输入有效的手机号（需包含国家区号）。",
     invalidEmail: "请输入有效的邮箱地址。",
-    invalidTestCredentials: "测试账号或密码不正确。",
     close: "关闭",
-    testSignIn: "登录测试账号",
   },
   en: {
     title: "Sign in to SeeQi",
@@ -808,11 +817,8 @@ const authModalCopy = {
     google: "Continue with Google",
     phoneTab: "Phone",
     emailTab: "Email",
-    testTab: "Test Account",
     phoneLabel: "Mobile number (with country code)",
     emailLabel: "Email address",
-    testUsernameLabel: "Test username",
-    testPasswordLabel: "Test password",
     emailPlaceholder: "name@example.com",
     requestCode: "Send code",
     requestEmailCode: "Send code",
@@ -823,19 +829,15 @@ const authModalCopy = {
     success: "Signed in successfully. Welcome back!",
     invalidPhone: "Please enter a valid phone number with country code.",
     invalidEmail: "Please enter a valid email address.",
-    invalidTestCredentials: "Invalid test credentials.",
     close: "Close",
-    testSignIn: "Sign in with test account",
   },
 } as const;
 
 function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
   const t = authModalCopy[locale] ?? authModalCopy.zh;
-  const [activeMethod, setActiveMethod] = useState<"phone" | "email" | "test">("phone");
+  const [activeMethod, setActiveMethod] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [testUsername, setTestUsername] = useState("");
-  const [testPassword, setTestPassword] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
@@ -847,7 +849,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
 
   const normalizePhoneInput = useCallback((value: string) => value.replace(/\s+/g, "").replace(/-/g, ""), []);
   const normalizeEmailInput = useCallback((value: string) => value.trim().toLowerCase(), []);
-  const normalizeUsernameInput = useCallback((value: string) => value.trim().toLowerCase(), []);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   useEffect(() => {
@@ -855,8 +856,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
       setActiveMethod("phone");
       setPhone("");
       setEmail("");
-      setTestUsername("");
-      setTestPassword("");
       setPhoneCode("");
       setEmailCode("");
       setPhoneOtpSent(false);
@@ -905,12 +904,8 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
     setLoading(false);
     if (activeMethod === "phone") {
       setEmailCode("");
-      setTestUsername("");
-      setTestPassword("");
     } else if (activeMethod === "email") {
       setPhoneCode("");
-      setTestUsername("");
-      setTestPassword("");
     } else {
       setPhoneCode("");
       setEmailCode("");
@@ -919,7 +914,11 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
 
   const handleGoogle = async () => {
     try {
-      await signIn("google", { callbackUrl: window.location.href });
+      // 检查 URL 中的 redirect 参数，优先使用它作为回调地址
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get("redirect");
+      const callbackUrl = redirect ?? window.location.href;
+      await signIn("google", { callbackUrl });
     } catch (error) {
       console.error("[auth] Google sign-in failed", error);
       setFeedback({
@@ -932,9 +931,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
   };
 
   const handleRequestOtp = async () => {
-    if (activeMethod === "test") {
-      return;
-    }
     const normalizedIdentifier =
       activeMethod === "phone"
         ? normalizePhoneInput(identifier)
@@ -1011,9 +1007,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
   };
 
   const handleVerifyOtp = async () => {
-    if (activeMethod === "test") {
-      return;
-    }
     setFeedback(null);
     const isPhone = activeMethod === "phone";
 
@@ -1055,44 +1048,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
     }
   };
 
-  const handleTestLogin = async () => {
-    const normalizedUsername = normalizeUsernameInput(testUsername);
-    console.log(
-      "[auth-modal] test login submit",
-      JSON.stringify({ username: testUsername, normalizedUsername, passwordLength: testPassword.length })
-    );
-    setFeedback(null);
-    if (!normalizedUsername || !testPassword.trim()) {
-      setFeedback({ type: "error", message: t.invalidTestCredentials });
-      return;
-    }
-    setLoading(true);
-    try {
-      console.log(
-        "[auth-modal] signIn test-account",
-        JSON.stringify({ normalizedUsername, passwordLength: testPassword.length })
-      );
-      const result = await signIn("test-account", {
-        redirect: false,
-        username: normalizedUsername,
-        password: testPassword,
-      });
-      console.log("[auth-modal] signIn result", JSON.stringify(result));
-
-      if (result?.error) {
-        setFeedback({ type: "error", message: t.invalidTestCredentials });
-        return;
-      }
-
-      setFeedback({ type: "success", message: t.success });
-      onSuccess();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t.invalidTestCredentials;
-      setFeedback({ type: "error", message });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!open) {
     return null;
@@ -1100,7 +1055,6 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
 
   const isPhone = activeMethod === "phone";
   const isEmail = activeMethod === "email";
-  const isTest = activeMethod === "test";
   const otpSent = isPhone ? phoneOtpSent : emailOtpSent;
   const countdown = isPhone ? phoneCountdown : emailCountdown;
   const identifier = isPhone ? phone : email;
@@ -1143,54 +1097,9 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
             >
               {t.emailTab}
             </button>
-            <button
-              type="button"
-              className={`seeqi-auth-modal__methodButton ${isTest ? "seeqi-auth-modal__methodButton--active" : ""}`}
-              onClick={() => setActiveMethod("test")}
-            >
-              {t.testTab}
-            </button>
           </div>
 
-          {isTest ? (
-            <>
-              <label className="seeqi-auth-modal__label" htmlFor="auth-test-username">
-                {t.testUsernameLabel}
-              </label>
-              <input
-                id="auth-test-username"
-                type="email"
-                value={testUsername}
-                onChange={(event) => setTestUsername(event.target.value)}
-                placeholder="test@seeqi.app"
-                className="seeqi-auth-modal__input"
-                autoComplete="email"
-              />
-
-              <label className="seeqi-auth-modal__label" htmlFor="auth-test-password">
-                {t.testPasswordLabel}
-              </label>
-              <input
-                id="auth-test-password"
-                type="password"
-                value={testPassword}
-                onChange={(event) => setTestPassword(event.target.value)}
-                placeholder="SeeQiTest123"
-                className="seeqi-auth-modal__input"
-                autoComplete="current-password"
-              />
-
-              <button
-                type="button"
-                className="seeqi-auth-modal__primary seeqi-auth-modal__primary--full"
-                onClick={handleTestLogin}
-                disabled={loading}
-              >
-                {loading ? <Loader2 size={18} className="seeqi-auth-modal__spinner" /> : t.testSignIn}
-              </button>
-            </>
-          ) : (
-            <>
+          <>
               <label className="seeqi-auth-modal__label" htmlFor="auth-identifier">
                 {isPhone ? t.phoneLabel : t.emailLabel}
               </label>
@@ -1239,8 +1148,7 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
                   {loading ? <Loader2 size={18} className="seeqi-auth-modal__spinner" /> : t.verify}
                 </button>
               </div>
-            </>
-          )}
+          </>
 
           {feedback && (
             <p
@@ -1259,6 +1167,7 @@ function AuthModal({ open, locale, onClose, onSuccess }: AuthModalProps) {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.55);
+          -webkit-backdrop-filter: blur(6px);
           backdrop-filter: blur(6px);
           display: flex;
           align-items: flex-start;

@@ -28,13 +28,13 @@
       "title": "您的权利",
       "items": [
         "随时撤回测评并删除报告。若您已注册账号，可在“我的报告”中操作。",
-        "联系官方客服或发送邮件至 privacy@seeqi.app 申请数据导出或删除。",
+        "联系官方客服或发送邮件至 privacy@seeqicloud.com 申请数据导出或删除。",
         "如使用第三方登录（Google、Apple 等），请遵守相应平台的隐私政策。"
       ]
     },
     "contact": {
       "title": "联系我们",
-      "description": "若您对上述条款存在疑问，欢迎发送邮件至 privacy@seeqi.app。我们会在 5 个工作日内回复。"
+      "description": "若您对上述条款存在疑问，欢迎发送邮件至 privacy@seeqicloud.com。我们会在 5 个工作日内回复。"
     }
   }
 }

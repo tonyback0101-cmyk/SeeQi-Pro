@@ -18,37 +18,47 @@ export type ProPlanInfo = {
   interval?: PlanInterval;
 };
 
+/**
+ * 统一使用 V2 标准环境变量获取价格 ID
+ */
+function resolvePriceId(config: PlanConfig): string | null {
+  // 统一映射到 V2 标准环境变量
+  const envKeyMap: Record<ProPlanKey, string> = {
+    monthly: "STRIPE_PRICE_SUB_MONTH_USD",
+    yearly: "STRIPE_PRICE_SUB_YEAR_USD",
+    lifetime: "STRIPE_FULL_REPORT_PRICE_ID", // lifetime 使用单次报告价格
+  };
+  
+  const envKey = envKeyMap[config.key];
+  if (!envKey) {
+    return null;
+  }
+  
+  const value = process.env[envKey];
+  if (!value || value.trim().length === 0) {
+    console.error(`[lib/proPlans] 缺少环境变量 ${envKey}，请在 .env.local 或 Vercel 环境变量中配置`);
+    return null;
+  }
+  
+  return value.trim();
+}
+
 const PLAN_CONFIG: PlanConfig[] = [
   {
     key: "monthly",
-    envKeys: ["STRIPE_PRO_PRICE_MONTH", "STRIPE_PRICE_SUB_MONTH_USD", "STRIPE_PRICE_SUP_MONTH_USD"],
+    envKeys: [], // 不再使用，统一通过 resolvePriceId 处理
   },
   {
     key: "yearly",
-    envKeys: ["STRIPE_PRO_PRICE_YEAR", "STRIPE_PRICE_SUB_YEAR_USD", "STRIPE_PRICE_SUP_YEAR_USD"],
+    envKeys: [], // 不再使用，统一通过 resolvePriceId 处理
   },
   {
     key: "lifetime",
-    envKeys: [
-      "STRIPE_PRO_PRICE_LIFETIME",
-      "STRIPE_PRO_PRICE_ID",
-      "STRIPE_PRICE_REPORT_ONE_USD",
-      "STRIPE_FULL_REPORT_PRICE_ID",
-    ],
+    envKeys: [], // 不再使用，统一通过 resolvePriceId 处理
   },
 ];
 
 const planCache = new Map<string, ProPlanInfo>();
-
-function resolvePriceId(config: PlanConfig): string | null {
-  for (const key of config.envKeys) {
-    const value = process.env[key];
-    if (value && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return null;
-}
 
 export async function getProPlanInfo(plan: ProPlanKey): Promise<ProPlanInfo | null> {
   const config = PLAN_CONFIG.find((item) => item.key === plan);
@@ -118,6 +128,10 @@ export function getDefaultProPlan(plans: ProPlanInfo[]): ProPlanInfo | null {
 
   return plans[0] ?? null;
 }
+
+
+
+
 
 
 

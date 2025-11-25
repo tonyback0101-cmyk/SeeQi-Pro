@@ -1,0 +1,69 @@
+/* ============================================
+   PC端布局：上方宽头部 + 中间卡片纵向排布 + 底部固定CTA
+   ============================================ */
+.v2-page-header {
+  width: 100%;
+  background-color: var(--v2-color-bg-primary);
+  border-bottom: 1px solid var(--v2-color-border);
+  display: none; /* 默认隐藏，PC 端显示 */
+}
+
+@media (min-width: 768px) {
+  .v2-page-header {
+    display: block;
+  }
+}
+
+.v2-page-content {
+  flex: 1;
+  width: 100%;
+  display: none; /* 默认隐藏，PC 端显示 */
+  flex-direction: column;
+  gap: var(--v2-spacing-lg);
+}
+
+@media (min-width: 768px) {
+  .v2-page-content {
+    display: flex;
+  }
+}
+
+.v2-page-footer {
+  width: 100%;
+  background-color: var(--v2-color-bg-primary);
+  border-top: 1px solid var(--v2-color-border);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* Mobile 布局：单列滚动，底部浮动按钮 */
+.v2-page-header-mobile {
+  width: 100%;
+  background-color: var(--v2-color-bg-primary);
+  border-bottom: 1px solid var(--v2-color-border);
+  display: block; /* 默认显示，PC 端隐藏 */
+}
+
+@media (min-width: 768px) {
+  .v2-page-header-mobile {
+    display: none;
+  }
+}
+
+.v2-page-content-mobile {
+  width: 100%;
+  padding-bottom: 100px; /* 为底部浮动按钮留出空间 */
+  display: block; /* 默认显示，PC 端隐藏 */
+}
+
+@media (min-width: 768px) {
+  .v2-page-content-mobile {
+    display: none;
+  }
+}
+
+.v2-page-footer-mobile {
+  /* 已在组件中定义，这里只做补充样式 */
+}
+

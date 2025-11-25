@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useIsSmallScreen from "@/hooks/useIsSmallScreen";
 import styles from "./MobileCamera.module.css";
@@ -189,10 +191,12 @@ export default function MobileCamera({ mode, onConfirm, onCancel, locale = "zh" 
   const filterStyles = useMemo(() => {
     if (mode === "palm") {
       return {
+        WebkitFilter: `contrast(${1.2 + filterStrength}) saturate(${1 + filterStrength})`,
         filter: `contrast(${1.2 + filterStrength}) saturate(${1 + filterStrength})`,
       };
     }
     return {
+      WebkitFilter: `contrast(${1.1 + filterStrength}) saturate(${1.3 + filterStrength})`,
       filter: `contrast(${1.1 + filterStrength}) saturate(${1.3 + filterStrength})`,
     };
   }, [filterStrength, mode]);

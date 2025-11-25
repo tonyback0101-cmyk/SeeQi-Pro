@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import zhContent from "../locales/zh/home.json";
 import enContent from "../locales/en/home.json";
@@ -42,7 +42,13 @@ import SolarCard from "./SolarCard";
 
  export default function HomePage({ locale }: HomePageProps) {
   const content = useMemo(() => contentMap[locale] ?? contentMap.zh, [locale]);
-  const solarTermInsight = useMemo(() => getSolarTermForDate(locale, new Date()), [locale]);
+  // 使用 useState 和 useEffect 来避免服务器端和客户端日期不一致导致的 hydration 错误
+  const [solarTermInsight, setSolarTermInsight] = useState(() => getSolarTermForDate(locale, new Date()));
+  
+  useEffect(() => {
+    // 客户端 hydration 后更新为当前日期
+    setSolarTermInsight(getSolarTermForDate(locale, new Date()));
+  }, [locale]);
   const featureConfigMap = useMemo(() => {
     return FEATURE_CONFIGS.reduce<Record<FeatureId, FeatureConfig>>((acc, feature) => {
       acc[feature.id] = feature;

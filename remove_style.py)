@@ -1,0 +1,1 @@
+path.write_text(text[:start] + text[end:]) 

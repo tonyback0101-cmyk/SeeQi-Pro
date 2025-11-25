@@ -1,0 +1,922 @@
+/**
+ * V2 主题样式
+ * 东方美学主题：宣纸纹理背景、墨绿色按钮、细边线卡片、圆角 20px、极轻阴影、大间距、Inter + 思源宋体
+ */
+
+/* ============================================
+   字体定义：Inter + 思源宋体
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   CSS 变量定义
+   ============================================ */
+:root {
+  /* 颜色系统 */
+  --v2-color-bg-primary: #faf8f5; /* 宣纸米白色 */
+  --v2-color-bg-paper: #f5f2ed; /* 宣纸纹理背景色 */
+  --v2-color-text-primary: #1a1a1a;
+  --v2-color-text-secondary: #4a4a4a;
+  --v2-color-text-muted: #8a8a8a;
+  
+  /* 深绿色系统（玄学 & 国学风） */
+  --v2-color-green-dark: #1a3320; /* 更深绿 */
+  --v2-color-green-primary: #2F4F2F; /* 深绿主题色 */
+  --v2-color-green-light: #2d5a35; /* 浅深绿 */
+  --v2-color-green-hover: #254028; /* 悬停状态 */
+  --v2-color-green-active: #1a3320; /* 激活状态 */
+  
+  /* 金色点缀系统 */
+  --v2-color-gold: #D4AF37; /* 金色点缀 */
+  --v2-color-gold-light: #E5C158; /* 浅金色 */
+  --v2-color-gold-dark: #B8941F; /* 深金色 */
+  
+  /* 边框与分割线 */
+  --v2-color-border: rgba(33, 69, 40, 0.15); /* 细边线，深绿色半透明 */
+  --v2-color-border-light: rgba(45, 80, 22, 0.08);
+  --v2-color-divider: rgba(45, 80, 22, 0.12);
+  
+  /* 阴影系统（极轻） */
+  --v2-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --v2-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --v2-shadow-button: 0 2px 4px rgba(33, 69, 40, 0.12);
+  
+  /* 间距系统（24/32 大间距） */
+  --v2-spacing-xs: 8px;
+  --v2-spacing-sm: 12px;
+  --v2-spacing-md: 16px;
+  --v2-spacing-lg: 24px;
+  --v2-spacing-xl: 32px;
+  --v2-spacing-2xl: 48px;
+  --v2-spacing-3xl: 64px;
+  
+  /* 圆角系统 */
+  --v2-radius-sm: 8px;
+  --v2-radius-md: 12px;
+  --v2-radius-lg: 20px; /* 卡片圆角 */
+  --v2-radius-xl: 24px;
+  
+  /* 字体系统（中文优先，思源宋体/仿宋体风格） */
+  --v2-font-serif: 'Noto Serif SC', '思源宋体', 'Source Han Serif', 'STSong', 'STFangsong', 'FangSong', 'SimSun', serif; /* 中文：思源宋体/仿宋体 */
+  --v2-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; /* 英文次要 */
+  
+  /* 字体大小 */
+  --v2-font-size-xs: 0.75rem; /* 12px */
+  --v2-font-size-sm: 0.875rem; /* 14px */
+  --v2-font-size-base: 1rem; /* 16px */
+  --v2-font-size-lg: 1.125rem; /* 18px */
+  --v2-font-size-xl: 1.25rem; /* 20px */
+  --v2-font-size-2xl: 1.5rem; /* 24px */
+  --v2-font-size-3xl: 1.875rem; /* 30px */
+  --v2-font-size-4xl: 2.25rem; /* 36px */
+}
+
+/* ============================================
+   页面容器：浅米色/雾白背景
+   ============================================ */
+.v2-page-container {
+  min-height: 100vh;
+  background-color: #faf8f5; /* 偏米白/象牙白 */
+  position: relative;
+  font-family: var(--v2-font-serif); /* 中文优先使用思源宋体 */
+  color: var(--v2-color-text-primary);
+}
+
+/* 宣纸纹理叠加层（可选，用于更明显的纹理效果） */
+.v2-page-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(245, 242, 237, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(245, 242, 237, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   统一卡片样式：细边线、圆角 20px、极轻阴影
+   ============================================ */
+.v2-card {
+  @apply rounded-2xl bg-white shadow-sm p-5 md:p-6;
+  position: relative;
+  z-index: 1;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.v2-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: rgba(226, 232, 240, 1);
+}
+
+/* Tailwind 兼容工具类 */
+.rounded-2xl {
+  border-radius: 1rem;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-slate-100 {
+  border-color: rgba(241, 245, 249, 1);
+}
+
+.bg-white {
+  background-color: #ffffff;
+}
+
+.bg-\[#FAF7F0\] {
+  background-color: #FAF7F0;
+}
+
+.p-5 {
+  padding: 1.25rem;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 768px) {
+  .md\:p-6 {
+    padding: 1.5rem;
+  }
+}
+
+/* 卡片标题 */
+.v2-card-title {
+  font-family: var(--v2-font-serif);
+  font-size: var(--v2-font-size-2xl);
+  font-weight: 700; /* 标题字体更粗 */
+  color: var(--v2-color-text-primary);
+  margin: 0 0 var(--v2-spacing-lg) 0;
+  line-height: 1.4;
+}
+
+/* 卡片内容（中文优先使用思源宋体） */
+.v2-card-content {
+  font-family: var(--v2-font-serif);
+  font-size: var(--v2-font-size-base);
+  font-weight: 400; /* 内容字体保持 normal */
+  line-height: 1.8; /* 增加行高，更符合国学风格 */
+  color: var(--v2-color-text-secondary);
+}
+
+/* ============================================
+   墨绿色按钮
+   ============================================ */
+.v2-button {
+  font-family: var(--v2-font-serif); /* 按钮文字使用思源宋体 */
+  font-size: var(--v2-font-size-base);
+  font-weight: 500;
+  color: #ffffff;
+  background-color: var(--v2-color-green-primary); /* 深绿 #2F4F2F */
+  border: none;
+  border-radius: var(--v2-radius-lg);
+  padding: var(--v2-spacing-md) var(--v2-spacing-xl);
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+  box-shadow: var(--v2-shadow-button);
+  position: relative;
+  overflow: hidden;
+}
+
+.v2-button:hover {
+  background-color: var(--v2-color-green-hover);
+  box-shadow: 0 4px 8px rgba(33, 69, 40, 0.18);
+  transform: translateY(-1px);
+}
+
+.v2-button:active {
+  background-color: var(--v2-color-green-active);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(33, 69, 40, 0.15);
+}
+
+.v2-button:disabled {
+  background-color: var(--v2-color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 按钮变体：次要按钮（细边线） */
+.v2-button-secondary {
+  background-color: transparent;
+  color: var(--v2-color-green-primary);
+  border: 1px solid var(--v2-color-border);
+  box-shadow: none;
+}
+
+.v2-button-secondary:hover {
+  background-color: rgba(33, 69, 40, 0.08);
+  border-color: var(--v2-color-green-primary);
+  box-shadow: none;
+}
+
+/* 金色点缀按钮（用于特殊强调） */
+.v2-button-gold {
+  background-color: var(--v2-color-gold);
+  color: #ffffff;
+  border: none;
+}
+
+.v2-button-gold:hover {
+  background-color: var(--v2-color-gold-light);
+  box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
+}
+
+/* ============================================
+   统一间距工具类（使用 Tailwind 兼容类名）
+   ============================================ */
+.space-y-4 > * + * {
+  margin-top: 1rem; /* 16px */
+}
+
+.space-y-5 > * + * {
+  margin-top: 1.25rem; /* 20px */
+}
+
+@media (min-width: 768px) {
+  .md\:space-y-5 > * + * {
+    margin-top: 1.25rem; /* 20px */
+  }
+}
+
+/* ============================================
+   间距工具类（保留旧版兼容）
+   ============================================ */
+.v2-spacing-xs { margin: var(--v2-spacing-xs); }
+.v2-spacing-sm { margin: var(--v2-spacing-sm); }
+.v2-spacing-md { margin: var(--v2-spacing-md); }
+.v2-spacing-lg { margin: var(--v2-spacing-lg); }
+.v2-spacing-xl { margin: var(--v2-spacing-xl); }
+.v2-spacing-2xl { margin: var(--v2-spacing-2xl); }
+.v2-spacing-3xl { margin: var(--v2-spacing-3xl); }
+
+.v2-padding-xs { padding: var(--v2-spacing-xs); }
+.v2-padding-sm { padding: var(--v2-spacing-sm); }
+.v2-padding-md { padding: var(--v2-spacing-md); }
+.v2-padding-lg { padding: var(--v2-spacing-lg); }
+.v2-padding-xl { padding: var(--v2-spacing-xl); }
+.v2-padding-2xl { padding: var(--v2-spacing-2xl); }
+.v2-padding-3xl { padding: var(--v2-spacing-3xl); }
+
+/* ============================================
+   分割线样式
+   ============================================ */
+.v2-divider {
+  height: 1px;
+  background: var(--v2-color-divider);
+  border: none;
+  margin: var(--v2-spacing-xl) 0;
+}
+
+.v2-divider-vertical {
+  width: 1px;
+  height: 100%;
+  background: var(--v2-color-divider);
+  border: none;
+  margin: 0 var(--v2-spacing-xl);
+}
+
+/* ============================================
+   统一标题层级样式
+   ============================================ */
+.v2-title-page {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.3;
+}
+
+.v2-title-section {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.4;
+}
+
+.v2-title-card {
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.5;
+}
+
+/* ============================================
+   统一文本样式
+   ============================================ */
+.v2-text-body {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.75; /* leading-relaxed */
+}
+
+.v2-text-note {
+  font-size: 0.75rem; /* text-xs */
+  color: #6b7280; /* text-gray-500 */
+  line-height: 1.75; /* leading-relaxed */
+}
+
+/* ============================================
+   文本工具类
+   ============================================ */
+.v2-text-serif {
+  font-family: var(--v2-font-serif);
+}
+
+.v2-text-sans {
+  font-family: var(--v2-font-sans);
+}
+
+.v2-text-primary {
+  color: var(--v2-color-text-primary);
+}
+
+.v2-text-secondary {
+  color: var(--v2-color-text-secondary);
+}
+
+.v2-text-muted {
+  color: var(--v2-color-text-muted);
+}
+
+.v2-text-green {
+  color: var(--v2-color-green-primary);
+}
+
+.v2-text-gold {
+  color: var(--v2-color-gold);
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+@media (max-width: 768px) {
+  .v2-card {
+    padding: var(--v2-spacing-lg);
+    margin-bottom: var(--v2-spacing-md);
+  }
+  
+  .v2-card-title {
+    font-size: var(--v2-font-size-xl);
+    margin-bottom: var(--v2-spacing-md);
+  }
+  
+  .v2-button {
+    padding: var(--v2-spacing-sm) var(--v2-spacing-lg);
+    font-size: var(--v2-font-size-sm);
+  }
+}
+
+/* ============================================
+   动画效果
+   ============================================ */
+@keyframes v2-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.v2-fade-in {
+  animation: v2-fade-in 0.4s ease-out;
+}
+
+@keyframes v2-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.v2-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: v2-shimmer 2s infinite;
+}
+
+/* ============================================
+   首页宇宙主题动画效果
+   ============================================ */
+@keyframes twinkle {
+  0%, 100% { 
+    opacity: 0.2; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.1); 
+  }
+}
+
+@keyframes spin-slow {
+  from { 
+    transform: translate(-50%, -50%) rotate(0deg); 
+  }
+  to { 
+    transform: translate(-50%, -50%) rotate(360deg); 
+  }
+}
+
+@keyframes spin-reverse {
+  from { 
+    transform: translate(-50%, -50%) rotate(360deg); 
+  }
+  to { 
+    transform: translate(-50%, -50%) rotate(0deg); 
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { 
+    opacity: 0.25; 
+  }
+  50% { 
+    opacity: 0.35; 
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 15s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
+/* ============================================
+   字体定义：Inter + 思源宋体
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   CSS 变量定义
+   ============================================ */
+:root {
+  /* 颜色系统 */
+  --v2-color-bg-primary: #faf8f5; /* 宣纸米白色 */
+  --v2-color-bg-paper: #f5f2ed; /* 宣纸纹理背景色 */
+  --v2-color-text-primary: #1a1a1a;
+  --v2-color-text-secondary: #4a4a4a;
+  --v2-color-text-muted: #8a8a8a;
+  
+  /* 深绿色系统（玄学 & 国学风） */
+  --v2-color-green-dark: #1a3320; /* 更深绿 */
+  --v2-color-green-primary: #2F4F2F; /* 深绿主题色 */
+  --v2-color-green-light: #2d5a35; /* 浅深绿 */
+  --v2-color-green-hover: #254028; /* 悬停状态 */
+  --v2-color-green-active: #1a3320; /* 激活状态 */
+  
+  /* 金色点缀系统 */
+  --v2-color-gold: #D4AF37; /* 金色点缀 */
+  --v2-color-gold-light: #E5C158; /* 浅金色 */
+  --v2-color-gold-dark: #B8941F; /* 深金色 */
+  
+  /* 边框与分割线 */
+  --v2-color-border: rgba(33, 69, 40, 0.15); /* 细边线，深绿色半透明 */
+  --v2-color-border-light: rgba(45, 80, 22, 0.08);
+  --v2-color-divider: rgba(45, 80, 22, 0.12);
+  
+  /* 阴影系统（极轻） */
+  --v2-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --v2-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --v2-shadow-button: 0 2px 4px rgba(33, 69, 40, 0.12);
+  
+  /* 间距系统（24/32 大间距） */
+  --v2-spacing-xs: 8px;
+  --v2-spacing-sm: 12px;
+  --v2-spacing-md: 16px;
+  --v2-spacing-lg: 24px;
+  --v2-spacing-xl: 32px;
+  --v2-spacing-2xl: 48px;
+  --v2-spacing-3xl: 64px;
+  
+  /* 圆角系统 */
+  --v2-radius-sm: 8px;
+  --v2-radius-md: 12px;
+  --v2-radius-lg: 20px; /* 卡片圆角 */
+  --v2-radius-xl: 24px;
+  
+  /* 字体系统（中文优先，思源宋体/仿宋体风格） */
+  --v2-font-serif: 'Noto Serif SC', '思源宋体', 'Source Han Serif', 'STSong', 'STFangsong', 'FangSong', 'SimSun', serif; /* 中文：思源宋体/仿宋体 */
+  --v2-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; /* 英文次要 */
+  
+  /* 字体大小 */
+  --v2-font-size-xs: 0.75rem; /* 12px */
+  --v2-font-size-sm: 0.875rem; /* 14px */
+  --v2-font-size-base: 1rem; /* 16px */
+  --v2-font-size-lg: 1.125rem; /* 18px */
+  --v2-font-size-xl: 1.25rem; /* 20px */
+  --v2-font-size-2xl: 1.5rem; /* 24px */
+  --v2-font-size-3xl: 1.875rem; /* 30px */
+  --v2-font-size-4xl: 2.25rem; /* 36px */
+}
+
+/* ============================================
+   页面容器：浅米色/雾白背景
+   ============================================ */
+.v2-page-container {
+  min-height: 100vh;
+  background-color: #faf8f5; /* 偏米白/象牙白 */
+  position: relative;
+  font-family: var(--v2-font-serif); /* 中文优先使用思源宋体 */
+  color: var(--v2-color-text-primary);
+}
+
+/* 宣纸纹理叠加层（可选，用于更明显的纹理效果） */
+.v2-page-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(245, 242, 237, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(245, 242, 237, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   统一卡片样式：细边线、圆角 20px、极轻阴影
+   ============================================ */
+.v2-card {
+  @apply rounded-2xl bg-white shadow-sm p-5 md:p-6;
+  position: relative;
+  z-index: 1;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.v2-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: rgba(226, 232, 240, 1);
+}
+
+/* Tailwind 兼容工具类 */
+.rounded-2xl {
+  border-radius: 1rem;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-slate-100 {
+  border-color: rgba(241, 245, 249, 1);
+}
+
+.bg-white {
+  background-color: #ffffff;
+}
+
+.bg-\[#FAF7F0\] {
+  background-color: #FAF7F0;
+}
+
+.p-5 {
+  padding: 1.25rem;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 768px) {
+  .md\:p-6 {
+    padding: 1.5rem;
+  }
+}
+
+/* 卡片标题 */
+.v2-card-title {
+  font-family: var(--v2-font-serif);
+  font-size: var(--v2-font-size-2xl);
+  font-weight: 700; /* 标题字体更粗 */
+  color: var(--v2-color-text-primary);
+  margin: 0 0 var(--v2-spacing-lg) 0;
+  line-height: 1.4;
+}
+
+/* 卡片内容（中文优先使用思源宋体） */
+.v2-card-content {
+  font-family: var(--v2-font-serif);
+  font-size: var(--v2-font-size-base);
+  font-weight: 400; /* 内容字体保持 normal */
+  line-height: 1.8; /* 增加行高，更符合国学风格 */
+  color: var(--v2-color-text-secondary);
+}
+
+/* ============================================
+   墨绿色按钮
+   ============================================ */
+.v2-button {
+  font-family: var(--v2-font-serif); /* 按钮文字使用思源宋体 */
+  font-size: var(--v2-font-size-base);
+  font-weight: 500;
+  color: #ffffff;
+  background-color: var(--v2-color-green-primary); /* 深绿 #2F4F2F */
+  border: none;
+  border-radius: var(--v2-radius-lg);
+  padding: var(--v2-spacing-md) var(--v2-spacing-xl);
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+  box-shadow: var(--v2-shadow-button);
+  position: relative;
+  overflow: hidden;
+}
+
+.v2-button:hover {
+  background-color: var(--v2-color-green-hover);
+  box-shadow: 0 4px 8px rgba(33, 69, 40, 0.18);
+  transform: translateY(-1px);
+}
+
+.v2-button:active {
+  background-color: var(--v2-color-green-active);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(33, 69, 40, 0.15);
+}
+
+.v2-button:disabled {
+  background-color: var(--v2-color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 按钮变体：次要按钮（细边线） */
+.v2-button-secondary {
+  background-color: transparent;
+  color: var(--v2-color-green-primary);
+  border: 1px solid var(--v2-color-border);
+  box-shadow: none;
+}
+
+.v2-button-secondary:hover {
+  background-color: rgba(33, 69, 40, 0.08);
+  border-color: var(--v2-color-green-primary);
+  box-shadow: none;
+}
+
+/* 金色点缀按钮（用于特殊强调） */
+.v2-button-gold {
+  background-color: var(--v2-color-gold);
+  color: #ffffff;
+  border: none;
+}
+
+.v2-button-gold:hover {
+  background-color: var(--v2-color-gold-light);
+  box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
+}
+
+/* ============================================
+   统一间距工具类（使用 Tailwind 兼容类名）
+   ============================================ */
+.space-y-4 > * + * {
+  margin-top: 1rem; /* 16px */
+}
+
+.space-y-5 > * + * {
+  margin-top: 1.25rem; /* 20px */
+}
+
+@media (min-width: 768px) {
+  .md\:space-y-5 > * + * {
+    margin-top: 1.25rem; /* 20px */
+  }
+}
+
+/* ============================================
+   间距工具类（保留旧版兼容）
+   ============================================ */
+.v2-spacing-xs { margin: var(--v2-spacing-xs); }
+.v2-spacing-sm { margin: var(--v2-spacing-sm); }
+.v2-spacing-md { margin: var(--v2-spacing-md); }
+.v2-spacing-lg { margin: var(--v2-spacing-lg); }
+.v2-spacing-xl { margin: var(--v2-spacing-xl); }
+.v2-spacing-2xl { margin: var(--v2-spacing-2xl); }
+.v2-spacing-3xl { margin: var(--v2-spacing-3xl); }
+
+.v2-padding-xs { padding: var(--v2-spacing-xs); }
+.v2-padding-sm { padding: var(--v2-spacing-sm); }
+.v2-padding-md { padding: var(--v2-spacing-md); }
+.v2-padding-lg { padding: var(--v2-spacing-lg); }
+.v2-padding-xl { padding: var(--v2-spacing-xl); }
+.v2-padding-2xl { padding: var(--v2-spacing-2xl); }
+.v2-padding-3xl { padding: var(--v2-spacing-3xl); }
+
+/* ============================================
+   分割线样式
+   ============================================ */
+.v2-divider {
+  height: 1px;
+  background: var(--v2-color-divider);
+  border: none;
+  margin: var(--v2-spacing-xl) 0;
+}
+
+.v2-divider-vertical {
+  width: 1px;
+  height: 100%;
+  background: var(--v2-color-divider);
+  border: none;
+  margin: 0 var(--v2-spacing-xl);
+}
+
+/* ============================================
+   统一标题层级样式
+   ============================================ */
+.v2-title-page {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.3;
+}
+
+.v2-title-section {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.4;
+}
+
+.v2-title-card {
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600; /* font-semibold */
+  line-height: 1.5;
+}
+
+/* ============================================
+   统一文本样式
+   ============================================ */
+.v2-text-body {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.75; /* leading-relaxed */
+}
+
+.v2-text-note {
+  font-size: 0.75rem; /* text-xs */
+  color: #6b7280; /* text-gray-500 */
+  line-height: 1.75; /* leading-relaxed */
+}
+
+/* ============================================
+   文本工具类
+   ============================================ */
+.v2-text-serif {
+  font-family: var(--v2-font-serif);
+}
+
+.v2-text-sans {
+  font-family: var(--v2-font-sans);
+}
+
+.v2-text-primary {
+  color: var(--v2-color-text-primary);
+}
+
+.v2-text-secondary {
+  color: var(--v2-color-text-secondary);
+}
+
+.v2-text-muted {
+  color: var(--v2-color-text-muted);
+}
+
+.v2-text-green {
+  color: var(--v2-color-green-primary);
+}
+
+.v2-text-gold {
+  color: var(--v2-color-gold);
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+@media (max-width: 768px) {
+  .v2-card {
+    padding: var(--v2-spacing-lg);
+    margin-bottom: var(--v2-spacing-md);
+  }
+  
+  .v2-card-title {
+    font-size: var(--v2-font-size-xl);
+    margin-bottom: var(--v2-spacing-md);
+  }
+  
+  .v2-button {
+    padding: var(--v2-spacing-sm) var(--v2-spacing-lg);
+    font-size: var(--v2-font-size-sm);
+  }
+}
+
+/* ============================================
+   动画效果
+   ============================================ */
+@keyframes v2-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.v2-fade-in {
+  animation: v2-fade-in 0.4s ease-out;
+}
+
+@keyframes v2-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.v2-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: v2-shimmer 2s infinite;
+}
+
+
+/* ============================================
+   PC�˲��֣��Ϸ���ͷ�� + �м俨Ƭ�����Ų� + �ײ��̶�CTA
+   ============================================ */
+@media (min-width: 768px) {
+  .v2-page-container {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .v2-page-header {
+    width: 100%;
+    padding: var(--v2-spacing-2xl) var(--v2-spacing-xl);
+    background-color: var(--v2-color-bg-primary);
+    border-bottom: 1px solid var(--v2-color-border);
+  }
+  
+  .v2-page-content {
+    flex: 1;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--v2-spacing-2xl) var(--v2-spacing-xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-spacing-lg);
+  }
+  
+  .v2-page-footer {
+    width: 100%;
+    padding: var(--v2-spacing-xl);
+    background-color: var(--v2-color-bg-primary);
+    border-top: 1px solid var(--v2-color-border);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+}

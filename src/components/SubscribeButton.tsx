@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * @deprecated 此组件已废弃，订阅功能已迁移到新的 V2 付费系统
+ * 旧版订阅路由已移动到 legacy：
+ * - /api/billing/* → src/legacy/app/api/billing/*
+ * - /[locale]/pricing → src/legacy/app/[locale]/pricing
+ */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ProPlanKey = "monthly" | "yearly" | "lifetime";
@@ -96,25 +102,28 @@ export default function SubscribeButton({ locale, initiallyOpen = false }: Subsc
   }, [initiallyOpen]);
 
   const loadPlans = useCallback(async () => {
+    // TODO: 旧版订阅 API 已废弃，功能暂未开放
     if (loadingPlans || plans.length > 0 || planError) {
       return;
     }
     setLoadingPlans(true);
     setPlanError(null);
     try {
-      const response = await fetch("/api/billing/plans");
-      const data = (await response.json()) as PlanResponse;
-      if (!response.ok) {
-        throw new Error(data?.error ?? "failed-to-load");
-      }
-      setPlans(data.plans ?? []);
+      // 旧版 API 已移动到 legacy，不再使用
+      // const response = await fetch("/api/billing/plans");
+      // const data = (await response.json()) as PlanResponse;
+      // if (!response.ok) {
+      //   throw new Error(data?.error ?? "failed-to-load");
+      // }
+      // setPlans(data.plans ?? []);
+      throw new Error(locale === "zh" ? "订阅功能暂未开放" : "Subscription feature not available");
     } catch (error) {
       const message = error instanceof Error ? error.message : "获取订阅方案失败";
       setPlanError(message);
     } finally {
       setLoadingPlans(false);
     }
-  }, [loadingPlans, planError, plans.length]);
+  }, [loadingPlans, planError, plans.length, locale]);
 
   useEffect(() => {
     if (showPlans) {
@@ -138,21 +147,24 @@ export default function SubscribeButton({ locale, initiallyOpen = false }: Subsc
   };
 
   const handleCheckout = async (planKey: ProPlanKey) => {
+    // TODO: 旧版订阅 API 已废弃，功能暂未开放
     setCheckoutError(null);
     setSelectingPlan(planKey);
     try {
-      const response = await fetch("/api/billing/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ locale, plan: planKey }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.url) {
-        throw new Error((data?.error as string | undefined) ?? "Failed to start checkout");
-      }
-      window.location.href = data.url as string;
+      // 旧版 API 已移动到 legacy，不再使用
+      // const response = await fetch("/api/billing/create-checkout-session", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({ locale, plan: planKey }),
+      // });
+      // const data = await response.json();
+      // if (!response.ok || !data?.url) {
+      //   throw new Error((data?.error as string | undefined) ?? "Failed to start checkout");
+      // }
+      // window.location.href = data.url as string;
+      throw new Error(locale === "zh" ? "订阅功能暂未开放" : "Subscription feature not available");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unexpected error";
       setCheckoutError(message);

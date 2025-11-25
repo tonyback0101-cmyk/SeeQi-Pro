@@ -5,7 +5,7 @@ import en from "../../../locales/en/privacy.json";
 type Locale = "zh" | "en";
 
 type PageProps = {
-  params: { locale: Locale };
+  params: Promise<{ locale: Locale }>;
 };
 
 const translations: Record<Locale, typeof zh> = {
@@ -13,8 +13,9 @@ const translations: Record<Locale, typeof zh> = {
   en,
 };
 
-export default function PrivacyPage({ params }: PageProps) {
-  const locale = params.locale === "en" ? "en" : "zh";
+export default async function PrivacyPage({ params }: PageProps) {
+  const { locale: localeParam } = await params;
+  const locale = localeParam === "en" ? "en" : "zh";
   const t = translations[locale];
 
   const pageStyle: React.CSSProperties = {

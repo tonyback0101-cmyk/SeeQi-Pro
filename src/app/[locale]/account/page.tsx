@@ -3,13 +3,24 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/options";
 import SubscribeButton from "@/components/SubscribeButton";
 
-export const metadata: Metadata = {
-  title: "SeeQi 账户中心",
-  description: "管理个人资料、支付记录与报告同步设置",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: "zh" | "en" }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isZh = locale === "zh";
+  return {
+    title: isZh ? "SeeQi 账户中心" : "SeeQi Account Center",
+    description: isZh
+      ? "管理个人资料、支付记录与报告同步设置"
+      : "Manage your profile, payment records, and report sync settings",
+  };
+}
 
-export default async function AccountPage({ params }: { params: { locale: "zh" | "en" } }) {
-  const isZh = params.locale === "zh";
+export default async function AccountPage({ params }: { params: Promise<{ locale: "zh" | "en" }> }) {
+  const { locale: localeParam } = await params;
+  const isZh = localeParam === "zh";
   const session = await getServerSession(authOptions);
   const subscription = session?.subscription;
   const isPro = Boolean(subscription?.active);
@@ -63,7 +74,7 @@ export default async function AccountPage({ params }: { params: { locale: "zh" |
                   ? "升级专业版即可解锁深度分析报告与推广返佣功能。"
                   : "Upgrade to SeeQi Pro to unlock deep-dive reports and affiliate rewards."}
               </p>
-              <SubscribeButton locale={params.locale} />
+              <SubscribeButton locale={localeParam} />
             </div>
           )}
         </div>

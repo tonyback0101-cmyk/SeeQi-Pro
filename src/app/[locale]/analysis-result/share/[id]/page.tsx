@@ -37,8 +37,8 @@ type PageProps = {
 };
 
 export default function ShareCardViewer({ params }: PageProps) {
-  const { locale: localeParam, id } = params;
-  const locale: Locale = localeParam === "en" ? "en" : "zh";
+  const locale: Locale = params.locale === "en" ? "en" : "zh";
+  const id = params.id;
   const t = COPY[locale];
   const [imageData, setImageData] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copying" | "success" | "error">("idle");
