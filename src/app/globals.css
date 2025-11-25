@@ -247,6 +247,38 @@ header .container {
   flex-shrink: 0;
 }
 
+.analysis-warning-card {
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 193, 7, 0.12),
+    rgba(255, 255, 255, 0.03)
+  );
+  color: #ffe8b3;
+}
+
+.analysis-warning-card .report-content {
+  background: transparent;
+}
+
+.analysis-warning-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.analysis-warning-list li {
+  font-size: 0.9rem;
+  color: rgba(255, 248, 229, 0.95);
+}
+
+.analysis-warning-hint {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .report-content {
   position: relative;
   z-index: 1;

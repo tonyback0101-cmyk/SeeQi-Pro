@@ -22,11 +22,20 @@ import { getInternalAppUrl } from "@/lib/env/urls";
  */
 function getLLMProxyUrl(): string {
   try {
-    return `${getInternalAppUrl()}/api/llm/chat`;
+    const baseUrl = getInternalAppUrl();
+    const url = `${baseUrl}/api/llm/chat`;
+    console.log("[LLM] Resolved LLM proxy URL", { baseUrl, url, nodeEnv: process.env.NODE_ENV });
+    return url;
   } catch (error) {
+    console.error("[LLM] Failed to resolve internal app URL", error);
     if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000/api/llm/chat";
+      // 开发环境：尝试多个可能的端口
+      const devPort = process.env.PORT || process.env.NEXT_PUBLIC_PORT || "3000";
+      const devUrl = `http://localhost:${devPort}/api/llm/chat`;
+      console.warn("[LLM] Using development fallback URL", { devUrl });
+      return devUrl;
     }
+    console.error("[LLM] Cannot resolve LLM proxy URL in production", error);
     throw error;
   }
 }
@@ -42,6 +51,14 @@ async function callLLMViaProxy(params: {
   max_tokens?: number;
 }): Promise<string> {
   const proxyUrl = getLLMProxyUrl();
+  
+  // 检查 OPENAI_API_KEY 是否配置
+  if (!process.env.OPENAI_API_KEY) {
+    console.error("[LLM] OPENAI_API_KEY not configured, LLM calls will fail");
+    throw new Error("LLM API key not configured. Please set OPENAI_API_KEY in environment variables.");
+  }
+  
+  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model: params.model || "gpt-4o-mini" });
   
   const response = await fetch(proxyUrl, {
     method: "POST",
@@ -60,12 +77,38 @@ async function callLLMViaProxy(params: {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(`LLM proxy error: ${error.error || response.statusText}`);
+    const errorText = await response.text().catch(() => "Unknown error");
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { error: errorText };
+    }
+    const errorMessage = `LLM proxy error: ${errorData.error || response.statusText}`;
+    console.error("[LLM] Proxy call failed", { 
+      status: response.status, 
+      statusText: response.statusText,
+      error: errorMessage,
+      errorData,
+      proxyUrl,
+    });
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
-  return data.choices[0]?.message?.content || "";
+  const content = data.choices[0]?.message?.content || "";
+  console.log("[LLM] Proxy call successful", { 
+    contentLength: content.length, 
+    usage: data.usage,
+    model: data.model,
+    hasChoices: !!data.choices?.length,
+  });
+  
+  if (!content) {
+    console.warn("[LLM] Empty content returned from LLM proxy", { data });
+  }
+  
+  return content;
 }
 
 /**

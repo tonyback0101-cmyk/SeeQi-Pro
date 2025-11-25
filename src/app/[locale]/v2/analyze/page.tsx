@@ -72,6 +72,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
   const [errors, setErrors] = useState<Partial<Record<FieldErrorKey, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [isErrorMessage, setIsErrorMessage] = useState(false);
   // 初始值设为 true，避免服务器端和客户端不一致导致的 hydration 错误
   // 实际值会在 useEffect 中更新
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -174,6 +175,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
     const handleOnline = () => {
       setIsOnline(true);
       setStatusMessage("");
+      setIsErrorMessage(false);
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -276,15 +278,18 @@ function V2AnalyzePageContent({ params }: PageProps) {
     if (!file) {
       const result = selectPalmFile(null);
       setStatusMessage("");
+      setIsErrorMessage(false);
       return result;
     }
     const quality = await validateImageQuality(file);
     if (!quality.ok && "reason" in quality) {
       setStatusMessage(getQualityMessage("palm", quality.reason));
+      setIsErrorMessage(true);
       return false;
     }
     const result = selectPalmFile(file);
     setStatusMessage("");
+    setIsErrorMessage(false);
     return result;
   };
 
@@ -292,15 +297,18 @@ function V2AnalyzePageContent({ params }: PageProps) {
     if (!file) {
       const result = selectTongueFile(null);
       setStatusMessage("");
+      setIsErrorMessage(false);
       return result;
     }
     const quality = await validateImageQuality(file);
     if (!quality.ok && "reason" in quality) {
       setStatusMessage(getQualityMessage("tongue", quality.reason));
+      setIsErrorMessage(true);
       return false;
     }
     const result = selectTongueFile(file);
     setStatusMessage("");
+    setIsErrorMessage(false);
     return result;
   };
 
@@ -374,6 +382,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
       setStatusMessage(
         locale === "zh" ? "照片验证失败，请重新拍照" : "Photo validation failed, please try again.",
       );
+      setIsErrorMessage(true);
       return false;
     }
     // 成功时更新文件名显示
@@ -408,6 +417,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
     // 检查登录状态
     if (sessionStatus === "loading") {
       setStatusMessage(locale === "zh" ? "正在检查登录状态..." : "Checking login status...");
+      setIsErrorMessage(false);
       return;
     }
 
@@ -442,9 +452,13 @@ function V2AnalyzePageContent({ params }: PageProps) {
       if (!response.ok || !data || data.ok === false) {
         const message = data?.message || data?.error || (locale === "zh" ? "生成报告失败，请稍后重试" : "Failed to generate report, please try again");
         setStatusMessage(message);
+        setIsErrorMessage(true);
         setSubmitting(false);
         return;
       }
+      
+      // 成功时清除错误标记
+      setIsErrorMessage(false);
 
       // 成功格式：{ ok: true, reportId, data: { ... } }
       if (data.ok === true && data.reportId) {
@@ -464,9 +478,11 @@ function V2AnalyzePageContent({ params }: PageProps) {
 
       // 如果都不匹配，显示错误
       setStatusMessage(locale === "zh" ? "报告生成失败" : "Report generation failed");
+      setIsErrorMessage(true);
       setSubmitting(false);
     } catch (error) {
       setStatusMessage(locale === "zh" ? "网络错误，请稍后重试" : "Network error, please try again");
+      setIsErrorMessage(true);
     } finally {
       setSubmitting(false);
     }
@@ -1498,6 +1514,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
 
                   setSubmitting(true);
                   setStatusMessage(locale === "zh" ? "正在生成报告..." : "Generating report...");
+                  setIsErrorMessage(false);
 
                   try {
                     const formData = new FormData();
@@ -1523,6 +1540,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                       
                       const message = data?.message || data?.error || (locale === "zh" ? "生成报告失败，请稍后重试" : "Failed to generate report, please try again");
                       setStatusMessage(message);
+                      setIsErrorMessage(true);
                       setSubmitting(false);
                       return;
                     }
@@ -1533,9 +1551,13 @@ function V2AnalyzePageContent({ params }: PageProps) {
                     if (!response.ok || !data || data.ok === false) {
                       const message = data?.message || data?.error || (locale === "zh" ? "生成报告失败，请稍后重试" : "Failed to generate report, please try again");
                       setStatusMessage(message);
+                      setIsErrorMessage(true);
                       setSubmitting(false);
                       return;
                     }
+                    
+                    // 成功时清除错误标记
+                    setIsErrorMessage(false);
 
                     // 成功格式：{ ok: true, reportId, data: { ... } }
                     let reportId: string | undefined;
@@ -1548,6 +1570,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
 
                     if (!reportId) {
                       setStatusMessage(locale === "zh" ? "报告生成失败" : "Report generation failed");
+                      setIsErrorMessage(true);
                       setSubmitting(false);
                       return;
                     }
@@ -1556,6 +1579,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                     router.push(resultUrl);
                   } catch (error) {
                     setStatusMessage(locale === "zh" ? "网络错误，请稍后重试" : "Network error, please try again");
+                    setIsErrorMessage(true);
                   } finally {
                     setSubmitting(false);
                   }
@@ -1568,7 +1592,21 @@ function V2AnalyzePageContent({ params }: PageProps) {
           >
                 {submitting ? t.submitButtonLoading : t.submitButton}
           </button>
-          {!isOnline && (
+          {statusMessage && (
+            <p style={{ 
+              color: isErrorMessage ? '#ff6b6b' : '#4ade80',
+              marginTop: '15px', 
+              fontSize: '14px',
+              textAlign: 'center',
+              padding: '10px',
+              borderRadius: '8px',
+              backgroundColor: isErrorMessage ? 'rgba(255, 107, 107, 0.1)' : 'rgba(74, 222, 128, 0.1)',
+              border: isErrorMessage ? '1px solid rgba(255, 107, 107, 0.3)' : '1px solid rgba(74, 222, 128, 0.3)'
+            }}>
+              {statusMessage}
+            </p>
+          )}
+          {!isOnline && !statusMessage && (
             <p style={{ color: '#ff6b6b', marginTop: '10px', fontSize: '14px' }}>
               {locale === "zh" ? "当前处于离线状态，请连接网络后重试" : "You are offline, please connect to the internet"}
             </p>

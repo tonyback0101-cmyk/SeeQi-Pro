@@ -291,6 +291,26 @@ export default function V2AnalysisResultClient({
   const resolvedAccessLevel = isPro ? "full" : accessLevel;
   const showPaywall = !isPro;
 
+  // 调试：输出访问控制信息
+  useEffect(() => {
+    console.log("[V2AnalysisResultClient] Access control debug", {
+      isPro,
+      showPaywall,
+      accessLevel,
+      resolvedAccessLevel,
+      access: {
+        level: access?.level,
+        isFree: access?.isFree,
+        hasFullAccess: access?.hasFullAccess,
+      },
+      user: {
+        is_pro: user?.is_pro,
+      },
+      hasReport: !!report,
+      reportId,
+    });
+  }, [isPro, showPaywall, accessLevel, resolvedAccessLevel, access, user, report, reportId]);
+
   // 调试：确保组件正常渲染 - 将 useEffect 移到早期返回之前
   useEffect(() => {
     console.log("[V2AnalysisResultClient] Component mounted/updated", {
@@ -302,10 +322,16 @@ export default function V2AnalysisResultClient({
   }, [report, isPro, reportId, effectiveLocale]);
 
   if (!report) {
+    console.error("[V2AnalysisResultClient] Report is null, showing error message", { reportId, hasAccess: !!access });
     return (
       <div className="min-h-screen bg-mystic-primary text-light-secondary flex items-center justify-center" style={{ backgroundColor: '#0D1B2A', color: '#AABBC9' }}>
         <div className="text-center">
           <p style={{ color: '#AABBC9' }}>{t.failed}</p>
+          {reportId && (
+            <p style={{ color: '#AABBC9', marginTop: '16px', fontSize: '14px' }}>
+              {locale === "zh" ? `报告ID: ${reportId}` : `Report ID: ${reportId}`}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -313,6 +339,12 @@ export default function V2AnalysisResultClient({
 
   // 获取报告数据（优先使用 normalized，兼容旧格式）
   const reportData = report?.normalized ?? report;
+  const runtimeWarnings = (reportData as any)?.runtime_warnings as
+    | {
+        palm?: string[];
+        tongue?: string[];
+      }
+    | undefined;
   
   // 安全地提取数据，所有字段都使用空值处理
   const palmInsight = reportData?.palm_insight ?? null;
@@ -343,8 +375,17 @@ export default function V2AnalysisResultClient({
     (qiRhythm?.index === undefined || qiRhythm?.index === null);
 
   // 处理 fallback 逻辑
-  const palmFallback = !palmInsight?.life_rhythm && !palmInsight?.palm_overview_summary;
-  const tongueFallback = !bodyTongue?.qi_pattern && !bodyTongue?.summary;
+  const palmRuntimeWarningText =
+    runtimeWarnings?.palm && runtimeWarnings.palm.length > 0 ? runtimeWarnings.palm.join(locale === "zh" ? "；" : " · ") : null;
+  const tongueRuntimeWarningText =
+    runtimeWarnings?.tongue && runtimeWarnings.tongue.length > 0 ? runtimeWarnings.tongue.join(locale === "zh" ? "；" : " · ") : null;
+
+  const palmFallback =
+    Boolean(palmRuntimeWarningText) ||
+    (!palmInsight?.life_rhythm && !palmInsight?.palm_overview_summary);
+  const tongueFallback =
+    Boolean(tongueRuntimeWarningText) ||
+    (!bodyTongue?.qi_pattern && !bodyTongue?.summary);
   const dreamFallback = !dreamLLM?.symbolic && !dreamLLM?.symbol_meaning;
 
   const fallbackTexts = {
@@ -359,6 +400,32 @@ export default function V2AnalysisResultClient({
       dream: "Dream insight not fully generated this time. Try recording more detailed dream content next time.",
     },
   };
+
+  const palmNotice =
+    palmRuntimeWarningText ?? (palmFallback ? fallbackTexts[locale].palm : null);
+  const tongueNotice =
+    tongueRuntimeWarningText ?? (tongueFallback ? fallbackTexts[locale].tongue : null);
+  const dreamNotice = dreamFallback ? fallbackTexts[locale].dream : null;
+
+  const analysisWarnings: Array<{ label: string; message: string }> = [];
+  if (palmNotice) {
+    analysisWarnings.push({
+      label: locale === "zh" ? "掌纹" : "Palm",
+      message: palmNotice,
+    });
+  }
+  if (tongueNotice) {
+    analysisWarnings.push({
+      label: locale === "zh" ? "舌象" : "Tongue",
+      message: tongueNotice,
+    });
+  }
+  if (dreamNotice) {
+    analysisWarnings.push({
+      label: locale === "zh" ? "梦境" : "Dream",
+      message: dreamNotice,
+    });
+  }
 
   const previewHighlights = locale === "zh"
     ? ["掌纹 / 舌苔 / 梦境三大模块概览", "今日气运节奏 + 公历宜忌提示", "基础建议（3-4 条，供日常参考）"]
@@ -375,36 +442,49 @@ export default function V2AnalysisResultClient({
   // 统一的「解锁完整报告」按钮点击处理函数
   const handleUnlockClick = async () => {
     if (isSubmitting) return; // 防连点
-    if (!reportId) return;
+    if (!reportId) {
+      console.error("[PAY] No reportId provided");
+      setPaymentFeedback({ type: "error", message: effectiveLocale === "zh" ? "报告ID缺失" : "Report ID missing" });
+      return;
+    }
 
     if (!isLoggedIn) {
+      console.log("[PAY] User not logged in, redirecting to sign-in", { reportId });
       const callbackUrl = `/${effectiveLocale}/v2/analysis-result?reportId=${reportId}&intent=unlock`;
       router.push(`/${effectiveLocale}/auth/sign-in?redirect=${encodeURIComponent(callbackUrl)}`);
       return;
     }
 
+    console.log("[PAY] Starting checkout process", { reportId, userId, locale: effectiveLocale });
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/pay/checkout", {
+      const response = await fetch("/api/v2/pay/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "single", // V2 路由需要 mode 参数
           reportId,
           locale: effectiveLocale,
         }),
       });
 
+      console.log("[PAY] Checkout response", { status: response.status, ok: response.ok });
+
       const data = await response.json();
+      console.log("[PAY] Checkout response data", { hasUrl: !!data.url, alreadyUnlocked: data.alreadyUnlocked, error: data.error });
 
       if (response.ok && data.url) {
         // 跳转到 Stripe 支付页面
+        console.log("[PAY] Redirecting to Stripe checkout", { url: data.url });
         window.location.href = data.url;
       } else if (data.alreadyUnlocked) {
         // 报告已解锁，刷新页面
+        console.log("[PAY] Report already unlocked, refreshing page");
         router.refresh();
       } else {
         // 显示错误信息
         const errorMessage = data.error || (effectiveLocale === "zh" ? "创建支付会话失败" : "Failed to create checkout session");
+        console.error("[PAY] Checkout failed", { error: errorMessage, responseData: data });
         setPaymentFeedback({ type: "error", message: errorMessage });
       }
     } catch (error) {
@@ -493,6 +573,33 @@ export default function V2AnalysisResultClient({
           </div>
         </section>
 
+        {/* 全局告警 */}
+        {analysisWarnings.length > 0 && (
+          <section className="report-section analysis-warning-card">
+            <div className="report-content space-y-3">
+              <div className="flex items-center gap-2 text-amber-200 text-sm font-semibold">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 5v6.5h-1.5V7h1.5zm0 8.5v1.5h-1.5v-1.5h1.5z" />
+                </svg>
+                {locale === "zh" ? "图像质量提醒" : "Image Quality Notice"}
+              </div>
+              <ul className="analysis-warning-list">
+                {analysisWarnings.map((warning) => (
+                  <li key={warning.label}>
+                    <strong className="mr-2">{warning.label}:</strong>
+                    <span>{warning.message}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="analysis-warning-hint">
+                {locale === "zh"
+                  ? "建议重新上传更清晰的照片以获得更精确的洞察。"
+                  : "Try uploading clearer photos next time for a more precise analysis."}
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* ② 五象总览（预览可见） */}
         <FiveAspectOverview
           qi="中"
@@ -553,7 +660,7 @@ export default function V2AnalysisResultClient({
           delay={0.15}
           locale={locale}
           reportId={report.id}
-          notice={palmFallback ? fallbackTexts[locale].palm : null}
+          notice={palmNotice}
           onUnlock={handleUnlockClick}
         />
 
@@ -627,7 +734,7 @@ export default function V2AnalysisResultClient({
           delay={0.2}
           locale={locale}
           reportId={report.id}
-          notice={tongueFallback ? fallbackTexts[locale].tongue : null}
+          notice={tongueNotice}
           onUnlock={handleUnlockClick}
         />
 
@@ -657,7 +764,7 @@ export default function V2AnalysisResultClient({
           delay={0.25}
           locale={locale}
           reportId={report.id}
-          notice={dreamFallback ? fallbackTexts[locale].dream : null}
+          notice={dreamNotice}
           onUnlock={handleUnlockClick}
         />
 

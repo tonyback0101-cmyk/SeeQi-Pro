@@ -227,20 +227,22 @@ function HomePageContent({ locale, copy }: HomePageClientProps) {
       }}
     >
       {/* 调试：确保内容可见 */}
-      <div style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        backgroundColor: 'red', 
-        color: 'white', 
-        padding: '10px', 
-        zIndex: 9999,
-        fontSize: '12px',
-        display: 'block',
-      }}>
-        调试：页面已加载 - {locale} - isPWA: {String(isPWA)}
-      </div>
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          backgroundColor: 'red', 
+          color: 'white', 
+          padding: '10px', 
+          zIndex: 9999,
+          fontSize: '12px',
+          display: 'block',
+        }}>
+          调试：页面已加载 - {locale} - isPWA: {String(isPWA)}
+        </div>
+      )}
       {/* Header - PWA 模式下简化 */}
       <header style={{ 
         padding: isPWA ? '12px 16px' : undefined,

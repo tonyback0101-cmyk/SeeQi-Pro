@@ -168,6 +168,22 @@ function errorResponse(message: string, status = 400, code: AnalyzeErrorCode = "
 
 
 export async function POST(request: Request) {
+  // 环境变量检查（仅开发环境输出完整信息）
+  if (process.env.NODE_ENV === "development") {
+    console.log("[V2 Analyze] Environment check", {
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      openAIKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 7) || "NOT_SET",
+      nextAuthUrl: process.env.NEXTAUTH_URL || "NOT_SET",
+      nextAuthUrlInternal: process.env.NEXTAUTH_URL_INTERNAL || "NOT_SET",
+      publicAppUrl: process.env.NEXT_PUBLIC_APP_URL || "NOT_SET",
+    });
+  } else {
+    // 生产环境只检查关键变量是否存在
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[V2 Analyze] CRITICAL: OPENAI_API_KEY not configured!");
+    }
+  }
+  
   try {
     const formData = await request.formData();
 
@@ -205,6 +221,21 @@ export async function POST(request: Request) {
     if (!(palmFile instanceof File) || !(tongueFile instanceof File) || !dreamText.trim()) {
       return errorResponse(
         locale === "zh" ? "请上传掌纹、舌苔图片并填写梦境内容" : "Please upload palm and tongue images and fill in dream content",
+      );
+    }
+
+    // 验证梦境内容：至少 5 个字符，且不能只是单个词或标点
+    const trimmedDream = dreamText.trim();
+    if (trimmedDream.length < 5) {
+      return errorResponse(
+        locale === "zh" ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" : "For a more accurate assessment, please upload real images and dream content",
+      );
+    }
+    // 检查是否包含至少一个中文字符或英文单词（排除纯标点符号）
+    const hasValidContent = /[\u4e00-\u9fa5]/.test(trimmedDream) || /\b\w+\b/.test(trimmedDream);
+    if (!hasValidContent) {
+      return errorResponse(
+        locale === "zh" ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" : "For a more accurate assessment, please upload real images and dream content",
       );
     }
 
@@ -283,13 +314,38 @@ export async function POST(request: Request) {
         "PROCESSING_FAILED",
       );
     }
+    // 严格验证：如果检测不到手掌或图片质量太低，拒绝请求
     if (!palmValidation.ok) {
+      const reason = palmValidation.reason;
+      // 如果明确检测到不是手掌，直接拒绝
+      if (reason === "NOT_PALM") {
+        return errorResponse(
+          locale === "zh" 
+            ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
+            : "For a more accurate assessment, please upload real images and dream content",
+          400,
+          "BAD_REQUEST",
+        );
+      }
       console.warn("[V2 ANALYZE] Palm feature extraction failed, fallback applied:", {
         reportId,
-        reason: palmValidation.reason,
+        reason,
         level: palmValidation.level,
         warnings: palmValidation.warnings,
       });
+    }
+    
+    // 严格验证：如果图片质量太低或检测不到手掌，拒绝请求
+    // qualityScore 20 是 isLikelyPalm 失败时的 fallback 值，必须拒绝
+    // qualityScore < 30 也拒绝，确保只有质量足够好的图片才能通过
+    if (palmResult && palmResult.qualityScore < 30) {
+      return errorResponse(
+        locale === "zh" 
+          ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
+          : "For a more accurate assessment, please upload real images and dream content",
+        400,
+        "BAD_REQUEST",
+      );
     }
 
     // 分析舌苔
@@ -327,13 +383,37 @@ export async function POST(request: Request) {
         "PROCESSING_FAILED",
       );
     }
+    // 严格验证：如果检测不到舌苔或图片质量太低，拒绝请求
     if (!tongueValidation.ok) {
+      const reason = tongueValidation.reason;
+      // 如果明确检测到不是舌苔，直接拒绝
+      if (reason === "NOT_TONGUE") {
+        return errorResponse(
+          locale === "zh" 
+            ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
+            : "For a more accurate assessment, please upload real images and dream content",
+          400,
+          "BAD_REQUEST",
+        );
+      }
       console.warn("[V2 ANALYZE] Tongue feature extraction failed, fallback applied:", {
         reportId,
-        reason: tongueValidation.reason,
+        reason,
         level: tongueValidation.level,
         warnings: tongueValidation.warnings,
       });
+    }
+    
+    // 严格验证：如果图片质量太低，拒绝请求
+    // 提高阈值到 20，确保只有清晰有效的舌苔图片才能通过
+    if (tongueResult && tongueResult.qualityScore < 20) {
+      return errorResponse(
+        locale === "zh" 
+          ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
+          : "For a more accurate assessment, please upload real images and dream content",
+        400,
+        "BAD_REQUEST",
+      );
     }
 
     // 上传图片到 Supabase storage 并获取 publicUrl
@@ -387,6 +467,7 @@ export async function POST(request: Request) {
     // 掌纹 LLM 解读（带错误处理和兜底）
     let palmInsight;
     try {
+      console.log("[V2 Analyze] Calling LLM for palm interpretation...", { reportId, locale });
       palmInsight = await interpretPalmWithLLM(
         locale,
         palmResult ?? {
@@ -396,8 +477,10 @@ export async function POST(request: Request) {
           qualityScore: 0,
         },
       );
+      console.log("[V2 Analyze] LLM palm interpretation successful", { reportId, hasSummary: !!palmInsight.summary, bulletsCount: palmInsight.bullets?.length });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretPalmWithLLM", error);
+      console.warn("[V2 Analyze] Falling back to rule-based palm insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       palmInsight = {
         summary: [
@@ -416,9 +499,12 @@ export async function POST(request: Request) {
     // 舌象 LLM 解读（带错误处理和兜底）
     let tongueInsight;
     try {
+      console.log("[V2 Analyze] Calling LLM for tongue interpretation...", { reportId, locale });
       tongueInsight = await interpretTongueWithLLM(locale, tongueResult);
+      console.log("[V2 Analyze] LLM tongue interpretation successful", { reportId, hasSummary: !!tongueInsight.summary, bulletsCount: tongueInsight.bullets?.length });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretTongueWithLLM", error);
+      console.warn("[V2 Analyze] Falling back to rule-based tongue insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       tongueInsight = {
         summary: locale === "zh"
@@ -441,9 +527,12 @@ export async function POST(request: Request) {
     // 梦境 LLM 解读（带错误处理和兜底）
     let dreamInsightLLM;
     try {
+      console.log("[V2 Analyze] Calling LLM for dream interpretation...", { reportId, locale, dreamTextLength: dreamText.length });
       dreamInsightLLM = await interpretDreamWithLLM(locale, dreamText);
+      console.log("[V2 Analyze] LLM dream interpretation successful", { reportId, hasSymbol: !!dreamInsightLLM.symbol, suggestionsCount: dreamInsightLLM.suggestions?.length });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretDreamWithLLM", error);
+      console.warn("[V2 Analyze] Falling back to rule-based dream insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       dreamInsightLLM = {
         symbol: dreamArchetype.symbol_meaning || (locale === "zh" ? "梦境提醒你放慢节奏、留意内心。" : "Dream nudges you to slow down and listen inward."),
