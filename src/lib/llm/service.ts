@@ -513,9 +513,18 @@ export async function callLLM(prompt: string): Promise<string> {
 
 type Locale = "zh" | "en";
 
+export interface PalmWealthInsight {
+  summary?: string;
+  level?: string;
+  pattern?: string;
+  risk?: string[];
+  potential?: string[];
+}
+
 export interface PalmInsight {
-  summary: string[]; // 分句后的 2–3 句
-  bullets: string[]; // 建议列表
+  summary: string[];
+  bullets: string[];
+  wealth?: PalmWealthInsight;
 }
 
 export interface TongueInsight {
@@ -774,128 +783,6 @@ Each module (palm / tongue / dream / qi rhythm) should cover three types of cont
 `.trim();
 }
 
-/**
- * 构建财富线分析系统提示词（与其他模块保持一致，数据通过 JSON 传给 user）
- */
-function buildPalmWealthSystemPrompt(locale: Locale): string {
-  if (locale === "en") {
-    return `You are a palmistry analyst grounded in traditional palmistry and Eastern classics.
-
-【What you receive】
-- A JSON object describing palm wealth features (level, pattern, money/fate tags, wealth_trend).
-
-【What you must do】
-1. Describe the strength of the wealth line (weak / medium / strong / very strong).
-2. Explain suitable wealth paths (stable operation, side income, partnership vs independence, etc.).
-3. Remind potential risks of losing money, but keep tone calm and non-frightening.
-4. Style should reference traditional palmistry sayings, avoid modern self-help tone.
-
-【Output requirement】
-Return JSON only:
-{
-  "level": "low" | "medium" | "high",
-  "pattern": "line texture description (shallow/deep/intermittent/forked)",
-  "risk": ["risk point 1", "risk point 2"],
-  "potential": ["wealth path 1", "wealth path 2"],
-  "summary": "one sentence in palmistry style"
-}`;
-  }
-
-  return `你是基于传统手相与国学的分析师。
-
-【你会收到】
-- 一段描述财富线特征的 JSON（level、pattern、money、fate、wealth_trend）。
-
-【你需要完成】
-1. 说明财富线强弱，可用“偏弱 / 中等 / 较旺 / 很旺”等表述。
-2. 给出适合的财富路径，例如稳健经营、偏正财/偏财、适合合伙或独立。
-3. 温和提醒可能的破财风险，不要恐吓。
-4. 语气参考传统手相论语，避免现代心理鸡汤。
-
-【输出格式】
-只输出一段 JSON：
-{
-  "level": "low" | "medium" | "high",
-  "pattern": "纹理特征描述（浅/深/断续/分叉）",
-  "risk": ["破财风险点1", "破财风险点2"],
-  "potential": ["聚财途径1", "聚财途径2"],
-  "summary": "一句话总结（国学式）"
-}`;
-}
-
-/**
- * 使用 LLM 生成财富线洞察（模板 + 插值）
- */
-export async function interpretPalmWealthWithLLM(
-  locale: Locale,
-  palmWealthFeatures: {
-    level: "low" | "medium" | "high";
-    pattern: string;
-    money?: "clear" | "weak" | "broken" | "none";
-    fate?: "strong" | "weak" | "broken" | "none";
-    wealth_trend?: string;
-  },
-): Promise<{
-  level: "low" | "medium" | "high";
-  pattern: string;
-  risk: string[];
-  potential: string[];
-  summary: string;
-}> {
-  const isProduction = process.env.NODE_ENV === "production";
-  // 为了避开 OpenAI 的 RPM 限流，在财富线调用前增加一个小延迟
-  // 这样掌纹/舌苔/梦境的请求可以先完成，降低瞬时并发
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  try {
-    const system = buildPalmWealthSystemPrompt(locale);
-    const user = JSON.stringify(palmWealthFeatures, null, 2);
-    const raw = await callLLMViaProxy({
-      system,
-      user,
-      temperature: 0.6, // 降低温度，让输出更稳定
-      max_tokens: 500,
-    });
-
-    const parsed = parseJSONResponse<{
-      level?: "low" | "medium" | "high";
-      pattern?: string;
-      risk?: string[];
-      potential?: string[];
-      summary?: string;
-    }>(raw, {
-      level: palmWealthFeatures.level,
-      pattern: palmWealthFeatures.pattern,
-      risk: [],
-      potential: [],
-      summary: "",
-    });
-
-    return {
-      level: parsed.level ?? palmWealthFeatures.level,
-      pattern: parsed.pattern ?? palmWealthFeatures.pattern,
-      risk: Array.isArray(parsed.risk) ? parsed.risk.filter((r): r is string => typeof r === "string").slice(0, 3) : [],
-      potential: Array.isArray(parsed.potential) ? parsed.potential.filter((p): p is string => typeof p === "string").slice(0, 3) : [],
-      summary: parsed.summary ?? (locale === "zh" ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。" : "Wealth lines are slightly shallow and straight, indicating steady accumulation and gradual growth."),
-    };
-  } catch (error) {
-    console.error("[LLM Service] interpretPalmWealthWithLLM failed:", error);
-    
-    // 生产环境：LLM调用失败时抛出错误，不允许fallback
-    if (isProduction) {
-      console.error("[LLM Service] Production environment: LLM call failed, rethrowing error");
-      throw error; // 重新抛出错误，让外层处理
-    }
-    
-    // 开发环境：返回基于规则的兜底结果
-    return {
-      level: palmWealthFeatures.level,
-      pattern: palmWealthFeatures.pattern,
-      risk: locale === "zh" ? ["避免高风险投资", "注意控制消费冲动"] : ["Avoid high-risk investments", "Pay attention to controlling consumption impulses"],
-      potential: locale === "zh" ? ["通过稳健经营积累财富", "把握长期投资机会"] : ["Accumulate wealth through stable management", "Seize long-term investment opportunities"],
-      summary: locale === "zh" ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。" : "Wealth lines are slightly shallow and straight, indicating steady accumulation and gradual growth.",
-    };
-  }
-}
 
 /**
  * 构建掌纹系统提示词（模板化改进）
@@ -1021,7 +908,14 @@ You must fill in the following template structure. Do NOT invent features or mak
     "Fill in: One actionable suggestion related to emotions/relationships",
     "Fill in: One actionable suggestion related to thinking/decision-making",
     "Fill in: One actionable suggestion related to career/wealth (if '${wealth_trend}' is not '未突出')"
-  ]
+  ],
+  "wealth": {
+    "summary": "Fill in: Describe wealth tendency referencing '${wealth_trend}' and palm signals",
+    "level": "\"low\" | \"medium\" | \"high\" (choose based on wealth trend and palm features)",
+    "pattern": "Fill in: Describe the line pattern or signal (shallow/deep/intermittent/forked)",
+    "risk": ["Fill in: risk point 1", "Fill in: risk point 2"],
+    "potential": ["Fill in: wealth path 1", "Fill in: wealth path 2"]
+  }
 }
 
 【Requirements】
@@ -1047,7 +941,14 @@ ${JSON.stringify(palmFeatures, null, 2)}
     "填空：一条与情绪/关系相关的可执行建议",
     "填空：一条与思维/决策相关的可执行建议",
     "填空：一条与事业/财富相关的可执行建议（如果'${wealth_trend}'不是'未突出'）"
-  ]
+  ],
+  "wealth": {
+    "summary": "填空：结合'${wealth_trend}'与掌纹信号，描述财富线整体走向",
+    "level": "\"low\" | \"medium\" | \"high\"（根据财富倾向判断强弱）",
+    "pattern": "填空：描述纹理特征（浅/深/断续/分叉等）",
+    "risk": ["填空：破财风险点1", "填空：破财风险点2"],
+    "potential": ["填空：聚财途径1", "填空：聚财途径2"]
+  }
 }
 
 【要求】
@@ -1075,16 +976,21 @@ function safeParsePalmInsight(raw: string, archetype?: PalmArchetype, locale: Lo
             : `Your vitality is ${archetype.vitality}, emotionally ${archetype.emotion_pattern}, thinking-wise ${archetype.thinking_pattern}.`,
         ],
         bullets: buildPalmAdvice(archetype, locale),
+        wealth: undefined,
       }
     : {
         summary: [locale === "zh" ? "整体状态平稳，保持节奏即可。" : "Overall state is steady—maintain your rhythm."],
         bullets: locale === "zh"
           ? ["保持作息稳定", "适度活动", "留意情绪起伏"]
           : ["Keep steady routines", "Moderate activity", "Watch emotional shifts"],
+        wealth: undefined,
       };
 
   try {
-    const parsed = parseJSONResponse<{ summary?: string[]; bullets?: string[] }>(raw, fallback);
+    const parsed = parseJSONResponse<{ summary?: string[]; bullets?: string[]; wealth?: PalmWealthInsight }>(
+      raw,
+      fallback,
+    );
     
     // 验证并清理数据
     const summary = Array.isArray(parsed.summary) && parsed.summary.length > 0
@@ -1095,7 +1001,21 @@ function safeParsePalmInsight(raw: string, archetype?: PalmArchetype, locale: Lo
       ? parsed.bullets.filter((b): b is string => typeof b === "string").slice(0, 4)
       : fallback.bullets;
 
-    return { summary, bullets };
+    const wealth = parsed.wealth && typeof parsed.wealth === "object"
+      ? {
+          summary: typeof parsed.wealth.summary === "string" ? parsed.wealth.summary : undefined,
+          level: typeof parsed.wealth.level === "string" ? parsed.wealth.level : undefined,
+          pattern: typeof parsed.wealth.pattern === "string" ? parsed.wealth.pattern : undefined,
+          risk: Array.isArray(parsed.wealth.risk)
+            ? parsed.wealth.risk.filter((r): r is string => typeof r === "string").slice(0, 3)
+            : undefined,
+          potential: Array.isArray(parsed.wealth.potential)
+            ? parsed.wealth.potential.filter((p): p is string => typeof p === "string").slice(0, 3)
+            : undefined,
+        }
+      : undefined;
+
+    return { summary, bullets, wealth };
   } catch (error) {
     console.warn("[LLM Service] Failed to parse palm insight, using fallback:", error);
     return fallback;

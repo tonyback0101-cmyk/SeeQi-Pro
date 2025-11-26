@@ -19,7 +19,6 @@ import type { QiRhythmV2, QiTag } from "@/lib/analysis/qi/types";
 import { generateAdviceV2 } from "@/lib/analysis/advice/adviceEngineV2";
 import { inferTongueArchetype, TongueFeatures } from "@/lib/analysis/tongueRulesV2";
 import { buildPalmArchetype, buildPalmResultV2, type PalmArchetype, type PalmResultV2 } from "@/lib/analysis/palmRulesV2";
-import { interpretPalmWealthWithLLM } from "@/lib/llm/service";
 import { buildDreamArchetypeFromText } from "@/lib/analysis/dreamRulesV2";
 import { resolveImageExtension } from "@/lib/palmprints/validation";
 import { PALM_BUCKET } from "@/lib/palmprints/validation";
@@ -700,55 +699,27 @@ export async function POST(request: Request) {
       locale,
     );
 
-    // 使用 LLM 增强财富线分析（模板 + 插值方式）
-    try {
-      const wealthLLMInsight = await interpretPalmWealthWithLLM(locale, {
-        level: palmResultV2.wealth.level,
-        pattern: palmResultV2.wealth.pattern,
-        money: (palmInput as any).lines?.money,
-        fate: (palmInput as any).lines?.fate,
-        wealth_trend: palmArchetype.wealth_trend,
-      });
-      
-      // 验证LLM返回的数据是否有效
-      if (!wealthLLMInsight || (!wealthLLMInsight.summary && (!wealthLLMInsight.risk?.length && !wealthLLMInsight.potential?.length))) {
-        throw new Error("LLM returned empty or invalid wealth insight");
-      }
-      
-      // 合并 LLM 生成的财富洞察（如果 LLM 成功生成，则使用 LLM 结果）
+    // 如果掌纹 LLM 返回了财富洞察，则合并到结果中
+    if (palmInsight.wealth) {
+      const wealthLLMInsight = palmInsight.wealth;
       palmResultV2 = {
         ...palmResultV2,
         wealth: {
-          ...palmResultV2.wealth,
-          risk: wealthLLMInsight.risk.length > 0 ? wealthLLMInsight.risk : palmResultV2.wealth.risk,
-          potential: wealthLLMInsight.potential.length > 0 ? wealthLLMInsight.potential : palmResultV2.wealth.potential,
           summary: wealthLLMInsight.summary || palmResultV2.wealth.summary,
+          level: wealthLLMInsight.level || palmResultV2.wealth.level,
+          pattern: wealthLLMInsight.pattern || palmResultV2.wealth.pattern,
+          risk:
+            Array.isArray(wealthLLMInsight.risk) && wealthLLMInsight.risk.length > 0
+              ? wealthLLMInsight.risk
+              : palmResultV2.wealth.risk,
+          potential:
+            Array.isArray(wealthLLMInsight.potential) && wealthLLMInsight.potential.length > 0
+              ? wealthLLMInsight.potential
+              : palmResultV2.wealth.potential,
         },
       };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("[ANALYZE_V2][LLM] Wealth LLM call failed", { 
-        reportId, 
-        errorMessage,
-        isProduction,
-        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-        hasUrlConfig: !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL),
-      });
-      
-      // 生产环境：LLM调用失败时返回错误，不允许fallback
-      if (isProduction) {
-        console.error("[ANALYZE_V2][LLM] Production environment: Wealth LLM call failed, cannot fallback to rules-only");
-        const detailedError = errorMessage.includes("LLM proxy URL") 
-          ? "LLM服务配置错误：无法构建代理URL。请检查NEXTAUTH_URL_INTERNAL等环境变量。"
-          : errorMessage.includes("OPENAI_API_KEY")
-          ? "LLM服务配置错误：API密钥未配置或无效。"
-          : `财富线分析失败：${errorMessage}`;
-        throw new Error(detailedError);
-      }
-      
-      // 开发环境：允许fallback到规则生成的结果
-      console.warn("[V2 Analyze] Failed to enhance wealth insight with LLM, using rule-based result (development only):", error);
-      // LLM 失败时使用规则生成的结果，不中断流程
+    } else {
+      console.warn("[V2 Analyze] Palm LLM did not return wealth insight, using rule-based wealth result.", { reportId });
     }
 
     // 将新的 palmInsight 格式转换为原有的 normalized 格式
