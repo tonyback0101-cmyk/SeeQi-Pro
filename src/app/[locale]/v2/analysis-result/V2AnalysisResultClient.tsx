@@ -291,35 +291,6 @@ export default function V2AnalysisResultClient({
   const resolvedAccessLevel = isPro ? "full" : accessLevel;
   const showPaywall = !isPro;
 
-  // 调试：输出访问控制信息
-  useEffect(() => {
-    console.log("[V2AnalysisResultClient] Access control debug", {
-      isPro,
-      showPaywall,
-      accessLevel,
-      resolvedAccessLevel,
-      access: {
-        level: access?.level,
-        isFree: access?.isFree,
-        hasFullAccess: access?.hasFullAccess,
-      },
-      user: {
-        is_pro: user?.is_pro,
-      },
-      hasReport: !!report,
-      reportId,
-    });
-  }, [isPro, showPaywall, accessLevel, resolvedAccessLevel, access, user, report, reportId]);
-
-  // 调试：确保组件正常渲染 - 将 useEffect 移到早期返回之前
-  useEffect(() => {
-    console.log("[V2AnalysisResultClient] Component mounted/updated", {
-      hasReport: !!report,
-      isPro,
-      reportId,
-      effectiveLocale,
-    });
-  }, [report, isPro, reportId, effectiveLocale]);
 
   if (!report) {
     console.error("[V2AnalysisResultClient] Report is null, showing error message", { reportId, hasAccess: !!access });

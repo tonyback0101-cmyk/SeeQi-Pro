@@ -46,12 +46,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const startTime = Date.now();
-    console.log("[LLM] Proxy route called", { 
-      model: body.model, 
-      messagesCount: body.messages?.length,
-      hasApiKey: !!apiKey,
-      baseUrl: BASE_URL,
-    });
 
     const res = await fetchWithTimeout(
       `${BASE_URL}/v1/chat/completions`,

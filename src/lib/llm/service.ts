@@ -58,13 +58,7 @@ async function callLLMViaProxy(params: {
     throw new Error("LLM API key not configured. Please set OPENAI_API_KEY in environment variables.");
   }
   
-  console.log("[LLM] Calling LLM proxy", { 
-    url: proxyUrl, 
-    model: params.model || "gpt-4o-mini",
-    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-    systemLength: params.system.length,
-    userLength: params.user.length,
-  });
+  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model: params.model || "gpt-4o-mini" });
   
   const response = await fetch(proxyUrl, {
     method: "POST",

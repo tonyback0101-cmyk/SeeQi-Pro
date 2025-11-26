@@ -30,18 +30,13 @@ export async function hasSingleReportAccess(
       .maybeSingle();
 
     if (!accessError && accessData) {
-      console.log("[access] Found report_access record", { userId, reportId, accessId: accessData.id });
       return true;
-    }
-
-    if (accessError) {
-      console.warn("[access] report_access query error", accessError);
     }
 
     // 如果没有 report_access 记录，检查 orders 表
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, kind, report_id")
+      .select("id")
       .eq("user_id", userId)
       .eq("kind", "single")
       .eq("status", "paid")
@@ -53,24 +48,7 @@ export async function hasSingleReportAccess(
       return false;
     }
 
-    if (orderData) {
-      console.log("[access] Found paid order", { userId, reportId, orderId: orderData.id });
-      return true;
-    }
-
-    // 调试：检查是否有其他状态的订单
-    const { data: allOrders } = await supabase
-      .from("orders")
-      .select("id, status, kind, report_id, user_id")
-      .eq("user_id", userId)
-      .eq("report_id", reportId)
-      .limit(5);
-    
-    if (allOrders && allOrders.length > 0) {
-      console.log("[access] Found orders but not paid", { userId, reportId, orders: allOrders });
-    }
-
-    return false;
+    return !!orderData;
   } catch (error) {
     console.error("[access] hasSingleReportAccess exception", error);
     return false;

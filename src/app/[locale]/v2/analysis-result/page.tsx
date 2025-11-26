@@ -54,16 +54,8 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
   // 获取 report（来自 report_v2）
   let report = null;
   try {
-    console.log("[V2AnalysisResultPage] Fetching report", { reportId, userId });
     report = await getReportById(reportId);
-    console.log("[V2AnalysisResultPage] Report fetched", { 
-      hasReport: !!report, 
-      reportId: report?.id,
-      hasNormalized: !!report?.normalized,
-    });
     if (!report) {
-      // 报告不存在，重定向或显示错误
-      console.error("[V2AnalysisResultPage] Report not found", { reportId });
       redirect(`/${locale}/v2/analyze`);
     }
   } catch (error) {
@@ -109,7 +101,6 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
                 { onConflict: "report_id,user_id" }
               );
             
-            console.log("[V2AnalysisResultPage] Payment verified and access granted", { userId, reportId, orderId: order.id });
           }
         }
       } catch (error) {
@@ -120,18 +111,7 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
   }
 
   // 计算 access
-  // 登录后返回结果页的行为：
-  // - 如果用户刚登录回来（intent=unlock 且已有 session），正常走 computeV2Access
-  // - 如果此时用户已经是 Pro / 有订阅，access.level 会是 full，前端自然显示完整版
-  // - 否则前端仍然是预览 + 底部按钮，用户可以继续点「解锁完整报告」进入支付
-  // 不要在这里写"强制 isPro = true"，一切按 access 结果来
-  console.log("[V2AnalysisResultPage] Computing access", { userId, reportId });
   const access = await computeV2Access({ userId, reportId });
-  console.log("[V2AnalysisResultPage] Access computed", {
-    level: access.level,
-    isFree: access.isFree,
-    hasFullAccess: access.hasFullAccess,
-  });
 
   // 获取 user 信息（从 user_profiles 表读取 is_pro）
   let user: { is_pro?: boolean } | null = null;
