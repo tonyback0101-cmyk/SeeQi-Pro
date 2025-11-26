@@ -169,19 +169,43 @@ function errorResponse(message: string, status = 400, code: AnalyzeErrorCode = "
 
 export async function POST(request: Request) {
   // 环境变量检查（仅开发环境输出完整信息）
+  const isProduction = process.env.NODE_ENV === "production";
+  const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+  
   if (process.env.NODE_ENV === "development") {
     console.log("[V2 Analyze] Environment check", {
-      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      hasOpenAIKey,
       openAIKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 7) || "NOT_SET",
       nextAuthUrl: process.env.NEXTAUTH_URL || "NOT_SET",
       nextAuthUrlInternal: process.env.NEXTAUTH_URL_INTERNAL || "NOT_SET",
       publicAppUrl: process.env.NEXT_PUBLIC_APP_URL || "NOT_SET",
     });
   } else {
-    // 生产环境只检查关键变量是否存在
-    if (!process.env.OPENAI_API_KEY) {
-      console.error("[V2 Analyze] CRITICAL: OPENAI_API_KEY not configured!");
+    // 生产环境：OPENAI_API_KEY 是必需的，缺失时直接返回错误
+    if (!hasOpenAIKey) {
+      console.error("[ANALYZE_V2][LLM] CRITICAL: OPENAI_API_KEY not configured in production!");
+      return errorResponse(
+        "LLM服务未配置，无法生成分析报告。请联系管理员。",
+        500,
+        "PROCESSING_FAILED"
+      );
     }
+  }
+  
+  // 开发环境：允许通过环境变量 USE_MOCK_ANALYSIS='1' 启用mock模式（默认关闭）
+  const useMockAnalysis = process.env.USE_MOCK_ANALYSIS === "1" && !isProduction;
+  if (useMockAnalysis) {
+    console.warn("[ANALYZE_V2] WARNING: USE_MOCK_ANALYSIS is enabled (development only)");
+  }
+  
+  // 生产环境：严禁使用mock模式
+  if (isProduction && useMockAnalysis) {
+    console.error("[ANALYZE_V2] ERROR: USE_MOCK_ANALYSIS cannot be enabled in production!");
+    return errorResponse(
+      "配置错误：生产环境不允许使用mock模式",
+      500,
+      "PROCESSING_FAILED"
+    );
   }
   
   try {
@@ -459,9 +483,9 @@ export async function POST(request: Request) {
     // 掌纹 LLM 解读（带错误处理和兜底）
     let palmInsight;
     let palmLLMCalled = false;
+    let palmLLMSuccess = false;
     try {
       console.log("[V2 Analyze] Calling LLM for palm interpretation...", { reportId, locale, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
-      palmLLMCalled = true;
       palmInsight = await interpretPalmWithLLM(
         locale,
         palmResult ?? {
@@ -471,12 +495,30 @@ export async function POST(request: Request) {
           qualityScore: 0,
         },
       );
-      console.log("[V2 Analyze] LLM palm interpretation successful", { reportId, hasSummary: !!palmInsight.summary, bulletsCount: palmInsight.bullets?.length, usedLLM: true });
+      // 只有在LLM真正成功返回有效数据后才标记为成功
+      if (palmInsight && (palmInsight.summary?.length > 0 || palmInsight.bullets?.length > 0)) {
+        palmLLMCalled = true;
+        palmLLMSuccess = true;
+        console.log("[V2 Analyze] LLM palm interpretation successful", { reportId, hasSummary: !!palmInsight.summary, bulletsCount: palmInsight.bullets?.length, usedLLM: true });
+      } else {
+        throw new Error("LLM returned empty or invalid response");
+      }
     } catch (error) {
-      console.error("[V2 Analyze LLM Error]", reportId, "interpretPalmWithLLM", error);
-      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: palmLLMCalled });
-      console.warn("[V2 Analyze] Falling back to rule-based palm insight", { reportId });
-      // 回退到 rules-only 兜底逻辑
+      console.error("[ANALYZE_V2][LLM] Palm LLM call failed", { 
+        reportId, 
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isProduction,
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      });
+      
+      // 生产环境：LLM调用失败时返回错误，不允许fallback
+      if (isProduction) {
+        console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
+        throw new Error(`掌纹分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+      }
+      
+      // 开发环境：允许fallback到规则引擎
+      console.warn("[V2 Analyze] Falling back to rule-based palm insight (development only)", { reportId });
       palmInsight = {
         summary: [
           locale === "zh"
@@ -494,16 +536,34 @@ export async function POST(request: Request) {
     // 舌象 LLM 解读（带错误处理和兜底）
     let tongueInsight;
     let tongueLLMCalled = false;
+    let tongueLLMSuccess = false;
     try {
       console.log("[V2 Analyze] Calling LLM for tongue interpretation...", { reportId, locale, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
-      tongueLLMCalled = true;
       tongueInsight = await interpretTongueWithLLM(locale, tongueResult);
-      console.log("[V2 Analyze] LLM tongue interpretation successful", { reportId, hasSummary: !!tongueInsight.summary, bulletsCount: tongueInsight.bullets?.length, usedLLM: true });
+      // 只有在LLM真正成功返回有效数据后才标记为成功
+      if (tongueInsight && (tongueInsight.summary || tongueInsight.bullets?.length > 0)) {
+        tongueLLMCalled = true;
+        tongueLLMSuccess = true;
+        console.log("[V2 Analyze] LLM tongue interpretation successful", { reportId, hasSummary: !!tongueInsight.summary, bulletsCount: tongueInsight.bullets?.length, usedLLM: true });
+      } else {
+        throw new Error("LLM returned empty or invalid response");
+      }
     } catch (error) {
-      console.error("[V2 Analyze LLM Error]", reportId, "interpretTongueWithLLM", error);
-      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: tongueLLMCalled });
-      console.warn("[V2 Analyze] Falling back to rule-based tongue insight", { reportId });
-      // 回退到 rules-only 兜底逻辑
+      console.error("[ANALYZE_V2][LLM] Tongue LLM call failed", { 
+        reportId, 
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isProduction,
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      });
+      
+      // 生产环境：LLM调用失败时返回错误，不允许fallback
+      if (isProduction) {
+        console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
+        throw new Error(`舌象分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+      }
+      
+      // 开发环境：允许fallback到规则引擎
+      console.warn("[V2 Analyze] Falling back to rule-based tongue insight (development only)", { reportId });
       tongueInsight = {
         summary: locale === "zh"
           ? `整体气机：${tongueArchetype.energy_state}；湿度：${tongueArchetype.moisture_pattern}；寒热：${tongueArchetype.heat_pattern}；胃气：${tongueArchetype.digestive_trend}。`
@@ -525,16 +585,35 @@ export async function POST(request: Request) {
     // 梦境 LLM 解读（带错误处理和兜底）
     let dreamInsightLLM;
     let dreamLLMCalled = false;
+    let dreamLLMSuccess = false;
     try {
       console.log("[V2 Analyze] Calling LLM for dream interpretation...", { reportId, locale, dreamTextLength: dreamText.length, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
-      dreamLLMCalled = true;
       dreamInsightLLM = await interpretDreamWithLLM(locale, dreamText);
-      console.log("[V2 Analyze] LLM dream interpretation successful", { reportId, hasSymbol: !!dreamInsightLLM.symbol, suggestionsCount: dreamInsightLLM.suggestions?.length, usedLLM: true });
+      // 只有在LLM真正成功返回有效数据后才标记为成功
+      if (dreamInsightLLM && (dreamInsightLLM.symbol || dreamInsightLLM.suggestions?.length > 0)) {
+        dreamLLMCalled = true;
+        dreamLLMSuccess = true;
+        console.log("[V2 Analyze] LLM dream interpretation successful", { reportId, hasSymbol: !!dreamInsightLLM.symbol, suggestionsCount: dreamInsightLLM.suggestions?.length, usedLLM: true });
+      } else {
+        throw new Error("LLM returned empty or invalid response");
+      }
     } catch (error) {
-      console.error("[V2 Analyze LLM Error]", reportId, "interpretDreamWithLLM", error);
-      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: dreamLLMCalled, dreamTextLength: dreamText.length });
-      console.warn("[V2 Analyze] Falling back to rule-based dream insight", { reportId });
-      // 回退到 rules-only 兜底逻辑
+      console.error("[ANALYZE_V2][LLM] Dream LLM call failed", { 
+        reportId, 
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isProduction,
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        dreamTextLength: dreamText.length,
+      });
+      
+      // 生产环境：LLM调用失败时返回错误，不允许fallback
+      if (isProduction) {
+        console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
+        throw new Error(`梦境分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+      }
+      
+      // 开发环境：允许fallback到规则引擎
+      console.warn("[V2 Analyze] Falling back to rule-based dream insight (development only)", { reportId });
       dreamInsightLLM = {
         symbol: dreamArchetype.symbol_meaning || (locale === "zh" ? "梦境提醒你放慢节奏、留意内心。" : "Dream nudges you to slow down and listen inward."),
         mood: dreamArchetype.mood_pattern || (locale === "zh" ? "心绪需要被理解与安放。" : "Mood craves understanding and gentle pacing."),
@@ -599,6 +678,11 @@ export async function POST(request: Request) {
         wealth_trend: palmArchetype.wealth_trend,
       });
       
+      // 验证LLM返回的数据是否有效
+      if (!wealthLLMInsight || (!wealthLLMInsight.summary && (!wealthLLMInsight.risk?.length && !wealthLLMInsight.potential?.length))) {
+        throw new Error("LLM returned empty or invalid wealth insight");
+      }
+      
       // 合并 LLM 生成的财富洞察（如果 LLM 成功生成，则使用 LLM 结果）
       palmResultV2 = {
         ...palmResultV2,
@@ -610,7 +694,21 @@ export async function POST(request: Request) {
         },
       };
     } catch (error) {
-      console.error("[V2 Analyze] Failed to enhance wealth insight with LLM, using rule-based result:", error);
+      console.error("[ANALYZE_V2][LLM] Wealth LLM call failed", { 
+        reportId, 
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isProduction,
+        hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      });
+      
+      // 生产环境：LLM调用失败时返回错误，不允许fallback
+      if (isProduction) {
+        console.error("[ANALYZE_V2][LLM] Production environment: Wealth LLM call failed, cannot fallback to rules-only");
+        throw new Error(`财富线分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+      }
+      
+      // 开发环境：允许fallback到规则生成的结果
+      console.warn("[V2 Analyze] Failed to enhance wealth insight with LLM, using rule-based result (development only):", error);
       // LLM 失败时使用规则生成的结果，不中断流程
     }
 
@@ -683,10 +781,11 @@ export async function POST(request: Request) {
           ? fallbackWarnings
           : undefined,
       // 记录 LLM 使用情况（用于调试）
+      // 只有在LLM真正成功调用后才标记为true
       _llm_usage: {
-        palm: palmLLMCalled,
-        tongue: tongueLLMCalled,
-        dream: dreamLLMCalled,
+        palm: palmLLMSuccess,
+        tongue: tongueLLMSuccess,
+        dream: dreamLLMSuccess,
       },
     };
 

@@ -21,20 +21,22 @@ import { getInternalAppUrl } from "@/lib/env/urls";
  * 用于后端 API 调用（需要绝对路径）
  */
 function getLLMProxyUrl(): string {
+  // 开发环境或未设置NODE_ENV：直接使用 localhost:3001（避免环境变量问题）
+  const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === "development";
+  if (isDev) {
+    const devPort = process.env.PORT || "3001";
+    const devUrl = `http://localhost:${devPort}/api/llm/chat`;
+    console.log("[LLM] Using development URL", { devUrl, port: devPort, nodeEnv: process.env.NODE_ENV });
+    return devUrl;
+  }
+  
+  // 生产环境：使用环境变量
   try {
     const baseUrl = getInternalAppUrl();
     const url = `${baseUrl}/api/llm/chat`;
-    console.log("[LLM] Resolved LLM proxy URL", { baseUrl, url, nodeEnv: process.env.NODE_ENV });
+    console.log("[LLM] Resolved LLM proxy URL", { baseUrl, url });
     return url;
   } catch (error) {
-    console.error("[LLM] Failed to resolve internal app URL", error);
-    if (process.env.NODE_ENV === "development") {
-      // 开发环境：尝试多个可能的端口
-      const devPort = process.env.PORT || process.env.NEXT_PUBLIC_PORT || "3000";
-      const devUrl = `http://localhost:${devPort}/api/llm/chat`;
-      console.warn("[LLM] Using development fallback URL", { devUrl });
-      return devUrl;
-    }
     console.error("[LLM] Cannot resolve LLM proxy URL in production", error);
     throw error;
   }
@@ -58,23 +60,33 @@ async function callLLMViaProxy(params: {
     throw new Error("LLM API key not configured. Please set OPENAI_API_KEY in environment variables.");
   }
   
-  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model: params.model || "gpt-4o-mini" });
+  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model: params.model || "gpt-4o-mini", hasOpenAIKey: !!process.env.OPENAI_API_KEY });
   
-  const response = await fetch(proxyUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: params.model || "gpt-4o-mini",
-      messages: [
-        { role: "system", content: params.system },
-        { role: "user", content: params.user },
-      ],
-      temperature: params.temperature ?? 0.7,
-      max_tokens: params.max_tokens ?? 1000,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(proxyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: params.model || "gpt-4o-mini",
+        messages: [
+          { role: "system", content: params.system },
+          { role: "user", content: params.user },
+        ],
+        temperature: params.temperature ?? 0.7,
+        max_tokens: params.max_tokens ?? 1000,
+      }),
+    });
+  } catch (fetchError) {
+    console.error("[LLM] Fetch error (network/connection)", { 
+      error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+      url: proxyUrl,
+      stack: fetchError instanceof Error ? fetchError.stack : undefined,
+    });
+    throw new Error(`LLM proxy fetch failed: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "Unknown error");
@@ -809,7 +821,14 @@ export async function interpretPalmWealthWithLLM(
     };
   } catch (error) {
     console.error("[LLM Service] interpretPalmWealthWithLLM failed:", error);
-    // 返回基于规则的兜底结果
+    
+    // 生产环境：LLM调用失败时抛出错误，不允许fallback
+    if (isProduction) {
+      console.error("[LLM Service] Production environment: LLM call failed, rethrowing error");
+      throw error; // 重新抛出错误，让外层处理
+    }
+    
+    // 开发环境：返回基于规则的兜底结果
     return {
       level: palmWealthFeatures.level,
       pattern: palmWealthFeatures.pattern,
@@ -1052,12 +1071,20 @@ export async function interpretPalmWithLLM(
   const user = JSON.stringify(archetype);
 
   // 4) 调用 LLM 代理
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const raw = await callLLMViaProxy({ system, user });
     return safeParsePalmInsight(raw, archetype, locale);
   } catch (error) {
     console.error("[LLM Service] interpretPalmWithLLM failed:", error);
-    // 出错时返回基于规则的兜底结果
+    
+    // 生产环境：LLM调用失败时抛出错误，不允许fallback
+    if (isProduction) {
+      console.error("[LLM Service] Production environment: LLM call failed, rethrowing error");
+      throw error; // 重新抛出错误，让外层处理
+    }
+    
+    // 开发环境：出错时返回基于规则的兜底结果
     return {
       summary: [
         `你的生命力整体${archetype.vitality}，情绪上${archetype.emotion_pattern}，思维上${archetype.thinking_pattern}。`,
@@ -1368,12 +1395,20 @@ export async function interpretTongueWithLLM(
   const user = JSON.stringify(pattern);
 
   // 4）调用 LLM 代理
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const raw = await callLLMViaProxy({ system, user });
     return safeParseTongueInsight(raw, pattern, locale);
   } catch (error) {
     console.error("[LLM Service] interpretTongueWithLLM failed:", error);
-    // 出错时返回基于规则的兜底结果
+    
+    // 生产环境：LLM调用失败时抛出错误，不允许fallback
+    if (isProduction) {
+      console.error("[LLM Service] Production environment: LLM call failed, rethrowing error");
+      throw error; // 重新抛出错误，让外层处理
+    }
+    
+    // 开发环境：出错时返回基于规则的兜底结果
     return {
       summary: `整体气机：${pattern.energy_state}；湿度：${pattern.moisture_pattern}；寒热：${pattern.heat_pattern}；胃气：${pattern.digestive_trend}。`,
       bullets: locale === "zh"
@@ -1809,12 +1844,20 @@ export async function interpretDreamWithLLM(
   const user = JSON.stringify(archetype);
 
   // 4）调用 LLM 代理
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const raw = await callLLMViaProxy({ system, user });
     return safeParseDreamInsight(raw, archetype, locale);
   } catch (error) {
     console.error("[LLM Service] interpretDreamWithLLM failed:", error);
-    // 出错时返回基于规则的兜底结果
+    
+    // 生产环境：LLM调用失败时抛出错误，不允许fallback
+    if (isProduction) {
+      console.error("[LLM Service] Production environment: LLM call failed, rethrowing error");
+      throw error; // 重新抛出错误，让外层处理
+    }
+    
+    // 开发环境：出错时返回基于规则的兜底结果
     return {
       symbol: archetype.symbol_meaning || (locale === "zh" ? "梦境提醒你放慢节奏、留意内心。" : "Dream nudges you to slow down and listen inward."),
       mood: archetype.mood_pattern || (locale === "zh" ? "心绪需要被理解与安放。" : "Mood craves understanding and gentle pacing."),
