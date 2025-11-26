@@ -458,8 +458,10 @@ export async function POST(request: Request) {
     
     // 掌纹 LLM 解读（带错误处理和兜底）
     let palmInsight;
+    let palmLLMCalled = false;
     try {
-      console.log("[V2 Analyze] Calling LLM for palm interpretation...", { reportId, locale });
+      console.log("[V2 Analyze] Calling LLM for palm interpretation...", { reportId, locale, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
+      palmLLMCalled = true;
       palmInsight = await interpretPalmWithLLM(
         locale,
         palmResult ?? {
@@ -469,9 +471,10 @@ export async function POST(request: Request) {
           qualityScore: 0,
         },
       );
-      console.log("[V2 Analyze] LLM palm interpretation successful", { reportId, hasSummary: !!palmInsight.summary, bulletsCount: palmInsight.bullets?.length });
+      console.log("[V2 Analyze] LLM palm interpretation successful", { reportId, hasSummary: !!palmInsight.summary, bulletsCount: palmInsight.bullets?.length, usedLLM: true });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretPalmWithLLM", error);
+      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: palmLLMCalled });
       console.warn("[V2 Analyze] Falling back to rule-based palm insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       palmInsight = {
@@ -490,12 +493,15 @@ export async function POST(request: Request) {
     
     // 舌象 LLM 解读（带错误处理和兜底）
     let tongueInsight;
+    let tongueLLMCalled = false;
     try {
-      console.log("[V2 Analyze] Calling LLM for tongue interpretation...", { reportId, locale });
+      console.log("[V2 Analyze] Calling LLM for tongue interpretation...", { reportId, locale, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
+      tongueLLMCalled = true;
       tongueInsight = await interpretTongueWithLLM(locale, tongueResult);
-      console.log("[V2 Analyze] LLM tongue interpretation successful", { reportId, hasSummary: !!tongueInsight.summary, bulletsCount: tongueInsight.bullets?.length });
+      console.log("[V2 Analyze] LLM tongue interpretation successful", { reportId, hasSummary: !!tongueInsight.summary, bulletsCount: tongueInsight.bullets?.length, usedLLM: true });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretTongueWithLLM", error);
+      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: tongueLLMCalled });
       console.warn("[V2 Analyze] Falling back to rule-based tongue insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       tongueInsight = {
@@ -518,12 +524,15 @@ export async function POST(request: Request) {
     
     // 梦境 LLM 解读（带错误处理和兜底）
     let dreamInsightLLM;
+    let dreamLLMCalled = false;
     try {
-      console.log("[V2 Analyze] Calling LLM for dream interpretation...", { reportId, locale, dreamTextLength: dreamText.length });
+      console.log("[V2 Analyze] Calling LLM for dream interpretation...", { reportId, locale, dreamTextLength: dreamText.length, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
+      dreamLLMCalled = true;
       dreamInsightLLM = await interpretDreamWithLLM(locale, dreamText);
-      console.log("[V2 Analyze] LLM dream interpretation successful", { reportId, hasSymbol: !!dreamInsightLLM.symbol, suggestionsCount: dreamInsightLLM.suggestions?.length });
+      console.log("[V2 Analyze] LLM dream interpretation successful", { reportId, hasSymbol: !!dreamInsightLLM.symbol, suggestionsCount: dreamInsightLLM.suggestions?.length, usedLLM: true });
     } catch (error) {
       console.error("[V2 Analyze LLM Error]", reportId, "interpretDreamWithLLM", error);
+      console.error("[V2 Analyze] LLM call attempted but failed", { reportId, errorMessage: error instanceof Error ? error.message : String(error), usedLLM: dreamLLMCalled, dreamTextLength: dreamText.length });
       console.warn("[V2 Analyze] Falling back to rule-based dream insight", { reportId });
       // 回退到 rules-only 兜底逻辑
       dreamInsightLLM = {
@@ -673,6 +682,12 @@ export async function POST(request: Request) {
         fallbackWarnings.palm.length > 0 || fallbackWarnings.tongue.length > 0
           ? fallbackWarnings
           : undefined,
+      // 记录 LLM 使用情况（用于调试）
+      _llm_usage: {
+        palm: palmLLMCalled,
+        tongue: tongueLLMCalled,
+        dream: dreamLLMCalled,
+      },
     };
 
     // 构建 V2 报告数据

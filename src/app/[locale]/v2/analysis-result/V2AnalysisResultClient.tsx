@@ -712,7 +712,13 @@ export default function V2AnalysisResultClient({
         {/* ⑤ 梦境简批（预览可见） */}
         <DreamBlock
           dreamSummary={
-            (dreamInsight as any)?.summary ??
+            // dreamInsight 结构: { archetype, llm }
+            // llm 结构: { symbol, mood, trend, suggestions }
+            // 预览使用 mood 或 symbol 作为 summary
+            dreamLLM?.mood ?? 
+            dreamLLM?.symbol ?? 
+            dreamInsight?.archetype?.mood_pattern ??
+            dreamInsight?.archetype?.symbol_meaning ??
             null
           }
           accessLevel={resolvedAccessLevel}
