@@ -71,6 +71,54 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     redirect(`/${locale}/v2/analyze`);
   }
 
+  // 如果支付成功（success=1），立即检查 Stripe session 状态并更新订单
+  if (success === "1") {
+    const sessionId = (await searchParams).session_id;
+    if (sessionId && userId) {
+      try {
+        const { getStripeClient } = await import("@/lib/stripe");
+        const stripe = getStripeClient();
+        const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+        
+        if (checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") {
+          // 支付成功，立即更新订单状态（不等待 webhook）
+          const supabase = getSupabaseAdminClient();
+          const { data: order } = await supabase
+            .from("orders")
+            .select("id, status")
+            .eq("stripe_checkout_session_id", sessionId)
+            .maybeSingle();
+          
+          if (order && order.status !== "paid") {
+            // 更新订单状态
+            await supabase
+              .from("orders")
+              .update({ status: "paid", updated_at: new Date().toISOString() })
+              .eq("id", order.id);
+            
+            // 创建 report_access 记录（如果不存在）
+            await supabase
+              .from("report_access")
+              .upsert(
+                {
+                  user_id: userId,
+                  report_id: reportId,
+                  tier: "full",
+                  created_at: new Date().toISOString(),
+                },
+                { onConflict: "report_id,user_id" }
+              );
+            
+            console.log("[V2AnalysisResultPage] Payment verified and access granted", { userId, reportId, orderId: order.id });
+          }
+        }
+      } catch (error) {
+        console.error("[V2AnalysisResultPage] Failed to verify payment", error);
+        // 不阻止流程继续，webhook 会处理
+      }
+    }
+  }
+
   // 计算 access
   // 登录后返回结果页的行为：
   // - 如果用户刚登录回来（intent=unlock 且已有 session），正常走 computeV2Access

@@ -7,7 +7,7 @@ import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 /**
  * 检查用户是否有单次报告访问权限
- * 查询 orders 表：kind='single' 且 status='paid' 且 report_id 匹配
+ * 优先查询 report_access 表（webhook 写入），其次查询 orders 表
  */
 export async function hasSingleReportAccess(
   userId: string,
@@ -20,21 +20,57 @@ export async function hasSingleReportAccess(
   try {
     const supabase = getSupabaseAdminClient();
     
-    const { data, error } = await supabase
-      .from("orders")
+    // 优先检查 report_access 表（webhook 写入的权限记录）
+    const { data: accessData, error: accessError } = await supabase
+      .from("report_access")
       .select("id")
+      .eq("user_id", userId)
+      .eq("report_id", reportId)
+      .eq("tier", "full")
+      .maybeSingle();
+
+    if (!accessError && accessData) {
+      console.log("[access] Found report_access record", { userId, reportId, accessId: accessData.id });
+      return true;
+    }
+
+    if (accessError) {
+      console.warn("[access] report_access query error", accessError);
+    }
+
+    // 如果没有 report_access 记录，检查 orders 表
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .select("id, status, kind, report_id")
       .eq("user_id", userId)
       .eq("kind", "single")
       .eq("status", "paid")
       .eq("report_id", reportId)
       .maybeSingle();
 
-    if (error) {
-      console.error("[access] hasSingleReportAccess error", error);
+    if (orderError) {
+      console.error("[access] hasSingleReportAccess error", orderError);
       return false;
     }
 
-    return !!data;
+    if (orderData) {
+      console.log("[access] Found paid order", { userId, reportId, orderId: orderData.id });
+      return true;
+    }
+
+    // 调试：检查是否有其他状态的订单
+    const { data: allOrders } = await supabase
+      .from("orders")
+      .select("id, status, kind, report_id, user_id")
+      .eq("user_id", userId)
+      .eq("report_id", reportId)
+      .limit(5);
+    
+    if (allOrders && allOrders.length > 0) {
+      console.log("[access] Found orders but not paid", { userId, reportId, orders: allOrders });
+    }
+
+    return false;
   } catch (error) {
     console.error("[access] hasSingleReportAccess exception", error);
     return false;
