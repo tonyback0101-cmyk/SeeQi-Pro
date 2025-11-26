@@ -843,6 +843,9 @@ export async function interpretPalmWealthWithLLM(
   summary: string;
 }> {
   const isProduction = process.env.NODE_ENV === "production";
+  // 为了避开 OpenAI 的 RPM 限流，在财富线调用前增加一个小延迟
+  // 这样掌纹/舌苔/梦境的请求可以先完成，降低瞬时并发
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   try {
     const system = buildPalmWealthSystemPrompt(locale);
     const user = JSON.stringify(palmWealthFeatures, null, 2);
