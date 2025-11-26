@@ -789,6 +789,7 @@ export async function interpretPalmWealthWithLLM(
   potential: string[];
   summary: string;
 }> {
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const template = buildPalmWealthTemplate(locale, palmWealthFeatures);
     const raw = await callLLMViaProxy({
