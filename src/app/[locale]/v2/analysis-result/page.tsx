@@ -11,7 +11,7 @@ type Locale = "zh" | "en";
 
 type PageProps = {
   params: Promise<{ locale: Locale }>;
-  searchParams: Promise<{ reportId?: string; success?: string; canceled?: string; intent?: string }>;
+  searchParams: Promise<{ reportId?: string; success?: string; canceled?: string; intent?: string; session_id?: string }>;
 };
 
 export async function generateMetadata({
