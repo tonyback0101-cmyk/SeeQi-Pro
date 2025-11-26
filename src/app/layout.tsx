@@ -22,11 +22,6 @@ export const metadata = {
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "SeeQi",
-  },
   formatDetection: {
     telephone: false,
   },
