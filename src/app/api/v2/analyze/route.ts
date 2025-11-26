@@ -335,10 +335,10 @@ export async function POST(request: Request) {
       });
     }
     
-    // 严格验证：如果图片质量太低或检测不到手掌，拒绝请求
+    // 严格验证：只拒绝明显无效的图片
     // qualityScore 20 是 isLikelyPalm 失败时的 fallback 值，必须拒绝
-    // qualityScore < 30 也拒绝，确保只有质量足够好的图片才能通过
-    if (palmResult && palmResult.qualityScore < 30) {
+    // qualityScore < 15 已经在 analyzePalmImage 内部检查并抛出错误，这里只检查 fallback 情况
+    if (palmResult && palmResult.qualityScore === 20) {
       return errorResponse(
         locale === "zh" 
           ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
@@ -404,17 +404,9 @@ export async function POST(request: Request) {
       });
     }
     
-    // 严格验证：如果图片质量太低，拒绝请求
-    // 提高阈值到 20，确保只有清晰有效的舌苔图片才能通过
-    if (tongueResult && tongueResult.qualityScore < 20) {
-      return errorResponse(
-        locale === "zh" 
-          ? "为了让您的测评更真实准确，建议您上传真实图片和梦境" 
-          : "For a more accurate assessment, please upload real images and dream content",
-        400,
-        "BAD_REQUEST",
-      );
-    }
+    // 严格验证：只拒绝明显无效的图片
+    // qualityScore < 12 已经在 analyzeTongueImage 内部检查并抛出错误
+    // 这里只检查 NOT_TONGUE 的情况（已在上面处理）
 
     // 上传图片到 Supabase storage 并获取 publicUrl
     let palmImageUrl: string | null = null;
