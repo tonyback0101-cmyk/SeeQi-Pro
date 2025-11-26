@@ -190,6 +190,17 @@ export async function POST(request: Request) {
         "PROCESSING_FAILED"
       );
     }
+    
+    // 生产环境：检查 URL 配置（用于构建 LLM 代理 URL）
+    const hasUrlConfig = !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL);
+    if (!hasUrlConfig) {
+      console.error("[ANALYZE_V2][LLM] CRITICAL: URL configuration missing in production! Need NEXTAUTH_URL_INTERNAL, NEXTAUTH_URL, or NEXT_PUBLIC_APP_URL");
+      return errorResponse(
+        "服务器配置错误：缺少URL配置。请联系管理员。",
+        500,
+        "PROCESSING_FAILED"
+      );
+    }
   }
   
   // 开发环境：允许通过环境变量 USE_MOCK_ANALYSIS='1' 启用mock模式（默认关闭）
@@ -504,17 +515,24 @@ export async function POST(request: Request) {
         throw new Error("LLM returned empty or invalid response");
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("[ANALYZE_V2][LLM] Palm LLM call failed", { 
         reportId, 
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage,
         isProduction,
         hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        hasUrlConfig: !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL),
       });
       
       // 生产环境：LLM调用失败时返回错误，不允许fallback
       if (isProduction) {
         console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
-        throw new Error(`掌纹分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+        const detailedError = errorMessage.includes("LLM proxy URL") 
+          ? "LLM服务配置错误：无法构建代理URL。请检查NEXTAUTH_URL_INTERNAL等环境变量。"
+          : errorMessage.includes("OPENAI_API_KEY")
+          ? "LLM服务配置错误：API密钥未配置或无效。"
+          : `掌纹分析失败：${errorMessage}`;
+        throw new Error(detailedError);
       }
       
       // 开发环境：允许fallback到规则引擎
@@ -549,17 +567,24 @@ export async function POST(request: Request) {
         throw new Error("LLM returned empty or invalid response");
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("[ANALYZE_V2][LLM] Tongue LLM call failed", { 
         reportId, 
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage,
         isProduction,
         hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        hasUrlConfig: !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL),
       });
       
       // 生产环境：LLM调用失败时返回错误，不允许fallback
       if (isProduction) {
         console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
-        throw new Error(`舌象分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+        const detailedError = errorMessage.includes("LLM proxy URL") 
+          ? "LLM服务配置错误：无法构建代理URL。请检查NEXTAUTH_URL_INTERNAL等环境变量。"
+          : errorMessage.includes("OPENAI_API_KEY")
+          ? "LLM服务配置错误：API密钥未配置或无效。"
+          : `舌象分析失败：${errorMessage}`;
+        throw new Error(detailedError);
       }
       
       // 开发环境：允许fallback到规则引擎
@@ -598,18 +623,25 @@ export async function POST(request: Request) {
         throw new Error("LLM returned empty or invalid response");
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("[ANALYZE_V2][LLM] Dream LLM call failed", { 
         reportId, 
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage,
         isProduction,
         hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        hasUrlConfig: !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL),
         dreamTextLength: dreamText.length,
       });
       
       // 生产环境：LLM调用失败时返回错误，不允许fallback
       if (isProduction) {
         console.error("[ANALYZE_V2][LLM] Production environment: LLM call failed, cannot fallback to rules-only");
-        throw new Error(`梦境分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+        const detailedError = errorMessage.includes("LLM proxy URL") 
+          ? "LLM服务配置错误：无法构建代理URL。请检查NEXTAUTH_URL_INTERNAL等环境变量。"
+          : errorMessage.includes("OPENAI_API_KEY")
+          ? "LLM服务配置错误：API密钥未配置或无效。"
+          : `梦境分析失败：${errorMessage}`;
+        throw new Error(detailedError);
       }
       
       // 开发环境：允许fallback到规则引擎
@@ -694,17 +726,24 @@ export async function POST(request: Request) {
         },
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("[ANALYZE_V2][LLM] Wealth LLM call failed", { 
         reportId, 
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage,
         isProduction,
         hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+        hasUrlConfig: !!(process.env.NEXTAUTH_URL_INTERNAL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL),
       });
       
       // 生产环境：LLM调用失败时返回错误，不允许fallback
       if (isProduction) {
         console.error("[ANALYZE_V2][LLM] Production environment: Wealth LLM call failed, cannot fallback to rules-only");
-        throw new Error(`财富线分析失败：${error instanceof Error ? error.message : "LLM服务不可用"}`);
+        const detailedError = errorMessage.includes("LLM proxy URL") 
+          ? "LLM服务配置错误：无法构建代理URL。请检查NEXTAUTH_URL_INTERNAL等环境变量。"
+          : errorMessage.includes("OPENAI_API_KEY")
+          ? "LLM服务配置错误：API密钥未配置或无效。"
+          : `财富线分析失败：${errorMessage}`;
+        throw new Error(detailedError);
       }
       
       // 开发环境：允许fallback到规则生成的结果

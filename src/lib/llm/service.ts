@@ -52,15 +52,78 @@ async function callLLMViaProxy(params: {
   temperature?: number;
   max_tokens?: number;
 }): Promise<string> {
-  const proxyUrl = getLLMProxyUrl();
-  
   // 检查 OPENAI_API_KEY 是否配置
   if (!process.env.OPENAI_API_KEY) {
     console.error("[LLM] OPENAI_API_KEY not configured, LLM calls will fail");
     throw new Error("LLM API key not configured. Please set OPENAI_API_KEY in environment variables.");
   }
-  
-  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model: params.model || "gpt-4o-mini", hasOpenAIKey: !!process.env.OPENAI_API_KEY });
+
+  const isProduction = process.env.NODE_ENV === "production";
+  const model = params.model || "gpt-4o-mini";
+  const baseUrl = process.env.PENAI_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "https://api.openai.com";
+
+  // 生产环境优先直接调用 OpenAI，避免 Node -> Edge HTTP 请求失败
+  if (isProduction) {
+    console.log("[LLM] Calling OpenAI API directly (production)", { baseUrl, model, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
+    try {
+      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: params.system },
+            { role: "user", content: params.user },
+          ],
+          temperature: params.temperature ?? 0.7,
+          max_tokens: params.max_tokens ?? 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        let errorData: any;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        const errorMessage = `OpenAI API error: ${errorData.error?.message || response.statusText}`;
+        console.error("[LLM] OpenAI API call failed", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          errorData,
+        });
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || "";
+      console.log("[LLM] OpenAI API call successful", {
+        contentLength: content.length,
+        usage: data.usage,
+        model: data.model,
+      });
+
+      if (!content) {
+        console.warn("[LLM] Empty content returned from OpenAI API", { data });
+      }
+
+      return content;
+    } catch (directError) {
+      console.error("[LLM] Direct OpenAI API call failed, falling back to proxy route", {
+        error: directError instanceof Error ? directError.message : String(directError),
+      });
+      // 继续走下方的内部代理逻辑
+    }
+  }
+
+  const proxyUrl = getLLMProxyUrl();
+  console.log("[LLM] Calling LLM proxy", { url: proxyUrl, model, hasOpenAIKey: !!process.env.OPENAI_API_KEY });
   
   let response: Response;
   try {
@@ -70,7 +133,7 @@ async function callLLMViaProxy(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: params.model || "gpt-4o-mini",
+        model,
         messages: [
           { role: "system", content: params.system },
           { role: "user", content: params.user },
@@ -712,52 +775,42 @@ Each module (palm / tongue / dream / qi rhythm) should cover three types of cont
 }
 
 /**
- * 构建财富线分析模板（模板 + 插值，让 LLM 只做填空）
+ * 构建财富线分析系统提示词（与其他模块保持一致，数据通过 JSON 传给 user）
  */
-function buildPalmWealthTemplate(
-  locale: Locale,
-  palmWealthFeatures: {
-    level: "low" | "medium" | "high";
-    pattern: string;
-    money?: "clear" | "weak" | "broken" | "none";
-    fate?: "strong" | "weak" | "broken" | "none";
-    wealth_trend?: string;
-  },
-): string {
+function buildPalmWealthSystemPrompt(locale: Locale): string {
   if (locale === "en") {
-    return `You are a palmistry analyst based on traditional palmistry and Chinese classics. Below are someone's palm features related to wealth lines. Please provide a professional but accessible analysis in English.
+    return `You are a palmistry analyst grounded in traditional palmistry and Eastern classics.
 
-【Requirements】
-1. Clearly state the strength of this person's wealth line, using terms like "weak / medium / strong / very strong".
-2. Explain the wealth path suitable for this person, such as: stable management, preference for regular income/side income, suitable for partnership or independence.
-3. Remind possible wealth loss risks, but do not frighten.
-4. Language style should reference traditional palmistry sayings, avoid modern psychological platitudes.
+【What you receive】
+- A JSON object describing palm wealth features (level, pattern, money/fate tags, wealth_trend).
 
-【Palm Wealth Features】:
-${JSON.stringify(palmWealthFeatures, null, 2)}
+【What you must do】
+1. Describe the strength of the wealth line (weak / medium / strong / very strong).
+2. Explain suitable wealth paths (stable operation, side income, partnership vs independence, etc.).
+3. Remind potential risks of losing money, but keep tone calm and non-frightening.
+4. Style should reference traditional palmistry sayings, avoid modern self-help tone.
 
-【Output Format】
-Output JSON only:
+【Output requirement】
+Return JSON only:
 {
   "level": "low" | "medium" | "high",
-  "pattern": "description of line pattern (shallow/deep/intermittent/forked)",
+  "pattern": "line texture description (shallow/deep/intermittent/forked)",
   "risk": ["risk point 1", "risk point 2"],
-  "potential": ["wealth accumulation method 1", "wealth accumulation method 2"],
-  "summary": "one sentence summary in traditional palmistry style"
+  "potential": ["wealth path 1", "wealth path 2"],
+  "summary": "one sentence in palmistry style"
 }`;
   }
 
-  // 默认中文
-  return `你是基于传统手相与国学的分析师。以下是某人的掌纹特征（财富线相关），请用中文输出专业但通俗的分析。
+  return `你是基于传统手相与国学的分析师。
 
-【要求】
-1. 明确说明此人的财富线强弱，使用"偏弱 / 中等 / 较旺 / 很旺"这类表述。
-2. 说明此人适合的财富路径，如：稳健经营、偏向正财/偏财、适合合伙还是独立。
-3. 提醒可能的破财风险，但不要恐吓。
-4. 语言风格参考传统手相论语，避免现代心理鸡汤。
+【你会收到】
+- 一段描述财富线特征的 JSON（level、pattern、money、fate、wealth_trend）。
 
-【掌纹特征】：
-${JSON.stringify(palmWealthFeatures, null, 2)}
+【你需要完成】
+1. 说明财富线强弱，可用“偏弱 / 中等 / 较旺 / 很旺”等表述。
+2. 给出适合的财富路径，例如稳健经营、偏正财/偏财、适合合伙或独立。
+3. 温和提醒可能的破财风险，不要恐吓。
+4. 语气参考传统手相论语，避免现代心理鸡汤。
 
 【输出格式】
 只输出一段 JSON：
@@ -791,10 +844,11 @@ export async function interpretPalmWealthWithLLM(
 }> {
   const isProduction = process.env.NODE_ENV === "production";
   try {
-    const template = buildPalmWealthTemplate(locale, palmWealthFeatures);
+    const system = buildPalmWealthSystemPrompt(locale);
+    const user = JSON.stringify(palmWealthFeatures, null, 2);
     const raw = await callLLMViaProxy({
-      system: "你是一位专业的手相分析师，擅长财富线解读。请严格按照模板要求，只做填空，不要自由发挥。",
-      user: template,
+      system,
+      user,
       temperature: 0.6, // 降低温度，让输出更稳定
       max_tokens: 500,
     });
