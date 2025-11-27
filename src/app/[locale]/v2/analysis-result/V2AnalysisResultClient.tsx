@@ -51,22 +51,6 @@ function getAccessLevel(
   return "preview";
 }
 
-/**
- * 统一判断是否为付费用户（Pro）
- * 保留现有 computeV2Access / V2AccessResult 的实现逻辑，只做使用
- */
-function getIsPro(access: V2AccessResult, user?: { is_pro?: boolean } | null): boolean {
-  // 检查 access.level 是否为付费级别（single_paid, sub_month, sub_year 都视为 full）
-  const isFullLevel = access.level === "single_paid" || access.level === "sub_month" || access.level === "sub_year";
-  
-  // 统一计算 isPro
-  return (
-    isFullLevel ||
-    access.hasFullAccess === true ||
-    (user?.is_pro === true)
-  );
-}
-
 type V2AnalysisResultClientProps = {
   locale: Locale;
   report: AnalysisV2Result;
@@ -529,17 +513,12 @@ export default function V2AnalysisResultClient({
     }
   }, [searchParams, effectiveLocale, reportId, router, urlCleaned]);
 
-  // 统一访问控制变量：判断是否为付费用户（Pro）
-  // 保留现有 computeV2Access / V2AccessResult 的实现逻辑，只做使用
-  const isPro = getIsPro(access, user);
   const fiveAspectData = useMemo(() => extractFiveAspectData(report, locale), [report, locale]);
   const reportAccessStatus = useMemo(() => extractReportAccessStatus(report), [report]);
-  const isFiveAspectUnlocked = reportAccessStatus ? reportAccessStatus === "paid" : isPro;
-
-  // 统一使用 getAccessLevel 判断访问级别（用于向后兼容）
   const accessLevel = getAccessLevel(report, access);
-  const resolvedAccessLevel = isPro ? "full" : accessLevel;
-  const showPaywall = !isPro;
+  const isFullAccess = accessLevel === "full";
+  const resolvedAccessLevel = accessLevel;
+  const showPaywall = !isFullAccess;
 
 
   if (!report) {
@@ -586,6 +565,60 @@ export default function V2AnalysisResultClient({
 
   // 提取 dream LLM 数据（带空值处理）
   const dreamLLM = dreamInsight?.llm ?? dreamInsight?.archetype ?? null;
+
+  const palmPreviewLines = {
+    lifeLine: palmBlock?.life_line?.summary ?? null,
+    wisdomLine: palmBlock?.wisdom?.summary ?? null,
+    heartLine: palmBlock?.emotion?.summary ?? null,
+    wealthLine: palmBlock?.wealth?.summary ?? null,
+  };
+
+  const palmFullLines = {
+    lifeLine: palmBlock?.life_line?.detail ?? palmBlock?.life_line?.summary ?? null,
+    wisdomLine: palmBlock?.wisdom?.detail ?? palmBlock?.wisdom?.summary ?? null,
+    heartLine: palmBlock?.emotion?.detail ?? palmBlock?.emotion?.summary ?? null,
+    wealthLine: palmBlock?.wealth?.detail ?? palmBlock?.wealth?.summary ?? null,
+  };
+
+  const palmFullDataPayload = {
+    life: palmResultV2?.life ?? null,
+    emotion: palmResultV2?.emotion ?? null,
+    wisdom: palmResultV2?.wisdom ?? null,
+    wealth: (palmInsight as any)?.wealth
+      ? {
+          level: (palmInsight as any).wealth.level ?? palmResultV2?.wealth?.level ?? "medium",
+          pattern: (palmInsight as any).wealth.pattern ?? palmResultV2?.wealth?.pattern ?? "",
+          risk: (palmInsight as any).wealth.risk ?? palmResultV2?.wealth?.risk ?? [],
+          potential: (palmInsight as any).wealth.potential ?? palmResultV2?.wealth?.potential ?? [],
+          summary: (palmInsight as any).wealth.summary ?? palmResultV2?.wealth?.summary ?? "",
+        }
+      : palmResultV2?.wealth ?? null,
+  };
+
+  const tonguePreviewSummary = tongueBlock?.constitution?.summary ?? bodyTongue?.summary ?? null;
+
+  const tongueFullContentPayload = {
+    qiPattern: bodyTongue?.qi_pattern ?? null,
+    energyState: bodyTongue?.energy_state ?? null,
+    bodyTrend: bodyTongue?.body_trend ?? null,
+    healthCareAdvice: bodyTongue?.health_care_advice ?? [],
+    summary: tongueBlock?.constitution?.detail ?? bodyTongue?.summary ?? null,
+    suggestions: bodyTongue?.suggestions ?? [],
+  };
+
+  const dreamPreviewSummary = dreamBlock?.main_symbol?.summary ?? null;
+
+  const dreamFullContentPayload = {
+    imageSymbol: dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? dreamInsight?.symbol ?? null,
+    symbol: dreamInsight?.symbol ?? dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? null,
+    trend: dreamLLM?.Trend ?? dreamLLM?.trend ?? dreamInsight?.trend ?? null,
+    meaning: dreamLLM?.meaning ?? null,
+    advice: dreamLLM?.Advice ?? dreamLLM?.advice ?? dreamInsight?.suggestions ?? dreamInsight?.advice ?? [],
+    suggestions: dreamInsight?.suggestions ?? dreamLLM?.Advice ?? dreamLLM?.actions ?? [],
+  };
+
+  const qiPreviewSummary = qiBlock?.today_phase?.summary ?? null;
+  const qiFullDetail = qiBlock?.today_phase?.detail ?? qiBlock?.today_phase?.summary ?? null;
 
   // 检查数据缺失情况（用于显示警告）
   const hasDataMissing =
@@ -770,7 +803,7 @@ export default function V2AnalysisResultClient({
         {/* ① 头部信息 + 今日气运节奏（预览可见） */}
         <section className="report-section" style={{ color: '#AABBC9' }}>
           <h1 className="report-title">
-            {isPro ? (locale === "zh" ? "综合测评报告" : "Comprehensive Report") : t.title}
+            {isFullAccess ? (locale === "zh" ? "综合测评报告" : "Comprehensive Report") : t.title}
           </h1>
           <p className="report-subtitle">{t.subtitle}</p>
           
@@ -821,95 +854,40 @@ export default function V2AnalysisResultClient({
           </section>
         )}
 
-        {/* ① FiveElementsSection - 五象总览 */}
-        <FiveAspectOverview
-          data={fiveAspectData}
-          delay={0.1}
-          locale={locale}
-          unlocked={isFiveAspectUnlocked}
-        />
-
-        {/* ② PalmSection - 掌纹简批 */}
-        <PalmistryBlock
-          lifeLine={
-            resolvedAccessLevel === "full"
-              ? (palmBlock?.life_line?.detail ?? palmBlock?.life_line?.summary ?? null)
-              : getPreviewSentence(palmBlock?.life_line?.summary ?? null, locale)
-          }
-          wisdomLine={
-            resolvedAccessLevel === "full"
-              ? (palmBlock?.wisdom?.detail ?? palmBlock?.wisdom?.summary ?? null)
-              : getPreviewSentence(palmBlock?.wisdom?.summary ?? null, locale)
-          }
-          heartLine={
-            resolvedAccessLevel === "full"
-              ? (palmBlock?.emotion?.detail ?? palmBlock?.emotion?.summary ?? null)
-              : getPreviewSentence(palmBlock?.emotion?.summary ?? null, locale)
-          }
-          wealthLine={
-            resolvedAccessLevel === "full"
-              ? (palmBlock?.wealth?.detail ?? palmBlock?.wealth?.summary ?? null)
-              : getPreviewSentence(palmBlock?.wealth?.summary ?? null, locale)
-          }
-          fullData={
-            resolvedAccessLevel === "full"
-              ? {
-                  life: palmResultV2?.life ?? null,
-                  emotion: palmResultV2?.emotion ?? null,
-                  wisdom: palmResultV2?.wisdom ?? null,
-                  wealth: (palmInsight as any)?.wealth
-                    ? {
-                        level: (palmInsight as any).wealth.level ?? palmResultV2?.wealth?.level ?? "medium",
-                        pattern: (palmInsight as any).wealth.pattern ?? palmResultV2?.wealth?.pattern ?? "",
-                        risk: (palmInsight as any).wealth.risk ?? palmResultV2?.wealth?.risk ?? [],
-                        potential: (palmInsight as any).wealth.potential ?? palmResultV2?.wealth?.potential ?? [],
-                        summary: (palmInsight as any).wealth.summary ?? palmResultV2?.wealth?.summary ?? "",
-                      }
-                    : palmResultV2?.wealth ?? null,
-                }
-              : null
-          }
-          accessLevel={resolvedAccessLevel}
-          delay={0.15}
-          locale={locale}
-          reportId={report.id}
-          notice={palmNotice}
-        />
-
-        {/* ③ TongueSection - 舌象简批 */}
-        <TongueBlock
-          tongueColor={
-            resolvedAccessLevel === "full"
-              ? (tongueBlock?.constitution?.detail ?? tongueBlock?.constitution?.summary ?? null)
-              : getPreviewSentence(tongueBlock?.constitution?.summary ?? null, locale)
-          }
-          tongueCoating={
-            resolvedAccessLevel === "full"
-              ? (rawTongueResult?.coating
+        {isFullAccess ? (
+          <>
+            <FiveAspectOverview
+              data={fiveAspectData}
+              delay={0.1}
+              locale={locale}
+              unlocked
+            />
+            <PalmistryBlock
+              lifeLine={palmFullLines.lifeLine}
+              wisdomLine={palmFullLines.wisdomLine}
+              heartLine={palmFullLines.heartLine}
+              wealthLine={palmFullLines.wealthLine}
+              fullData={palmFullDataPayload}
+              accessLevel="full"
+              delay={0.15}
+              locale={locale}
+              reportId={report.id}
+              notice={palmNotice}
+            />
+            <TongueBlock
+              tongueColor={tongueFullContentPayload.summary}
+              tongueCoating={
+                rawTongueResult?.coating
                   ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
-                  : bodyTongue?.tongue_coating_signal ?? null)
-              : getPreviewSentence(
-                  rawTongueResult?.coating
-                    ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
-                    : null,
-                  locale,
-                )
-          }
-          cracks={
-            resolvedAccessLevel === "full"
-              ? (rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
+                  : bodyTongue?.tongue_coating_signal ?? null
+              }
+              cracks={
+                rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
                   ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
-                  : null)
-              : getPreviewSentence(
-                  rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
-                    ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
-                    : null,
-                  locale,
-                )
-          }
-          swelling={
-            resolvedAccessLevel === "full"
-              ? (rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
+                  : null
+              }
+              swelling={
+                rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
                   ? (locale === "zh"
                       ? rawTongueResult.shape === "swollen"
                         ? "舌体偏肿，提示脾虚水湿。"
@@ -917,23 +895,10 @@ export default function V2AnalysisResultClient({
                       : rawTongueResult.shape === "swollen"
                       ? "Tongue is swollen, indicating spleen deficiency with dampness."
                       : "Teeth marks present, indicating spleen qi deficiency.")
-                  : null)
-              : getPreviewSentence(
-                  rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
-                    ? (locale === "zh"
-                        ? rawTongueResult.shape === "swollen"
-                          ? "舌体偏肿，提示脾虚水湿。"
-                          : "舌边有齿痕，提示脾气不足。"
-                        : rawTongueResult.shape === "swollen"
-                        ? "Tongue is swollen, indicating spleen deficiency with dampness."
-                        : "Teeth marks present, indicating spleen qi deficiency.")
-                    : null,
-                  locale,
-                )
-          }
-          redPoints={
-            resolvedAccessLevel === "full"
-              ? (rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
+                  : null
+              }
+              redPoints={
+                rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
                   ? (locale === "zh"
                       ? rawTongueResult.color === "purple"
                         ? "舌色偏紫，提示血瘀。"
@@ -941,193 +906,180 @@ export default function V2AnalysisResultClient({
                       : rawTongueResult.color === "purple"
                       ? "Purple tongue color indicates blood stasis."
                       : "Red tongue color indicates internal heat.")
-                  : null)
-              : getPreviewSentence(
-                  rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
-                    ? (locale === "zh"
-                        ? rawTongueResult.color === "purple"
-                          ? "舌色偏紫，提示血瘀。"
-                          : "舌色偏红，提示内热。"
-                        : rawTongueResult.color === "purple"
-                        ? "Purple tongue color indicates blood stasis."
-                        : "Red tongue color indicates internal heat.")
-                    : null,
-                  locale,
-                )
-          }
-          moisture={
-            resolvedAccessLevel === "full"
-              ? (bodyTongue?.tongue_moisture_signal ?? bodyTongue?.moisture_pattern ?? null)
-              : getPreviewSentence(
-                  bodyTongue?.tongue_moisture_signal ?? bodyTongue?.moisture_pattern ?? null,
-                  locale,
-                )
-          }
-          temperatureTrend={
-            resolvedAccessLevel === "full"
-              ? (bodyTongue?.heat_pattern ?? null)
-              : getPreviewSentence(bodyTongue?.heat_pattern ?? null, locale)
-          }
-          accessLevel={resolvedAccessLevel}
-          fullContent={
-            resolvedAccessLevel === "full"
-              ? {
-                  qiPattern: bodyTongue?.qi_pattern ?? null,
-                  energyState: bodyTongue?.energy_state ?? null,
-                  bodyTrend: bodyTongue?.body_trend ?? null,
-                  healthCareAdvice: bodyTongue?.health_care_advice ?? [],
-                  summary: tongueBlock?.constitution?.detail ?? bodyTongue?.summary ?? null,
-                  suggestions: bodyTongue?.suggestions ?? [],
-                }
-              : null
-          }
-          delay={0.2}
-          locale={locale}
-          reportId={report.id}
-          notice={tongueNotice}
-        />
-
-        {/* ④ DreamSection - 梦境简批 */}
-        <DreamBlock
-          dreamSummary={
-            resolvedAccessLevel === "full"
-              ? (dreamBlock?.main_symbol?.detail ?? dreamBlock?.main_symbol?.summary ?? null)
-              : getPreviewSentence(dreamBlock?.main_symbol?.summary ?? null, locale)
-          }
-          accessLevel={resolvedAccessLevel}
-          fullContent={
-            resolvedAccessLevel === "full"
-              ? {
-                  // 象义说明（符号）- 周公解梦风格
-                  imageSymbol: dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? dreamInsight?.symbol ?? null,
-                  symbol: dreamInsight?.symbol ?? dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? null,
-                  // 趋势/吉凶预兆
-                  trend: dreamLLM?.Trend ?? dreamLLM?.trend ?? dreamInsight?.trend ?? null,
-                  // 含义（吉凶）
-                  meaning: dreamLLM?.meaning ?? null,
-                  // 化解建议（禁止心理学相关字段）
-                  advice: dreamLLM?.Advice ?? dreamLLM?.advice ?? dreamInsight?.suggestions ?? dreamInsight?.advice ?? [],
-                  suggestions: dreamInsight?.suggestions ?? dreamLLM?.Advice ?? dreamLLM?.actions ?? [],
-                }
-              : null
-          }
-          delay={0.25}
-          locale={locale}
-          reportId={report.id}
-          notice={dreamNotice}
-        />
-
-        {/* ⑤ FortuneSection - 今日气运 */}
-        <CalendarAndStatusBlock
-          date={report.created_at}
-          solarTerm={solarTerm}
-          dayGanzhi={dayGanzhi}
-          todayYi={
-            calendarData?.yi ??
-            (report as any)?.normalized?.qi_rhythm?.calendar?.yi ??
-            (report as any)?.qi_rhythm?.calendar?.yi ??
-            qiBlock?.yi ??
-            []
-          }
-          todayJi={
-            calendarData?.ji ??
-            (report as any)?.normalized?.qi_rhythm?.calendar?.ji ??
-            (report as any)?.qi_rhythm?.calendar?.ji ??
-            qiBlock?.ji ??
-            []
-          }
-          bodyMindStatus={
-            resolvedAccessLevel === "full"
-              ? (qiBlock?.today_phase?.detail ?? qiBlock?.today_phase?.summary ?? null)
-              : (qiBlock?.today_phase?.summary?.split(/[。！？.!?\n]/)[0] ?? null)
-          }
-          luckyHours={
-            resolvedAccessLevel === "full"
-              ? (qiBlock?.lucky_hours ??
+                  : null
+              }
+              moisture={bodyTongue?.tongue_moisture_signal ?? bodyTongue?.moisture_pattern ?? null}
+              temperatureTrend={bodyTongue?.heat_pattern ?? null}
+              accessLevel="full"
+              fullContent={tongueFullContentPayload}
+              delay={0.2}
+              locale={locale}
+              reportId={report.id}
+              notice={tongueNotice}
+            />
+            <DreamBlock
+              dreamSummary={dreamBlock?.main_symbol?.detail ?? dreamBlock?.main_symbol?.summary ?? null}
+              accessLevel="full"
+              fullContent={dreamFullContentPayload}
+              delay={0.25}
+              locale={locale}
+              reportId={report.id}
+              notice={dreamNotice}
+            />
+            <CalendarAndStatusBlock
+              date={report.created_at}
+              solarTerm={solarTerm}
+              dayGanzhi={dayGanzhi}
+              todayYi={
+                calendarData?.yi ??
+                (report as any)?.normalized?.qi_rhythm?.calendar?.yi ??
+                (report as any)?.qi_rhythm?.calendar?.yi ??
+                qiBlock?.yi ??
+                []
+              }
+              todayJi={
+                calendarData?.ji ??
+                (report as any)?.normalized?.qi_rhythm?.calendar?.ji ??
+                (report as any)?.qi_rhythm?.calendar?.ji ??
+                qiBlock?.ji ??
+                []
+              }
+              bodyMindStatus={qiFullDetail}
+              luckyHours={
+                qiBlock?.lucky_hours ??
                 (report as any)?.normalized?.qi_rhythm?.calendar?.lucky_hours ??
                 (report as any)?.qi_rhythm?.calendar?.lucky_hours ??
-                [])
-              : null
-          }
-          unluckyHours={
-            resolvedAccessLevel === "full"
-              ? (qiBlock?.unlucky_hours ??
+                []
+              }
+              unluckyHours={
+                qiBlock?.unlucky_hours ??
                 (report as any)?.normalized?.qi_rhythm?.calendar?.unlucky_hours ??
                 (report as any)?.qi_rhythm?.calendar?.unlucky_hours ??
-                [])
-              : null
-          }
-          qiTrend={
-            resolvedAccessLevel === "full"
-              ? (qiRhythm?.trendText ?? qiRhythm?.summary ?? null)
-              : null
-          }
-          qiAdvice={
-            resolvedAccessLevel === "full"
-              ? (qiRhythm?.advice ?? qiRhythm?.suggestions ?? [])
-              : null
-          }
-          delay={0.3}
-          locale={locale}
-          isFullAccess={resolvedAccessLevel === "full"}
-        />
-
-        {/* ⑥ UpgradeCard - 升级卡片（付费入口，只能出现一次，仅预览版出现） */}
-        {showPaywall && (
-          <motion.section
-            variants={fadeUp(0.4)}
-            initial="hidden"
-            animate="visible"
-            className="report-section paywall-section"
-          >
-            <div className="paywall-upgrade-card">
-              <div className="paywall-upgrade-header">
-                <span className="paywall-tag emphasize">
-                  {locale === "zh" ? "完整报告" : "Full Report"}
-                </span>
-                <h3 className="paywall-panel-title">
-                  {locale === "zh" ? "升级即可获得" : "Unlock to receive"}
-                </h3>
-              </div>
-              <ul className="paywall-list">
-                {proHighlights.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <div className="paywall-price-row">
-                <div>
-                  <p className="paywall-price-label">{locale === "zh" ? "解锁方式" : "Options"}</p>
-                  <p className="paywall-price-main">{locale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
+                []
+              }
+              qiTrend={qiRhythm?.trendText ?? qiRhythm?.summary ?? null}
+              qiAdvice={qiRhythm?.advice ?? qiRhythm?.suggestions ?? []}
+              delay={0.3}
+              locale={locale}
+              isFullAccess
+            />
+          </>
+        ) : (
+          <>
+            <FiveAspectOverview
+              data={fiveAspectData}
+              delay={0.1}
+              locale={locale}
+              unlocked={false}
+            />
+            <PalmistryBlock
+              lifeLine={palmPreviewLines.lifeLine}
+              wisdomLine={palmPreviewLines.wisdomLine}
+              heartLine={palmPreviewLines.heartLine}
+              wealthLine={palmPreviewLines.wealthLine}
+              fullData={null}
+              accessLevel="preview"
+              delay={0.15}
+              locale={locale}
+              reportId={report.id}
+              notice={palmNotice}
+            />
+            <TongueBlock
+              tongueColor={tonguePreviewSummary}
+              tongueCoating={null}
+              cracks={null}
+              swelling={null}
+              redPoints={null}
+              moisture={null}
+              temperatureTrend={null}
+              accessLevel="preview"
+              fullContent={null}
+              delay={0.2}
+              locale={locale}
+              reportId={report.id}
+              notice={tongueNotice}
+            />
+            <DreamBlock
+              dreamSummary={dreamPreviewSummary}
+              accessLevel="preview"
+              fullContent={null}
+              delay={0.25}
+              locale={locale}
+              reportId={report.id}
+              notice={dreamNotice}
+            />
+            <CalendarAndStatusBlock
+              date={report.created_at}
+              solarTerm={solarTerm}
+              dayGanzhi={dayGanzhi}
+              todayYi={[]}
+              todayJi={[]}
+              bodyMindStatus={qiPreviewSummary}
+              luckyHours={null}
+              unluckyHours={null}
+              qiTrend={null}
+              qiAdvice={null}
+              delay={0.3}
+              locale={locale}
+              isFullAccess={false}
+            />
+            {showPaywall && (
+              <motion.section
+                variants={fadeUp(0.4)}
+                initial="hidden"
+                animate="visible"
+                className="report-section paywall-section"
+              >
+                <div className="paywall-upgrade-card">
+                  <div className="paywall-upgrade-header">
+                    <span className="paywall-tag emphasize">
+                      {locale === "zh" ? "完整报告" : "Full Report"}
+                    </span>
+                    <h3 className="paywall-panel-title">
+                      {locale === "zh" ? "升级即可获得" : "Unlock to receive"}
+                    </h3>
+                  </div>
+                  <ul className="paywall-list">
+                    {proHighlights.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  <div className="paywall-price-row">
+                    <div>
+                      <p className="paywall-price-label">{locale === "zh" ? "解锁方式" : "Options"}</p>
+                      <p className="paywall-price-main">{locale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
+                    </div>
+                    <div className="paywall-chip-list">
+                      {unlockPerks.map((perk) => (
+                        <span key={perk}>{perk}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="paywall-action-row">
+                    <button
+                      type="button"
+                      onClick={handleUnlockClick}
+                      className="paywall-button"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+                      </svg>
+                      {locale === "zh"
+                        ? "解锁完整报告 · 查看财富线与今日修身方案"
+                        : "Unlock full report · detailed plan today"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUnlockClick}
+                      className="paywall-secondary-link"
+                    >
+                      {locale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
+                    </button>
+                  </div>
                 </div>
-                <div className="paywall-chip-list">
-                  {unlockPerks.map((perk) => (
-                    <span key={perk}>{perk}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="paywall-action-row">
-                <button
-                  type="button"
-                  onClick={handleUnlockClick}
-                  className="paywall-button"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
-                  </svg>
-                  {locale === "zh"
-                    ? "解锁完整报告 · 查看财富线与今日修身方案"
-                    : "Unlock full report · detailed plan today"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUnlockClick}
-                  className="paywall-secondary-link"
-                >
-                  {locale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
-                </button>
-              </div>
-            </div>
-          </motion.section>
+              </motion.section>
+            )}
+          </>
         )}
 
         </motion.div>
@@ -1157,7 +1109,7 @@ export default function V2AnalysisResultClient({
       </footer>
 
       {/* 解锁 Modal */}
-      {!isPro && (
+      {!isFullAccess && (
         <UnlockModal
           locale={locale}
           reportId={reportId}

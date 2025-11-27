@@ -16,11 +16,6 @@ type GrantAccessResult = {
   error?: unknown;
 };
 
-const safeJson = (value: unknown) => {
-  if (value === undefined) return undefined;
-  return value ?? null;
-};
-
 export async function ensureLegacyReportRow({
   supabase,
   reportId,
@@ -48,25 +43,10 @@ export async function ensureLegacyReportRow({
     console.warn("[ensureLegacyReportRow] Exception when checking reports table", error);
   }
 
-  const legacyLocale = report?.locale ?? locale ?? "zh";
-  const normalized = report?.normalized ?? null;
-  const constitution = normalized?.constitution ?? report?.constitution;
-  const advice = normalized?.advice ?? report?.advice;
-  const dream = normalized?.dream_insight ?? report?.dream_insight;
-  const qiRhythm = normalized?.qi_rhythm ?? report?.qi_rhythm;
-  const qiIndex = qiRhythm?.qi_index ?? null;
-  const solarTerm = qiRhythm?.solar_term ?? null;
-
   const payload: Record<string, any> = {
     id: reportId,
     created_at: report?.created_at ?? new Date().toISOString(),
-    locale: legacyLocale,
     unlocked: true,
-    constitution: safeJson(constitution),
-    advice: safeJson(advice),
-    dream: safeJson(dream),
-    qi_index: safeJson(qiIndex),
-    solar_term: safeJson(solarTerm),
   };
 
   const sanitizedPayload = Object.fromEntries(
@@ -78,10 +58,19 @@ export async function ensureLegacyReportRow({
     .upsert(sanitizedPayload, { onConflict: "id" });
 
   if (upsertError) {
-    console.error("[ensureLegacyReportRow] Failed to upsert reports row", upsertError);
+    console.error("[ensureLegacyReportRow] Failed to upsert reports row", {
+      reportId,
+      error: upsertError.message,
+      code: upsertError.code,
+      details: upsertError.details,
+    });
     return { ok: false, error: upsertError };
   }
 
+  console.log("[ensureLegacyReportRow] Upserted legacy reports row", {
+    reportId,
+    alreadyExists: false,
+  });
   return { ok: true, alreadyExists: false };
 }
 
