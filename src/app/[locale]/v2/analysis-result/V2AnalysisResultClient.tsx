@@ -485,6 +485,12 @@ export default function V2AnalysisResultClient({
   const t = TEXT[locale];
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // 提取 page.tsx 注入的数据结构（包含 preview 和 detail）
+  const palmBlock = (report as any)?.palm ?? {};
+  const tongueBlock = (report as any)?.tongue ?? {};
+  const dreamBlock = (report as any)?.dream ?? {};
+  const qiBlock = (report as any)?.qi_rhythm ?? {};
   const { data: session, status } = useSession();
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [paymentFeedback, setPaymentFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
