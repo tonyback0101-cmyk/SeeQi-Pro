@@ -10,6 +10,10 @@ interface CalendarAndStatusBlockProps {
   todayYi?: string[] | null;
   todayJi?: string[] | null;
   bodyMindStatus?: string | null;
+  luckyHours?: string[] | null;
+  unluckyHours?: string[] | null;
+  qiTrend?: string | null;
+  qiAdvice?: string[] | null;
   delay?: number;
   locale?: "zh" | "en";
   isFullAccess?: boolean;
@@ -23,6 +27,10 @@ export default function CalendarAndStatusBlock({
   todayYi,
   todayJi,
   bodyMindStatus,
+  luckyHours,
+  unluckyHours,
+  qiTrend,
+  qiAdvice,
   delay = 0.3,
   locale = "zh",
   isFullAccess = false,
@@ -32,29 +40,31 @@ export default function CalendarAndStatusBlock({
     locale === "zh"
       ? {
           previewLabel: "气运 · 今日节奏",
-          previewCTA: "解锁气运详情",
-          title: "公历信息 + 吉凶时段 + 身心状态简版",
-          calendarInfo: "公历信息",
+          title: "今日气运完整版",
           date: "日期",
           solarTerm: "节气",
           dayGanzhi: "干支",
           auspiciousTime: "吉凶时段",
           todayYi: "今日宜",
           todayJi: "今日忌",
-          bodyMindStatus: "身心状态简版",
+          luckyHours: "吉时",
+          unluckyHours: "凶时",
+          qiTrend: "五行趋势",
+          lifeAdvice: "生活建议",
         }
       : {
-          title: "Calendar Info + Auspicious Times + Body-Mind Status",
-          calendarInfo: "Calendar Info",
+          title: "Today's Qi Rhythm (Full Version)",
           date: "Date",
           solarTerm: "Solar Term",
           dayGanzhi: "Ganzhi",
           auspiciousTime: "Auspicious Times",
           todayYi: "Today's Do's",
           todayJi: "Today's Don'ts",
-          bodyMindStatus: "Body-Mind Status",
+          luckyHours: "Lucky Hours",
+          unluckyHours: "Unlucky Hours",
+          qiTrend: "Five Elements Trend",
+          lifeAdvice: "Life Advice",
           previewLabel: "Qi Rhythm · Today",
-          previewCTA: "Unlock qi insights",
         };
 
   // 格式化日期
@@ -72,17 +82,9 @@ export default function CalendarAndStatusBlock({
 
   const formattedDate = date ? formatDate(date) : null;
 
-  const previewSummary =
-    bodyMindStatus ||
-    (solarTerm
-      ? locale === "zh"
-        ? `今日节气「${solarTerm}」${dayGanzhi ? `，干支「${dayGanzhi}」` : ""}`
-        : `Solar term ${solarTerm}${dayGanzhi ? `, Ganzhi ${dayGanzhi}` : ""}`
-      : locale === "zh"
-      ? "今日气运提示整理中，稍后查看。"
-      : "Qi rhythm preview is being prepared.");
-
+  // 预览版：仅展示星象名称、不可展开、不显示五行、不出现按钮
   if (!isFullAccess) {
+    const starName = solarTerm || dayGanzhi || (locale === "zh" ? "今日气运" : "Today's Qi Rhythm");
     return (
       <motion.section
         variants={fadeUp(delay)}
@@ -95,95 +97,142 @@ export default function CalendarAndStatusBlock({
             <p className="text-[11px] uppercase tracking-[0.3em] text-text-light-secondary mb-2">
               {t.previewLabel}
             </p>
-            <p className="text-sm text-light-primary leading-relaxed">{previewSummary}</p>
+            <p className="text-sm text-light-primary leading-relaxed line-clamp-1">
+              {starName}
+            </p>
           </div>
         </div>
       </motion.section>
     );
   }
 
+  // 完整版：展示完全体：吉凶、时间段（黄历）、五行趋势、生活建议
   return (
     <motion.section
       variants={fadeUp(delay)}
       initial="hidden"
       animate="visible"
-      className="report-section public-info-section"
+      className="report-section"
     >
       <h2 className="text-lg font-serif font-bold mb-3 flex items-center gap-2 text-light-primary">
         <span className="w-1 h-4 bg-accent-gold rounded-full"></span>
         {t.title}
       </h2>
       <div className="report-content space-y-4">
-        {/* 公历信息 */}
-        <ul className="public-info-list border-b border-card-border-light pb-3">
-          <li>
-            <strong>{t.date}</strong>
-            <span>{formattedDate ?? (locale === "zh" ? "暂无" : "N/A")}</span>
-          </li>
-          <li>
-            <strong>{t.solarTerm}</strong>
-            <span>{solarTerm ?? (locale === "zh" ? "暂无" : "N/A")}</span>
-          </li>
-          <li>
-            <strong>{t.dayGanzhi}</strong>
-            <span>{dayGanzhi ?? (locale === "zh" ? "暂无" : "N/A")}</span>
-          </li>
-        </ul>
-
-        {/* 吉凶时段 */}
+        {/* 吉凶（宜忌） */}
         {(todayYi && todayYi.length > 0) || (todayJi && todayJi.length > 0) ? (
-          <div className="flex gap-4 text-sm">
-            {todayYi && todayYi.length > 0 && (
-              <div className="flex-1">
-                <span className="text-accent-red font-bold mr-2 rounded-full border border-accent-red px-1 text-xs">
-                  {t.todayYi}
-                </span>
-                <ul className="report-list mt-1 space-y-1 text-light-secondary">
-                  {todayYi.slice(0, 3).map((item, index) => (
-                    <li key={index}>• {item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {todayYi && todayYi.length > 0 && todayJi && todayJi.length > 0 && (
-              <div className="w-[1px] bg-card-border-light"></div>
-            )}
-            {todayJi && todayJi.length > 0 && (
-              <div className="flex-1">
-                {/* text-light-highlight: 用于"忌"的深色强调 */}
-                <span className="text-light-highlight font-bold mr-2 rounded-full border border-light-highlight px-1 text-xs">
-                  {t.todayJi}
-                </span>
-                <ul className="report-list mt-1 space-y-1 text-light-secondary">
-                  {todayJi.slice(0, 3).map((item, index) => (
-                    <li key={index}>• {item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight mb-2">
+              {t.auspiciousTime}
+            </p>
+            <div className="flex gap-4 text-sm">
+              {todayYi && todayYi.length > 0 && (
+                <div className="flex-1">
+                  <span className="text-accent-red font-bold mr-2 rounded-full border border-accent-red px-2 py-0.5 text-xs">
+                    {t.todayYi}
+                  </span>
+                  <ul className="report-list mt-2 space-y-1 text-light-primary">
+                    {todayYi.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-red" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {todayYi && todayYi.length > 0 && todayJi && todayJi.length > 0 && (
+                <div className="w-[1px] bg-card-border-light"></div>
+              )}
+              {todayJi && todayJi.length > 0 && (
+                <div className="flex-1">
+                  <span className="text-light-highlight font-bold mr-2 rounded-full border border-light-highlight px-2 py-0.5 text-xs">
+                    {t.todayJi}
+                  </span>
+                  <ul className="report-list mt-2 space-y-1 text-light-primary">
+                    {todayJi.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
 
-        {/* 身心状态简版 */}
-        <div className="bg-mystic-secondary/50 rounded p-3 text-sm border border-card-border-light">
-          <div className="font-bold mb-1 text-light-highlight">{t.bodyMindStatus}</div>
-          {bodyMindStatus ? (
-            <>
-              {solarTerm && (
-                <p className="text-light-secondary mb-1">
-                  {locale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`}
-                  {dayGanzhi && (locale === "zh" ? `，当天干支为「${dayGanzhi}」` : `, Day Ganzhi: ${dayGanzhi}`)}
-                </p>
-              )}
-              <p className="text-light-secondary">{bodyMindStatus}</p>
-            </>
-          ) : (
-            <p className="text-light-secondary">
-              {solarTerm && (locale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`)}
-              {dayGanzhi && (locale === "zh" ? `，当天干支为「${dayGanzhi}」` : `, Day Ganzhi: ${dayGanzhi}`)}
+        {/* 时间段（黄历：吉时/凶时） */}
+        {(luckyHours && luckyHours.length > 0) || (unluckyHours && unluckyHours.length > 0) ? (
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight mb-2">
+              {locale === "zh" ? "时间段" : "Time Periods"}
             </p>
-          )}
-        </div>
+            <div className="flex gap-4 text-sm">
+              {luckyHours && luckyHours.length > 0 && (
+                <div className="flex-1">
+                  <span className="text-accent-gold font-bold mr-2 rounded-full border border-accent-gold px-2 py-0.5 text-xs">
+                    {t.luckyHours}
+                  </span>
+                  <ul className="report-list mt-2 space-y-1 text-light-primary">
+                    {luckyHours.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-gold" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {luckyHours && luckyHours.length > 0 && unluckyHours && unluckyHours.length > 0 && (
+                <div className="w-[1px] bg-card-border-light"></div>
+              )}
+              {unluckyHours && unluckyHours.length > 0 && (
+                <div className="flex-1">
+                  <span className="text-light-highlight font-bold mr-2 rounded-full border border-light-highlight px-2 py-0.5 text-xs">
+                    {t.unluckyHours}
+                  </span>
+                  <ul className="report-list mt-2 space-y-1 text-light-primary">
+                    {unluckyHours.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* 五行趋势 */}
+        {qiTrend && (
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight mb-2">
+              {t.qiTrend}
+            </p>
+            <p className="text-sm leading-relaxed text-light-primary">{qiTrend}</p>
+          </div>
+        )}
+
+        {/* 生活建议 */}
+        {qiAdvice && qiAdvice.length > 0 && (
+          <div className="rounded-xl border-2 border-accent-gold/30 bg-gradient-to-br from-accent-gold/5 to-accent-gold/10 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-2">
+              {t.lifeAdvice}
+            </p>
+            <ul className="mt-2 space-y-2 text-sm leading-relaxed text-light-primary">
+              {qiAdvice.map((item, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-gold" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </motion.section>
   );

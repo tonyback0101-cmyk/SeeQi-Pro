@@ -822,7 +822,7 @@ export default function V2AnalysisResultClient({
           </section>
         )}
 
-        {/* ② 五象总览（预览可见） */}
+        {/* ① FiveElementsSection - 五象总览 */}
         <FiveAspectOverview
           data={fiveAspectData}
           delay={0.1}
@@ -831,7 +831,7 @@ export default function V2AnalysisResultClient({
           onUnlock={handleUnlockClick}
         />
 
-        {/* ③ 掌纹简批（预览可见） */}
+        {/* ② PalmSection - 掌纹简批 */}
         <PalmistryBlock
           lifeLine={
             resolvedAccessLevel === "full"
@@ -879,7 +879,7 @@ export default function V2AnalysisResultClient({
           onUnlock={handleUnlockClick}
         />
 
-        {/* ④ 舌象简批（预览可见） */}
+        {/* ③ TongueSection - 舌象简批 */}
         <TongueBlock
           tongueColor={
             resolvedAccessLevel === "full"
@@ -991,7 +991,7 @@ export default function V2AnalysisResultClient({
           onUnlock={handleUnlockClick}
         />
 
-        {/* ⑤ 梦境简批（预览可见） */}
+        {/* ④ DreamSection - 梦境简批 */}
         <DreamBlock
           dreamSummary={
             resolvedAccessLevel === "full"
@@ -1022,7 +1022,7 @@ export default function V2AnalysisResultClient({
           onUnlock={handleUnlockClick}
         />
 
-        {/* ⑥ 吉凶提示 + 身心状态（预览可见） */}
+        {/* ⑤ FortuneSection - 今日气运 */}
         <CalendarAndStatusBlock
           date={report.created_at}
           solarTerm={solarTerm}
@@ -1031,12 +1031,14 @@ export default function V2AnalysisResultClient({
             calendarData?.yi ??
             (report as any)?.normalized?.qi_rhythm?.calendar?.yi ??
             (report as any)?.qi_rhythm?.calendar?.yi ??
+            qiBlock?.yi ??
             []
           }
           todayJi={
             calendarData?.ji ??
             (report as any)?.normalized?.qi_rhythm?.calendar?.ji ??
             (report as any)?.qi_rhythm?.calendar?.ji ??
+            qiBlock?.ji ??
             []
           }
           bodyMindStatus={
@@ -1044,16 +1046,39 @@ export default function V2AnalysisResultClient({
               ? (qiBlock?.today_phase?.detail ?? qiBlock?.today_phase?.summary ?? null)
               : (qiBlock?.today_phase?.summary?.split(/[。！？.!?\n]/)[0] ?? null)
           }
+          luckyHours={
+            resolvedAccessLevel === "full"
+              ? (qiBlock?.lucky_hours ??
+                (report as any)?.normalized?.qi_rhythm?.calendar?.lucky_hours ??
+                (report as any)?.qi_rhythm?.calendar?.lucky_hours ??
+                [])
+              : null
+          }
+          unluckyHours={
+            resolvedAccessLevel === "full"
+              ? (qiBlock?.unlucky_hours ??
+                (report as any)?.normalized?.qi_rhythm?.calendar?.unlucky_hours ??
+                (report as any)?.qi_rhythm?.calendar?.unlucky_hours ??
+                [])
+              : null
+          }
+          qiTrend={
+            resolvedAccessLevel === "full"
+              ? (qiRhythm?.trendText ?? qiRhythm?.summary ?? null)
+              : null
+          }
+          qiAdvice={
+            resolvedAccessLevel === "full"
+              ? (qiRhythm?.advice ?? qiRhythm?.suggestions ?? [])
+              : null
+          }
           delay={0.3}
           locale={locale}
           isFullAccess={resolvedAccessLevel === "full"}
           onUnlock={handleUnlockClick}
         />
 
-        {/* 付费版内容：仅完整版时渲染 */}
-        {resolvedAccessLevel === "full" && <ProFullReportSection report={report} locale={locale} />}
-
-        {/* 统一解锁按钮（仅非 Pro 用户显示） */}
+        {/* ⑥ UpgradeCard - 升级卡片（付费入口，只能出现一次，仅预览版出现） */}
         {showPaywall && (
           <motion.section
             variants={fadeUp(0.4)}
@@ -1136,27 +1161,6 @@ export default function V2AnalysisResultClient({
             : "For Eastern symbolism study only; not medical diagnosis or deterministic prediction."}
         </p>
       </footer>
-
-      {/* 固定底部解锁按钮（仅非 Pro 用户显示） */}
-      {/* fixed bottom-0: 确保按钮始终在屏幕底部 */}
-      {/* bg-mystic-primary/90 backdrop-blur-sm: 与顶部导航类似，半透明背景带模糊 */}
-      {!isPro && (
-        <div className="fixed bottom-0 left-0 right-0 bg-mystic-primary/90 backdrop-blur-sm border-t border-card-border-light p-4 shadow-lg z-50">
-          <div className="max-w-md mx-auto">
-            {/* 按钮颜色: bg-accent-gold text-mystic-primary: 强烈的金色按钮，配上深色文字，形成醒目的视觉焦点，引导用户点击解锁 */}
-                   <button
-                     type="button"
-                     onClick={handleUnlockClick}
-                     className="w-full bg-accent-gold text-mystic-primary py-3.5 rounded-full font-bold text-sm shadow-xl hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2"
-                   >
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                       <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
-                     </svg>
-                     {locale === "zh" ? "解锁完整报告：查看精密象与今日修身建议" : "Unlock Full Report: View Detailed Insights & Today's Guidance"}
-                   </button>
-          </div>
-        </div>
-      )}
 
       {/* 解锁 Modal */}
       {!isPro && (
