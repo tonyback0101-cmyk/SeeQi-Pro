@@ -125,6 +125,9 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           // 如果是单次购买，创建 report_access 记录
           if (isSinglePurchase && reportId) {
+            let accessError: any = null;
+            let accessCreated = false;
+            
             // 先检查是否已存在
             const { data: existingAccess } = await supabase
               .from("report_access")
@@ -143,8 +146,10 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
               
               if (updateError) {
                 console.error("[V2AnalysisResultPage] Failed to update report_access:", updateError);
+                accessError = updateError;
               } else {
                 console.log(`[V2AnalysisResultPage] Updated report_access for user ${userId}, report ${reportId}`);
+                accessCreated = true;
               }
             } else {
               // 不存在，插入新记录
@@ -159,14 +164,33 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
               
               if (insertError) {
                 console.error("[V2AnalysisResultPage] Failed to create report_access:", insertError);
+                accessError = insertError;
               } else {
                 console.log(`[V2AnalysisResultPage] Created report_access for user ${userId}, report ${reportId}`, insertData);
+                accessCreated = true;
               }
             }
             
             // 无论创建成功与否，都重定向以刷新页面（webhook 会确保权限创建）
-            // 等待一小段时间确保数据库写入完成
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // 如果创建失败，等待更长时间让 webhook 处理
+            const waitTime = accessError ? 2000 : 1000;
+            console.log(`[V2AnalysisResultPage] Waiting ${waitTime}ms before redirect (accessCreated: ${accessCreated}, hasError: ${!!accessError})`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // 重定向前再次检查权限（给 webhook 时间处理）
+            const { data: finalAccessCheck } = await supabase
+              .from("report_access")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("report_id", reportId)
+              .maybeSingle();
+            
+            if (finalAccessCheck) {
+              console.log(`[V2AnalysisResultPage] report_access confirmed before redirect`);
+            } else {
+              console.log(`[V2AnalysisResultPage] report_access not found yet, webhook will handle it`);
+            }
+            
             const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
             console.log(`[V2AnalysisResultPage] Redirecting to: ${redirectUrl}`);
             redirect(redirectUrl);
