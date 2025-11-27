@@ -132,14 +132,288 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     }
   }
 
+  const enrichedReport = injectFiveAspectContent(report, locale, access.hasFullAccess);
+
   return (
     <V2AnalysisResultClient
       locale={locale}
-      report={report}
+      report={enrichedReport}
       access={access}
       userId={userId}
       isLoggedIn={!!session}
       user={user}
     />
   );
+}
+
+type LunarMeta = {
+  term?: string | null;
+  ganzhi_day?: string | null;
+  yi?: string[] | null;
+  ji?: string[] | null;
+  lucky_hours?: string[] | null;
+  unlucky_hours?: string[] | null;
+};
+
+function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boolean) {
+  if (!report) return report;
+  const normalized = report.normalized ?? {};
+  const palmSummary: string = normalized.palm_summary ?? (report as any)?.palm_summary ?? normalized?.palm_insight?.palm_overview_summary ?? "";
+  const tongueSummary: string = normalized.tongue_summary ?? (report as any)?.tongue_summary ?? normalized?.body_tongue?.summary ?? "";
+  const dreamSummary: string = normalized.dream_summary ?? (report as any)?.dream_summary ?? normalized?.dream_insight?.llm?.symbolic ?? "";
+  const lunar: LunarMeta =
+    normalized.lunar ??
+    (report as any)?.lunar ?? {
+      term: normalized?.qi_rhythm?.calendar?.solarTerm ?? null,
+      ganzhi_day: normalized?.qi_rhythm?.calendar?.dayGanzhi ?? null,
+      yi: normalized?.qi_rhythm?.calendar?.yi ?? null,
+      ji: normalized?.qi_rhythm?.calendar?.ji ?? null,
+      lucky_hours: normalized?.qi_rhythm?.calendar?.lucky_hours ?? null,
+      unlucky_hours: normalized?.qi_rhythm?.calendar?.unlucky_hours ?? null,
+    };
+
+  const previewOverall = takeSentences(`${palmSummary} ${tongueSummary} ${dreamSummary}`, 2, locale) || fallbackText(locale, "overall");
+  const fullOverall = hasFullAccess
+    ? buildFullNarrative({
+        locale,
+        palmSummary,
+        tongueSummary,
+        dreamSummary,
+        lunar,
+      })
+    : previewOverall;
+
+  const palmSentences = splitIntoSentences(palmSummary, locale);
+  const palmLifePreview = palmSentences[0] || fallbackText(locale, "palm");
+  const palmEmotionPreview = palmSentences[1] || palmLifePreview;
+  const palmWealthPreview = palmSentences[2] || palmLifePreview;
+  const palmLifeFull = hasFullAccess ? `${palmLifePreview} ${buildGanzhiLine(locale, lunar.ganzhi_day)}`.trim() : palmLifePreview;
+  const palmEmotionFull = hasFullAccess
+    ? `${palmEmotionPreview} ${locale === "zh" ? "情绪纹随日干起伏，宜以柔克刚。" : "Emotion line echoes today's stem, reply with softness."}`.trim()
+    : palmEmotionPreview;
+  const palmWealthFull = hasFullAccess
+    ? `${palmWealthPreview} ${locale === "zh" ? "结合节气势能，财富线宜稳步累积、少做激进决策。" : "With the current term, focus on steady accumulation and avoid drastic bets."}`.trim()
+    : palmWealthPreview;
+
+  const tonguePreview = takeSentences(tongueSummary, 2, locale) || fallbackText(locale, "tongue");
+  const tongueFull = hasFullAccess ? `${tongueSummary || fallbackText(locale, "tongue")} ${buildTermInteraction(locale, lunar.term)}`.trim() : tonguePreview;
+
+  const dreamPreview = takeSentences(dreamSummary, 2, locale) || fallbackText(locale, "dream");
+  const dreamFull = hasFullAccess ? `${dreamSummary || fallbackText(locale, "dream")} ${buildDreamYiJiLink(locale, lunar.yi, lunar.ji)}`.trim() : dreamPreview;
+
+  const yiList = sanitizeList(lunar.yi);
+  const jiList = sanitizeList(lunar.ji);
+  const luckyHours = sanitizeList(lunar.lucky_hours);
+  const unluckyHours = sanitizeList(lunar.unlucky_hours);
+
+  const previewQi = buildQiPreview(locale, yiList, jiList, luckyHours);
+  const fullQi = hasFullAccess
+    ? buildQiFull(locale, yiList, jiList, luckyHours, unluckyHours)
+    : previewQi;
+
+  const trimmedYi = hasFullAccess ? yiList : yiList.slice(0, 2);
+  const trimmedJi = hasFullAccess ? jiList : jiList.slice(0, 2);
+  const trimmedLucky = hasFullAccess ? luckyHours : luckyHours.slice(0, 1);
+  const trimmedUnlucky = hasFullAccess ? unluckyHours : unluckyHours.slice(0, 1);
+
+  const summaryBlock = {
+    overall_label: locale === "zh" ? "象局" : "Essence",
+    overall: fullOverall,
+    preview: previewOverall,
+  };
+
+  const palmBlock = {
+    life_line: {
+      label: locale === "zh" ? "生命线" : "Life Line",
+      summary: palmLifePreview,
+      detail: palmLifeFull,
+    },
+    emotion: {
+      label: locale === "zh" ? "情绪纹" : "Emotion Line",
+      summary: palmEmotionPreview,
+      detail: palmEmotionFull,
+    },
+    wealth: {
+      label: locale === "zh" ? "财富纹" : "Wealth Line",
+      summary: palmWealthPreview,
+      detail: palmWealthFull,
+    },
+  };
+
+  const tongueBlock = {
+    constitution: {
+      label: locale === "zh" ? "体质象" : "Constitution",
+      summary: tonguePreview,
+      detail: tongueFull,
+    },
+  };
+
+  const dreamBlock = {
+    main_symbol: {
+      label: locale === "zh" ? "梦象" : "Dream Symbol",
+      summary: dreamPreview,
+      detail: dreamFull,
+    },
+  };
+
+  const qiBlock = {
+    today_phase: {
+      label: locale === "zh" ? "今日气运" : "Qi Phase",
+      summary: previewQi,
+      detail: fullQi,
+    },
+    yi: trimmedYi,
+    ji: trimmedJi,
+    lucky_hours: trimmedLucky,
+    unlucky_hours: trimmedUnlucky,
+  };
+
+  const updatedNormalized = {
+    ...normalized,
+    qi_rhythm: {
+      ...(normalized.qi_rhythm ?? {}),
+      calendar: {
+        ...(normalized.qi_rhythm?.calendar ?? {}),
+        yi: trimmedYi,
+        ji: trimmedJi,
+        lucky_hours: trimmedLucky,
+        unlucky_hours: trimmedUnlucky,
+      },
+    },
+  };
+
+  return {
+    ...report,
+    summary: summaryBlock,
+    palm: palmBlock,
+    tongue: tongueBlock,
+    dream: dreamBlock,
+    qi_rhythm: {
+      ...(report.qi_rhythm ?? {}),
+      today_phase: qiBlock.today_phase,
+      calendar: {
+        ...(report.qi_rhythm?.calendar ?? {}),
+        yi: trimmedYi,
+        ji: trimmedJi,
+        lucky_hours: trimmedLucky,
+        unlucky_hours: trimmedUnlucky,
+      },
+    },
+    normalized: updatedNormalized,
+  };
+}
+
+function takeSentences(text: string | null | undefined, max: number, locale: Locale) {
+  if (!text) return null;
+  const separators = locale === "zh" ? /[。！？\n]/ : /[.!?\n]/;
+  const sentences = text
+    .split(separators)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) {
+    return text.trim();
+  }
+  return sentences.slice(0, max).join(locale === "zh" ? "。" : ". ") + (sentences.length > 0 ? (locale === "zh" ? "。" : ".") : "");
+}
+
+function splitIntoSentences(text: string | null | undefined, locale: Locale) {
+  if (!text) return [];
+  const separators = locale === "zh" ? /[。！？\n]/ : /[.!?\n]/;
+  return text
+    .split(separators)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function fallbackText(locale: Locale, type: "overall" | "palm" | "tongue" | "dream") {
+  const zhMap = {
+    overall: "今日五象走势稳定，适合循序渐进地调整身心节奏。",
+    palm: "掌纹整体趋于平稳，宜把握节奏稳扎稳打。",
+    tongue: "舌象显示气血尚可，但仍需注意作息与饮食。",
+    dream: "梦象提醒你调整心绪，保持内在秩序。",
+  };
+  const enMap = {
+    overall: "Five aspects stay balanced today, favoring steady pacing.",
+    palm: "Palms indicate a stable path; move forward deliberately.",
+    tongue: "Tongue signals moderate qi and blood—mind routine and diet.",
+    dream: "Dreams suggest calming emotions and keeping inner order.",
+  };
+  return locale === "zh" ? zhMap[type] : enMap[type];
+}
+
+function buildGanzhiLine(locale: Locale, ganzhi?: string | null) {
+  if (!ganzhi) return "";
+  return locale === "zh"
+    ? `干支「${ganzhi}」带来阶段性的气势起伏，提醒你顺势调节。`
+    : `The Ganzhi day "${ganzhi}" hints at phase adjustments—align with the flow.`;
+}
+
+function buildTermInteraction(locale: Locale, term?: string | null) {
+  if (!term) return "";
+  return locale === "zh"
+    ? `节气「${term}」与体质互动，适合通过饮食与温润作息巩固根本。`
+    : `The solar term "${term}" interacts with your constitution; gentle diet and rest reinforce the root.`;
+}
+
+function buildDreamYiJiLink(locale: Locale, yi?: string[] | null, ji?: string[] | null) {
+  const yiFirst = yi?.[0];
+  const jiFirst = ji?.[0];
+  if (!yiFirst && !jiFirst) return "";
+  return locale === "zh"
+    ? `宜事如「${yiFirst ?? ""}」帮助梦意落地，忌事「${jiFirst ?? ""}」需暂缓。`
+    : `Lean into "${yiFirst ?? ""}" to ground the dream symbol and pause on "${jiFirst ?? ""}" today.`;
+}
+
+function buildFullNarrative({
+  locale,
+  palmSummary,
+  tongueSummary,
+  dreamSummary,
+  lunar,
+}: {
+  locale: Locale;
+  palmSummary: string;
+  tongueSummary: string;
+  dreamSummary: string;
+  lunar: LunarMeta;
+}) {
+  const termText = lunar.term ? (locale === "zh" ? `节气「${lunar.term}」` : `the "${lunar.term}" solar term`) : "";
+  const ganzhiText = lunar.ganzhi_day ? (locale === "zh" ? `当天干支「${lunar.ganzhi_day}」` : `Ganzhi day "${lunar.ganzhi_day}"`) : "";
+  const palm = palmSummary || fallbackText(locale, "palm");
+  const tongue = tongueSummary || fallbackText(locale, "tongue");
+  const dream = dreamSummary || fallbackText(locale, "dream");
+
+  if (locale === "zh") {
+    return `${termText || "当令气机"}与${ganzhiText || "天地轮替"}交织，令今日象局呈现层次分明的缓进之势。${palm}；${tongue}；${dream}。整体气场宜慢收慢放，兼顾现实行动与内在沉淀。`
+      .replace(/；；/g, "；")
+      .replace(/；。/g, "。");
+  }
+  return `${termText || "Current seasonal qi"} together with ${ganzhiText || "the day's cyclical stem-branch"} sets a layered yet measured tone. ${palm} ${tongue} ${dream} Keep actions steady while allowing inner insights to settle.`;
+}
+
+function sanitizeList(list?: string[] | null): string[] {
+  return Array.isArray(list) ? list.filter((item) => typeof item === "string" && item.trim().length > 0) : [];
+}
+
+function buildQiPreview(locale: Locale, yi: string[], ji: string[], lucky: string[]) {
+  const firstLucky = lucky[0];
+  const yiText = yi.slice(0, 2).join(locale === "zh" ? "、" : ", ");
+  const jiText = ji.slice(0, 2).join(locale === "zh" ? "、" : ", ");
+  if (locale === "zh") {
+    return `${firstLucky ? `首个吉时落在「${firstLucky}」` : "今日吉时尚待捕捉"}，宜事：${yiText || "调息"}，忌事：${jiText || "躁进"}`;
+  }
+  return `${firstLucky ? `First lucky window: ${firstLucky}` : "Lucky window still forming"}, do: ${yiText || "slow breath"}, avoid: ${jiText || "rush"}`;
+}
+
+function buildQiFull(locale: Locale, yi: string[], ji: string[], lucky: string[], unlucky: string[]) {
+  const luckyText = lucky.length
+    ? (locale === "zh" ? `吉时涵盖：${lucky.join("、")}。` : `Lucky hours cover: ${lucky.join(", ")}.`)
+    : "";
+  const unluckyText = unlucky.length
+    ? (locale === "zh" ? `慎避时段：${unlucky.join("、")}。` : `Take care around: ${unlucky.join(", ")}.`)
+    : "";
+  const yiText = yi.length ? (locale === "zh" ? `宜：${yi.join("、")}。` : `Do: ${yi.join(", ")}.`) : "";
+  const jiText = ji.length ? (locale === "zh" ? `忌：${ji.join("、")}。` : `Avoid: ${ji.join(", ")}.`) : "";
+  const action = locale === "zh" ? "行动宜循序渐进，先稳住呼吸与节奏，再推关键事项。" : "Move in measured steps—center breath and rhythm before key moves.";
+  return `${luckyText} ${unluckyText} ${yiText} ${jiText} ${action}`.trim();
 }

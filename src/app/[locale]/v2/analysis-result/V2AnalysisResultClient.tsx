@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { fadeUp, stagger } from "@/lib/motion";
 import { buildHomePage, buildV2ResultPage } from "@/lib/v2/routes";
-import FiveAspectOverview from "./components/FiveAspectOverview";
+import FiveAspectOverview, { FiveAspectData } from "./components/FiveAspectOverview";
 import PalmistryBlock from "./components/PalmistryBlock";
 import TongueBlock from "./components/TongueBlock";
 import DreamBlock from "./components/DreamBlock";
@@ -18,6 +18,15 @@ import type { AnalysisV2Result } from "@/lib/analysis/v2/reportStore";
 import UnlockModal from "@/components/v2/UnlockModal";
 
 type Locale = "zh" | "en";
+
+/**
+ * Aspect 值类型（用于五象数据）
+ */
+type AspectValue = {
+  tag?: string | null;
+  preview?: string | null;
+  detail?: string | null;
+};
 
 /**
  * 访问级别类型
@@ -211,6 +220,235 @@ type V2ReportResponse = {
   } | null;
 };
 
+type ReportAccessStatus = "paid" | "pending" | "preview" | string;
+
+function getPreviewSentence(value: string | null | undefined, locale: Locale): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const segments = trimmed.split(locale === "zh" ? /[。！？\n]/ : /[.!?\n]/).map((seg) => seg.trim()).filter(Boolean);
+  if (segments.length === 0) {
+    return trimmed;
+  }
+  return segments[0];
+}
+
+function normalizeText(value: unknown, locale: Locale): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .join(locale === "zh" ? "；" : " · ");
+    return joined.length ? joined : null;
+  }
+  return null;
+}
+
+function extractReportAccessStatus(report: AnalysisV2Result | Record<string, unknown>): ReportAccessStatus | null {
+  const rawAccess = (report as any)?.report_access ?? (report as any)?.access;
+  if (!rawAccess) {
+    return null;
+  }
+  if (Array.isArray(rawAccess)) {
+    const paidEntry = rawAccess.find((entry) => entry?.status);
+    return paidEntry?.status ?? null;
+  }
+  if (typeof rawAccess === "object") {
+    return (rawAccess as any).status ?? null;
+  }
+  return null;
+}
+
+function extractFiveAspectData(report: AnalysisV2Result, locale: Locale): FiveAspectData {
+  const normalized = report?.normalized ?? {};
+  const palmResult = normalized?.palm_result ?? (report as any)?.palm_result ?? null;
+  const palmInsight = normalized?.palm_insight ?? (report as any)?.palm_insight ?? null;
+  const bodyTongue = normalized?.body_tongue ?? (report as any)?.body_tongue ?? null;
+  const constitution = normalized?.constitution ?? (report as any)?.constitution ?? null;
+  const dreamInsight = normalized?.dream_insight ?? (report as any)?.dream_insight ?? null;
+  const qiRhythm = normalized?.qi_rhythm ?? (report as any)?.qi_rhythm ?? null;
+
+  // 优先使用 page.tsx 注入的数据结构（包含 preview 和 detail）
+  const summaryBlock = (report as any)?.summary ?? {};
+  const palmBlock = (report as any)?.palm ?? {};
+  const tongueBlock = (report as any)?.tongue ?? {};
+  const dreamBlock = (report as any)?.dream ?? {};
+  const qiBlock = (report as any)?.qi_rhythm ?? {};
+
+  // 构建 Aspect 数据，优先使用 page.tsx 注入的 preview/detail 结构
+  const buildAspectFromBlock = (
+    tag: string | null | undefined,
+    preview: string | null | undefined,
+    detail: string | null | undefined,
+  ): AspectValue | null => {
+    const normalizedTag = tag ? String(tag).trim() : null;
+    const normalizedPreview = preview ? normalizeText(preview, locale) : null;
+    const normalizedDetail = detail ? normalizeText(detail, locale) : null;
+    
+    if (!normalizedTag && !normalizedPreview && !normalizedDetail) {
+      return null;
+    }
+    
+    return {
+      tag: normalizedTag,
+      preview: normalizedPreview,
+      detail: normalizedDetail ?? normalizedPreview, // 如果没有 detail，使用 preview 作为 detail
+    };
+  };
+
+  // 构建 Aspect 数据（fallback 到原始数据）
+  const buildAspect = (tag?: string | null, text?: string | null) => {
+    if (!tag && !text) return null;
+    return {
+      tag: tag ?? null,
+      preview: getPreviewSentence(text, locale),
+      detail: text ?? null,
+    };
+  };
+
+  // 掌纹数据：优先使用 page.tsx 注入的 preview/detail
+  const palmWealth = buildAspectFromBlock(
+    palmBlock?.wealth?.label ?? palmResult?.wealth?.pattern ?? (palmInsight as any)?.wealth?.pattern ?? null,
+    palmBlock?.wealth?.summary ?? palmResult?.wealth?.summary ?? (palmInsight as any)?.wealth?.summary ?? null,
+    palmBlock?.wealth?.detail ?? null,
+  ) ?? buildAspect(
+    palmResult?.wealth?.pattern ?? (palmInsight as any)?.wealth?.pattern ?? null,
+    normalizeText(
+      palmResult?.wealth?.summary ?? (palmInsight as any)?.wealth?.summary ?? null,
+      locale,
+    ),
+  );
+
+  const palmLife = buildAspectFromBlock(
+    palmBlock?.life_line?.label ?? palmResult?.life?.description ?? palmInsight?.life_rhythm ?? null,
+    palmBlock?.life_line?.summary ?? palmResult?.life?.interpretation ?? palmInsight?.life_rhythm ?? null,
+    palmBlock?.life_line?.detail ?? null,
+  ) ?? buildAspect(
+    palmResult?.life?.description ?? palmInsight?.life_rhythm ?? null,
+    normalizeText(
+      palmResult?.life?.interpretation ?? palmInsight?.life_rhythm ?? null,
+      locale,
+    ),
+  );
+
+  const palmEmotion = buildAspectFromBlock(
+    palmBlock?.emotion?.label ?? palmResult?.emotion?.description ?? palmInsight?.emotion_pattern ?? null,
+    palmBlock?.emotion?.summary ?? palmResult?.emotion?.interpretation ?? palmInsight?.emotion_pattern ?? null,
+    palmBlock?.emotion?.detail ?? null,
+  ) ?? buildAspect(
+    palmResult?.emotion?.description ?? palmInsight?.emotion_pattern ?? null,
+    normalizeText(
+      palmResult?.emotion?.interpretation ?? palmInsight?.emotion_pattern ?? null,
+      locale,
+    ),
+  );
+
+  // 舌象数据：优先使用 page.tsx 注入的 preview/detail
+  const tongueDetail = [
+    tongueBlock?.constitution?.detail,
+    bodyTongue?.energy_state,
+    (bodyTongue?.health_care_advice || []).join(locale === "zh" ? "；" : " · "),
+  ]
+    .filter(Boolean)
+    .join(locale === "zh" ? " " : " ");
+
+  const tongueAspect = buildAspectFromBlock(
+    tongueBlock?.constitution?.label ?? constitution?.name ?? null,
+    tongueBlock?.constitution?.summary ?? bodyTongue?.summary ?? constitution?.description_paragraphs?.[0] ?? null,
+    tongueBlock?.constitution?.detail || tongueDetail || null,
+  ) ?? buildAspect(
+    constitution?.name ?? null,
+    normalizeText(bodyTongue?.summary ?? constitution?.description_paragraphs?.[0], locale),
+  );
+
+  // 梦境数据：优先使用 page.tsx 注入的 preview/detail
+  const dreamAspect = buildAspectFromBlock(
+    dreamBlock?.main_symbol?.label ?? dreamInsight?.llm?.ImageSymbol ?? dreamInsight?.archetype?.type ?? null,
+    dreamBlock?.main_symbol?.summary ??
+      dreamInsight?.llm?.MindState ??
+      dreamInsight?.llm?.symbolic ??
+      dreamInsight?.archetype?.symbol_meaning ??
+      null,
+    dreamBlock?.main_symbol?.detail ?? null,
+  ) ?? buildAspect(
+    dreamInsight?.llm?.ImageSymbol ?? dreamInsight?.archetype?.type ?? null,
+    normalizeText(
+      dreamInsight?.llm?.MindState ??
+        dreamInsight?.llm?.symbolic ??
+        dreamInsight?.archetype?.symbol_meaning,
+      locale,
+    ),
+  );
+  
+  // 如果 dreamAspect 存在但没有 detail，尝试从 dreamInsight 构建 detail
+  if (dreamAspect && !dreamAspect.detail) {
+    const dreamDetail = [
+      dreamInsight?.llm?.Trend ?? dreamInsight?.trend,
+      (dreamInsight?.llm?.Advice ?? dreamInsight?.suggestions ?? []).join(locale === "zh" ? "；" : " · "),
+    ]
+      .filter(Boolean)
+      .join(locale === "zh" ? " " : " ");
+    if (dreamDetail) {
+      dreamAspect.detail = normalizeText(dreamDetail, locale);
+    }
+  }
+
+  // 气运数据：优先使用 page.tsx 注入的 preview/detail
+  const qiAspect = buildAspectFromBlock(
+    qiBlock?.today_phase?.label ?? qiRhythm?.tag ?? null,
+    qiBlock?.today_phase?.summary ?? qiRhythm?.summary ?? qiRhythm?.trendText ?? null,
+    qiBlock?.today_phase?.detail ?? null,
+  ) ?? buildAspect(
+    qiRhythm?.tag ?? null,
+    normalizeText(qiRhythm?.summary ?? qiRhythm?.trendText, locale),
+  );
+  
+  // 如果 qiAspect 存在但没有 detail，尝试从 qiRhythm 构建 detail
+  if (qiAspect && !qiAspect.detail) {
+    const qiDetail = [
+      (qiRhythm?.advice || []).join(locale === "zh" ? "；" : " · "),
+      (qiBlock?.lucky_hours ?? []).join(locale === "zh" ? "、" : ", "),
+    ]
+      .filter(Boolean)
+      .join(locale === "zh" ? " " : " ");
+    if (qiDetail) {
+      qiAspect.detail = normalizeText(qiDetail, locale);
+    }
+  }
+
+  // 总结数据：优先使用 page.tsx 注入的 preview/detail
+  const summaryOverall =
+    normalizeText(summaryBlock?.overall, locale) ??
+    normalizeText(qiBlock?.overall, locale) ??
+    normalizeText(qiRhythm?.summary, locale) ??
+    normalizeText(palmInsight?.palm_overview_summary, locale);
+
+  const summaryPreview = normalizeText(summaryBlock?.preview, locale) ?? getPreviewSentence(summaryOverall, locale);
+
+  return {
+    summary: buildAspectFromBlock(
+      summaryBlock?.overall_label ?? (locale === "zh" ? "今日象局" : "Essence"),
+      summaryPreview,
+      summaryOverall,
+    ) ?? buildAspect(
+      summaryBlock?.overall_label ?? (locale === "zh" ? "今日象局" : "Essence"),
+      summaryOverall,
+    ),
+    palm: {
+      life: palmLife,
+      wealth: palmWealth,
+      emotion: palmEmotion,
+    },
+    tongue: tongueAspect,
+    dream: dreamAspect,
+    qi: qiAspect,
+  };
+}
+
 const TEXT = {
   zh: {
     title: "综合测评报告（预览版）",
@@ -285,6 +523,9 @@ export default function V2AnalysisResultClient({
   // 统一访问控制变量：判断是否为付费用户（Pro）
   // 保留现有 computeV2Access / V2AccessResult 的实现逻辑，只做使用
   const isPro = getIsPro(access, user);
+  const fiveAspectData = useMemo(() => extractFiveAspectData(report, locale), [report, locale]);
+  const reportAccessStatus = useMemo(() => extractReportAccessStatus(report), [report]);
+  const isFiveAspectUnlocked = reportAccessStatus ? reportAccessStatus === "paid" : isPro;
 
   // 统一使用 getAccessLevel 判断访问级别（用于向后兼容）
   const accessLevel = getAccessLevel(report, access);
@@ -573,40 +814,52 @@ export default function V2AnalysisResultClient({
 
         {/* ② 五象总览（预览可见） */}
         <FiveAspectOverview
-          qi="中"
-          shen="中"
-          xing="中-"
-          ming="中+"
-          cai={palmResultV2?.wealth?.level === "high" ? "高" : palmResultV2?.wealth?.level === "low" ? "低" : "中"}
+          data={fiveAspectData}
           delay={0.1}
           locale={locale}
+          unlocked={isFiveAspectUnlocked}
+          onUnlock={handleUnlockClick}
         />
 
         {/* ③ 掌纹简批（预览可见） */}
         <PalmistryBlock
           lifeLine={
-            palmResultV2?.life?.interpretation ??
-            palmInsight?.life_rhythm?.split(/[。！？.!?\n]/)[0] ??
-            (locale === "zh" ? "纹路尚清，早岁略虚，后半程有回升之势。" : "Lines are clear; early years slightly weak, with recovery in later stages.")
+            getPreviewSentence(
+              palmResultV2?.life?.interpretation ??
+                palmInsight?.life_rhythm ??
+                (locale === "zh" ? "纹路尚清，早岁略虚，后半程有回升之势。" : "Lines are clear; early years slightly weak, with recovery in later stages."),
+              locale,
+            )
           }
           wisdomLine={
-            palmResultV2?.wisdom?.interpretation ??
-            palmInsight?.thought_style?.split(/[。！？.!?\n]/)[0] ??
-            (locale === "zh" ? "智慧纹清晰，思维敏捷，适合学习与决策。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making.")
+            getPreviewSentence(
+              palmResultV2?.wisdom?.interpretation ??
+                palmInsight?.thought_style ??
+                (locale === "zh" ? "智慧纹清晰，思维敏捷，适合学习与决策。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making."),
+              locale,
+            )
           }
           heartLine={
-            palmResultV2?.emotion?.interpretation ??
-            palmInsight?.emotion_pattern?.split(/[。！？.!?\n]/)[0] ??
-            (locale === "zh" ? "尾端略有分支，情感上易多思，宜坦诚沟通。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly.")
+            getPreviewSentence(
+              palmResultV2?.emotion?.interpretation ??
+                palmInsight?.emotion_pattern ??
+                (locale === "zh" ? "尾端略有分支，情感上易多思，宜坦诚沟通。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly."),
+              locale,
+            )
           }
           wealthLine={
             // 预览版：优先从 palm_result.features.moneyLine 或 AI summaries 读取
-            (report as any)?.palm_result?.features?.moneyLine ??
-            (palmInsight as any)?.wealth?.summary ??
-            palmResultV2?.wealth?.summary ??
-            palmInsight?.wealth_insight ??
-            palmResult?.lines?.wealth ??
-            (locale === "zh" ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。" : "Wealth lines are slightly shallow and straight, indicating 'steady accumulation and gradual growth'; should focus on stable management, less gambling, more accumulation.")
+            getPreviewSentence(
+              (report as any)?.palm_result?.features?.moneyLine ??
+                (palmInsight as any)?.wealth?.summary ??
+                palmResultV2?.wealth?.summary ??
+                palmInsight?.wealth_insight ??
+                palmResult?.lines?.wealth ??
+                (locale === "zh"
+                  ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。"
+                  : "Wealth lines are slightly shallow and straight, indicating 'steady accumulation and gradual growth'; should focus on stable management, less gambling, more accumulation."),
+              locale,
+            )
           }
           fullData={
             isPro
@@ -637,57 +890,80 @@ export default function V2AnalysisResultClient({
 
         {/* ④ 舌象简批（预览可见） */}
         <TongueBlock
-          tongueColor={
-            rawTongueResult?.color 
+          tongueColor={getPreviewSentence(
+            rawTongueResult?.color
               ? (locale === "zh" ? `舌色：${rawTongueResult.color}` : `Tongue color: ${rawTongueResult.color}`)
               : bodyTongue?.tongue_color_signal ??
-                (locale === "zh" ? "舌色偏淡，主气血不足。" : "Tongue color is pale, indicating qi and blood deficiency.")
-          }
-          tongueCoating={
+                  (locale === "zh" ? "舌色偏淡，主气血不足。" : "Tongue color is pale, indicating qi and blood deficiency."),
+            locale,
+          )}
+          tongueCoating={getPreviewSentence(
             rawTongueResult?.coating
               ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
               : bodyTongue?.tongue_coating_signal ??
-                (locale === "zh" ? "苔薄略白，寒湿稍重。" : "Coating is thin and slightly white, indicating slight cold-dampness.")
-          }
+                  (locale === "zh" ? "苔薄略白，寒湿稍重。" : "Coating is thin and slightly white, indicating slight cold-dampness."),
+            locale,
+          )}
           cracks={
-            rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
-              ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
-              : (rawTongueResult?.texture && rawTongueResult.texture !== "cracked") || (rawTongueResult?.shape && rawTongueResult.shape !== "cracked")
-                ? (locale === "zh" ? "无明显裂纹。" : "No obvious cracks.")
-                : null
+            getPreviewSentence(
+              rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
+                ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
+                : (rawTongueResult?.texture && rawTongueResult.texture !== "cracked") ||
+                    (rawTongueResult?.shape && rawTongueResult.shape !== "cracked")
+                  ? (locale === "zh" ? "无明显裂纹。" : "No obvious cracks.")
+                  : null,
+              locale,
+            )
           }
           swelling={
-            rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
-              ? (locale === "zh" ? rawTongueResult.shape === "swollen" ? "舌体偏肿，提示脾虚水湿。" : "舌边有齿痕，提示脾气不足。" : rawTongueResult.shape === "swollen" ? "Tongue is swollen, indicating spleen deficiency with dampness." : "Teeth marks present, indicating spleen qi deficiency.")
-              : rawTongueResult?.shape === "thin"
-                ? (locale === "zh" ? "舌体偏薄，提示阴血不足。" : "Tongue is thin, indicating yin blood deficiency.")
-                : rawTongueResult?.shape === "normal"
-                  ? (locale === "zh" ? "舌体形态正常。" : "Tongue shape is normal.")
-                  : null
+            getPreviewSentence(
+              rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
+                ? (locale === "zh"
+                    ? rawTongueResult.shape === "swollen"
+                      ? "舌体偏肿，提示脾虚水湿。"
+                      : "舌边有齿痕，提示脾气不足。"
+                    : rawTongueResult.shape === "swollen"
+                    ? "Tongue is swollen, indicating spleen deficiency with dampness."
+                    : "Teeth marks present, indicating spleen qi deficiency.")
+                : rawTongueResult?.shape === "thin"
+                  ? (locale === "zh" ? "舌体偏薄，提示阴血不足。" : "Tongue is thin, indicating yin blood deficiency.")
+                  : rawTongueResult?.shape === "normal"
+                    ? (locale === "zh" ? "舌体形态正常。" : "Tongue shape is normal.")
+                    : null,
+              locale,
+            )
           }
           redPoints={
-            rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
-              ? (locale === "zh" 
-                  ? rawTongueResult.color === "purple" 
-                    ? "舌色偏紫，提示血瘀。" 
-                    : "舌色偏红，提示内热。" 
-                  : rawTongueResult.color === "purple"
+            getPreviewSentence(
+              rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
+                ? (locale === "zh"
+                    ? rawTongueResult.color === "purple"
+                      ? "舌色偏紫，提示血瘀。"
+                      : "舌色偏红，提示内热。"
+                    : rawTongueResult.color === "purple"
                     ? "Purple tongue color indicates blood stasis."
                     : "Red tongue color indicates internal heat.")
-              : null
+                : null,
+              locale,
+            )
           }
           moisture={
-            bodyTongue?.tongue_moisture_signal ??
-            bodyTongue?.moisture_pattern ??
-            (rawTongueResult?.texture === "moist" 
-              ? (locale === "zh" ? "湿度：湿润" : "Moisture: Moist")
-              : rawTongueResult?.texture === "cracked"
-                ? (locale === "zh" ? "湿度：偏燥" : "Moisture: Dry")
-                : (locale === "zh" ? "湿度：正常" : "Moisture: Normal"))
+            getPreviewSentence(
+              bodyTongue?.tongue_moisture_signal ??
+                bodyTongue?.moisture_pattern ??
+                (rawTongueResult?.texture === "moist"
+                  ? (locale === "zh" ? "湿度：湿润" : "Moisture: Moist")
+                  : rawTongueResult?.texture === "cracked"
+                    ? (locale === "zh" ? "湿度：偏燥" : "Moisture: Dry")
+                    : (locale === "zh" ? "湿度：正常" : "Moisture: Normal")),
+              locale,
+            )
           }
           temperatureTrend={
-            bodyTongue?.heat_pattern ??
-            (locale === "zh" ? "寒热趋势：中性" : "Temperature trend: Neutral")
+            getPreviewSentence(
+              bodyTongue?.heat_pattern ?? (locale === "zh" ? "寒热趋势：中性" : "Temperature trend: Neutral"),
+              locale,
+            )
           }
           accessLevel={resolvedAccessLevel}
           fullContent={
@@ -711,16 +987,13 @@ export default function V2AnalysisResultClient({
 
         {/* ⑤ 梦境简批（预览可见） */}
         <DreamBlock
-          dreamSummary={
-            // dreamInsight 结构: { archetype, llm }
-            // llm 结构: { symbol, mood, trend, suggestions }
-            // 预览使用 mood 或 symbol 作为 summary
-            dreamLLM?.mood ?? 
-            dreamLLM?.symbol ?? 
-            dreamInsight?.archetype?.mood_pattern ??
-            dreamInsight?.archetype?.symbol_meaning ??
-            null
-          }
+          dreamSummary={getPreviewSentence(
+            dreamLLM?.mood ??
+              dreamLLM?.symbol ??
+              dreamInsight?.archetype?.mood_pattern ??
+              dreamInsight?.archetype?.symbol_meaning,
+            locale,
+          )}
           accessLevel={resolvedAccessLevel}
           fullContent={
             isPro
@@ -770,6 +1043,7 @@ export default function V2AnalysisResultClient({
           delay={0.3}
           locale={locale}
           isFullAccess={resolvedAccessLevel === "full"}
+          onUnlock={handleUnlockClick}
         />
 
         {/* 付费版内容：仅 isPro 时渲染 */}

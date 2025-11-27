@@ -4,18 +4,16 @@ import { motion } from "framer-motion";
 import { fadeUp } from "@/lib/motion";
 
 interface CalendarAndStatusBlockProps {
-  // 公历信息
   date?: string | null;
   solarTerm?: string | null;
   dayGanzhi?: string | null;
-  // 吉凶时段
   todayYi?: string[] | null;
   todayJi?: string[] | null;
-  // 身心状态简版
   bodyMindStatus?: string | null;
   delay?: number;
   locale?: "zh" | "en";
   isFullAccess?: boolean;
+  onUnlock?: () => void;
 }
 
 export default function CalendarAndStatusBlock({
@@ -28,10 +26,13 @@ export default function CalendarAndStatusBlock({
   delay = 0.3,
   locale = "zh",
   isFullAccess = false,
+  onUnlock = () => {},
 }: CalendarAndStatusBlockProps) {
   const t =
     locale === "zh"
       ? {
+          previewLabel: "气运 · 今日节奏",
+          previewCTA: "解锁气运详情",
           title: "公历信息 + 吉凶时段 + 身心状态简版",
           calendarInfo: "公历信息",
           date: "日期",
@@ -52,6 +53,8 @@ export default function CalendarAndStatusBlock({
           todayYi: "Today's Do's",
           todayJi: "Today's Don'ts",
           bodyMindStatus: "Body-Mind Status",
+          previewLabel: "Qi Rhythm · Today",
+          previewCTA: "Unlock qi insights",
         };
 
   // 格式化日期
@@ -68,6 +71,46 @@ export default function CalendarAndStatusBlock({
   };
 
   const formattedDate = date ? formatDate(date) : null;
+
+  const previewSummary =
+    bodyMindStatus ||
+    (solarTerm
+      ? locale === "zh"
+        ? `今日节气「${solarTerm}」${dayGanzhi ? `，干支「${dayGanzhi}」` : ""}`
+        : `Solar term ${solarTerm}${dayGanzhi ? `, Ganzhi ${dayGanzhi}` : ""}`
+      : locale === "zh"
+      ? "今日气运提示整理中，稍后查看。"
+      : "Qi rhythm preview is being prepared.");
+
+  if (!isFullAccess) {
+    return (
+      <motion.section
+        variants={fadeUp(delay)}
+        initial="hidden"
+        animate="visible"
+        className="report-section"
+      >
+        <div className="report-content">
+          <div className="rounded-2xl border border-card-border-light bg-card-bg-dark/60 px-5 py-4">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-text-light-secondary mb-2">
+              {t.previewLabel}
+            </p>
+            <p className="text-sm text-light-primary leading-relaxed">{previewSummary}</p>
+            <button
+              type="button"
+              onClick={onUnlock}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-accent-gold/50 px-4 py-2 text-xs font-semibold text-accent-gold hover:bg-accent-gold/10 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+              </svg>
+              {t.previewCTA}
+            </button>
+          </div>
+        </div>
+      </motion.section>
+    );
+  }
 
   return (
     <motion.section
@@ -148,11 +191,6 @@ export default function CalendarAndStatusBlock({
             <p className="text-light-secondary">
               {solarTerm && (locale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`)}
               {dayGanzhi && (locale === "zh" ? `，当天干支为「${dayGanzhi}」` : `, Day Ganzhi: ${dayGanzhi}`)}
-            </p>
-          )}
-          {!isFullAccess && (
-            <p className="text-accent-gold font-medium cursor-pointer mt-2">
-              {locale === "zh" ? "解锁完整报告：查看精密象与今日修身建议" : "Unlock Full Report: View Detailed Insights & Today's Guidance"}
             </p>
           )}
         </div>
