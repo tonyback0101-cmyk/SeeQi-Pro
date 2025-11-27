@@ -184,12 +184,48 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const supabase = await getSupabase();
   const metadata = session.metadata || {};
   
-  const userId = metadata.user_id;
+  let userId = (metadata.user_id ?? metadata.userId) as string | null | undefined;
   const mode = metadata.mode as "single" | "sub_month" | "sub_year" | undefined;
-  const reportId = metadata.report_id || null;
+  const reportId = (metadata.report_id ?? metadata.reportId ?? null) as string | null;
   
+  if (!reportId) {
+    console.error("stripe-webhook:checkout-completed-missing-report-id", { sessionId: session.id });
+    return;
+  }
+
   if (!userId) {
-    console.error("stripe-webhook:checkout-completed-missing-user-id", { sessionId: session.id });
+    const fallbackEmail =
+      metadata.user_email ??
+      metadata.email ??
+      session.customer_details?.email ??
+      session.customer_email ??
+      null;
+
+    if (fallbackEmail) {
+      try {
+        const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+        if (error) {
+          console.error("stripe-webhook:list-users-error", { sessionId: session.id, error });
+        } else {
+          const candidates = Array.isArray(data?.users) ? data?.users : [];
+          const matchedUser = candidates.find((candidate) => {
+            const email = candidate?.email ?? "";
+            return email.toLowerCase() === fallbackEmail.toLowerCase();
+          });
+          userId = matchedUser?.id ?? null;
+        }
+      } catch (lookupError) {
+        console.error("stripe-webhook:list-users-exception", { sessionId: session.id, lookupError });
+      }
+    }
+  }
+
+  if (!userId) {
+    console.error("stripe-webhook:checkout-completed-missing-user-id", {
+      sessionId: session.id,
+      reportId,
+      hint: "Metadata lacked user_id; listUsers fallback also failed",
+    });
     return;
   }
 
@@ -343,6 +379,46 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         action: accessResult.action,
         table: "report_access",
       });
+
+      try {
+        const { error: accessUpsertError } = await supabase
+          .from("report_access")
+          .upsert(
+            {
+              report_id: reportId,
+              user_id: userId,
+              session_id: session.id,
+              type: "full",
+              tier: "full",
+            },
+            {
+              onConflict: "report_id,user_id",
+            },
+          );
+
+        if (accessUpsertError) {
+          console.error("stripe-webhook:report-access-upsert-error", {
+            userId,
+            reportId,
+            error: accessUpsertError.message,
+            code: accessUpsertError.code,
+            details: accessUpsertError.details,
+          });
+        } else {
+          console.log("stripe-webhook:report-access-upserted", {
+            userId,
+            reportId,
+            sessionId: session.id,
+          });
+        }
+      } catch (accessUpsertException) {
+        console.error("stripe-webhook:report-access-upsert-exception", {
+          userId,
+          reportId,
+          sessionId: session.id,
+          error: accessUpsertException instanceof Error ? accessUpsertException.message : String(accessUpsertException),
+        });
+      }
     } else {
       console.error("stripe-webhook:single-access-exception", {
         userId,

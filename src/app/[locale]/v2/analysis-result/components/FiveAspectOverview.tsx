@@ -75,13 +75,7 @@ const COPY = {
   },
 } as const;
 
-const ICONS = {
-  summary: "☯",
-  palm: "✶",
-  tongue: "⚗",
-  dream: "☽",
-  qi: "⚡",
-};
+const SUMMARY_ICON = "☯";
 
 export default function FiveAspectOverview({
   data,
@@ -120,42 +114,14 @@ export default function FiveAspectOverview({
     );
   };
 
-  const items: FiveAspectItem[] = [
-    {
-      key: "summary",
-      label: t.labels.summary,
-      icon: ICONS.summary,
-      value: data.summary ?? null,
-    },
-    {
-      key: "palm",
-      label: t.labels.palm,
-      icon: ICONS.palm,
-      sections: [
-        { label: t.sections.life, value: data.palm?.life ?? null },
-        { label: t.sections.emotion, value: data.palm?.emotion ?? null },
-        { label: t.sections.wealth, value: data.palm?.wealth ?? null },
-      ],
-    },
-    {
-      key: "tongue",
-      label: t.labels.tongue,
-      icon: ICONS.tongue,
-      value: data.tongue ?? null,
-    },
-    {
-      key: "dream",
-      label: t.labels.dream,
-      icon: ICONS.dream,
-      value: data.dream ?? null,
-    },
-    {
-      key: "qi",
-      label: t.labels.qi,
-      icon: ICONS.qi,
-      value: data.qi ?? null,
-    },
-  ];
+  const summaryItem: FiveAspectItem = {
+    key: "summary",
+    label: t.labels.summary,
+    icon: SUMMARY_ICON,
+    value: data.summary ?? null,
+  };
+
+  const showSummary = summaryItem.value && (summaryItem.value.preview || summaryItem.value.detail);
 
   return (
     <motion.section
@@ -177,52 +143,35 @@ export default function FiveAspectOverview({
           {unlocked ? t.badgeUnlocked : t.badgePreview}
         </span>
       </div>
-      <motion.div
-        variants={fadeUp(delay + 0.05)}
-        initial="hidden"
-        animate="visible"
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className="report-content relative overflow-hidden"
-      >
-        <div className="absolute inset-y-0 right-0 w-1/3 pointer-events-none opacity-20 bg-gradient-to-l from-accent-gold/30 to-transparent" />
-        <div className="space-y-4 mb-4">
-          {items.map((item, index) => (
-            <motion.div
-              key={item.key}
-              variants={fadeUp(delay + 0.08 + index * 0.05)}
-              className="rounded-lg px-4 py-3 md:px-5 border border-card-border-light/40 bg-card-bg-dark/40 backdrop-blur-sm"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs uppercase tracking-widest text-text-light-secondary/70">
-                    {item.label}
-                  </p>
-                  {typeof item.value !== "undefined" && item.value !== null && (
-                    <div className="mt-1">{renderValue(item.value, item.key === "summary")}</div>
-                  )}
+      {showSummary && (
+        <motion.div
+          variants={fadeUp(delay + 0.05)}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="report-content relative overflow-hidden"
+        >
+          <div className="absolute inset-y-0 right-0 w-1/3 pointer-events-none opacity-20 bg-gradient-to-l from-accent-gold/30 to-transparent" />
+          <motion.div
+            variants={fadeUp(delay + 0.08)}
+            className="rounded-lg px-4 py-3 md:px-5 border border-card-border-light/40 bg-card-bg-dark/40 backdrop-blur-sm"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-xs uppercase tracking-widest text-text-light-secondary/70">
+                  {summaryItem.label}
+                </p>
+                <div className="mt-1">
+                  {renderValue(summaryItem.value, true)}
                 </div>
-                <span className="text-3xl md:text-4xl opacity-60 text-light-highlight">
-                  {item.icon}
-                </span>
               </div>
-              {unlocked && item.sections && (
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  {item.sections.map((section) => (
-                    <div key={`${item.key}-${section.label}`}>
-                      <p className="text-[11px] uppercase tracking-wide text-text-light-secondary/60">
-                        {section.label}
-                      </p>
-                      <div className="text-sm text-text-light-secondary mt-0.5 leading-snug">
-                        {renderValue(section.value)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              <span className="text-3xl md:text-4xl opacity-60 text-light-highlight">
+                {summaryItem.icon}
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.section>
   );
 }

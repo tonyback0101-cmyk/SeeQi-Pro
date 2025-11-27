@@ -159,6 +159,21 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
               console.log(`[V2AnalysisResultPage] report_access not found yet, webhook will handle it`);
             }
             
+            // 确保 pay/status 同步完成
+            const statusUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/pay/status?session_id=${encodeURIComponent(
+              sessionId,
+            )}&report_id=${encodeURIComponent(reportId)}`;
+            try {
+              const statusRes = await fetch(statusUrl, { method: "GET" });
+              if (!statusRes.ok) {
+                console.error("[V2AnalysisResultPage] pay status fallback failed", await statusRes.text());
+              } else {
+                const body = await statusRes.json();
+                console.log("[V2AnalysisResultPage] pay status fallback result", body);
+              }
+            } catch (statusError) {
+              console.error("[V2AnalysisResultPage] pay status fallback error", statusError);
+            }
             const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
             console.log(`[V2AnalysisResultPage] Redirecting to: ${redirectUrl}`);
             redirect(redirectUrl);

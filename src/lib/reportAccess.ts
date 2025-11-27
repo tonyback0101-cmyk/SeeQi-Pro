@@ -16,6 +16,19 @@ type GrantAccessResult = {
   error?: unknown;
 };
 
+const safeJson = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "object") {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return null;
+    }
+  }
+  return value;
+};
+
 export async function ensureLegacyReportRow({
   supabase,
   reportId,
@@ -43,10 +56,28 @@ export async function ensureLegacyReportRow({
     console.warn("[ensureLegacyReportRow] Exception when checking reports table", error);
   }
 
+  const fallbackLocale = report?.locale ?? locale ?? "zh";
+  const normalized = report?.normalized ?? {};
+  const constitution = normalized?.constitution ?? (report as any)?.constitution ?? null;
+  const advice = normalized?.advice ?? (report as any)?.advice ?? null;
+  const dream = normalized?.dream_insight ?? (report as any)?.dream ?? null;
+  const qiRhythm = normalized?.qi_rhythm ?? (report as any)?.qi_rhythm ?? null;
+  const qiCalendar =
+    (qiRhythm as any)?.calendar ??
+    (report as any)?.normalized?.qi_rhythm?.calendar ??
+    (report as any)?.qi_rhythm?.calendar ??
+    null;
+
   const payload: Record<string, any> = {
     id: reportId,
     created_at: report?.created_at ?? new Date().toISOString(),
+    locale: fallbackLocale,
     unlocked: true,
+    constitution: safeJson(constitution),
+    advice: safeJson(advice),
+    dream: safeJson(dream),
+    qi_index: qiRhythm?.index ?? (report as any)?.qi_index ?? null,
+    solar_term: qiCalendar?.solarTerm ?? (report as any)?.solar_term ?? null,
   };
 
   const sanitizedPayload = Object.fromEntries(
@@ -67,10 +98,7 @@ export async function ensureLegacyReportRow({
     return { ok: false, error: upsertError };
   }
 
-  console.log("[ensureLegacyReportRow] Upserted legacy reports row", {
-    reportId,
-    alreadyExists: false,
-  });
+  console.log("[ensureLegacyReportRow] Upserted legacy reports row", { reportId });
   return { ok: true, alreadyExists: false };
 }
 
@@ -122,6 +150,7 @@ export async function grantFullReportAccess({
       return { ok: false, error: updateError };
     }
 
+    console.log("[grantFullReportAccess] Updated existing report_access", { reportId, userId });
     return { ok: true, action: "update" };
   }
 
@@ -138,6 +167,7 @@ export async function grantFullReportAccess({
     return { ok: false, error: insertError };
   }
 
+  console.log("[grantFullReportAccess] Inserted report_access", { reportId, userId });
   return { ok: true, action: "insert" };
 }
 

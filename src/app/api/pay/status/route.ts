@@ -98,13 +98,6 @@ export async function GET(request: Request) {
       }
 
       // 更新报告解锁状态
-      const { error: unlockError } = await supabase.from("reports").update({ unlocked: true }).eq("id", reportId);
-      if (unlockError) {
-        console.error("[GET /api/pay/status] Failed to unlock report:", unlockError);
-        // 即使解锁失败，也返回成功，因为订单已经支付成功
-        // 可以通过其他方式（如 webhook）来解锁报告
-      }
-
       const legacyLocale = metadata.locale === "en" ? "en" : "zh";
       await ensureLegacyReportRow({ supabase, reportId, report: null, locale: legacyLocale }).catch((error) => {
         console.warn("[GET /api/pay/status] Failed to ensure legacy reports row", error);
@@ -123,42 +116,10 @@ export async function GET(request: Request) {
         }
       }
 
-      let accessSessionId = metadata.sessionId ?? null;
-      if (!accessSessionId) {
-        const { data: reportRef } = await supabase
-          .from("reports")
-          .select("session_id")
-          .eq("id", reportId)
-          .maybeSingle();
-        accessSessionId = (reportRef as { session_id?: string } | null)?.session_id ?? null;
-      }
-
-      if (accessSessionId) {
-        try {
-          // 验证 session 存在
-          const { data: sessionCheck } = await supabase
-            .from("sessions")
-            .select("id")
-            .eq("id", accessSessionId)
-            .maybeSingle();
-          
-          if (!sessionCheck) {
-            console.warn("[GET /api/pay/status] Session does not exist for report_access:", accessSessionId);
-          } else {
-            await supabase.from("report_access").upsert(
-              {
-                report_id: reportId,
-                session_id: accessSessionId,
-                tier: "full",
-              },
-              {
-                onConflict: "report_id,session_id",
-              },
-            );
-          }
-        } catch (accessError) {
-          console.warn("[GET /api/pay/status] grant full access failed", accessError);
-        }
+      // 直接标记 reports.unlocked 以保持兼容
+      const { error: unlockError } = await supabase.from("reports").update({ unlocked: true }).eq("id", reportId);
+      if (unlockError) {
+        console.error("[GET /api/pay/status] Failed to unlock report:", unlockError);
       }
 
       return NextResponse.json({ unlocked: true, reportId }, { status: 200 });
