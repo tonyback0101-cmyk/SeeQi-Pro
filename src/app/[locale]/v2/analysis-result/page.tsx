@@ -410,11 +410,14 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
       unlucky_hours: normalized?.qi_rhythm?.calendar?.unlucky_hours ?? null,
     };
 
+  // 预览版：简洁但高级的摘要，增加付费动机
   const previewOverall = hasFullAccess
-    ? (takeSentences(`${palmSummary} ${tongueSummary} ${dreamSummary}`, 2, locale) || fallbackText(locale, "overall"))
+    ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh" 
-        ? "今日五象呈轻微波动，信息不足以判断整体趋势。完整报告将展示五象局分析与今日破局方案。"
-        : "Five aspects show slight fluctuations today, but more information is needed to determine the final trend. Full version will show complete five-aspect analysis and breakthrough suggestions.");
+        ? "今日五象呈现微妙变化，完整版将揭示象局本质、行动力节奏、财气流向与心念关隘，并提供精准破局方案。"
+        : "Today's five aspects show subtle changes. Full version reveals the essence pattern, action rhythm, wealth flow, mental thresholds, and precise breakthrough strategies.");
+  
+  // 完整版：深度内容，不与预览重复
   const fullOverall = hasFullAccess
     ? buildFullNarrative({
         locale,
@@ -458,40 +461,48 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
     }
   }
   
+  // 预览版：简洁但高级的摘要，增加付费动机
   const palmLifePreview = hasFullAccess
-    ? (palmSentences[0] || fallbackText(locale, "palm"))
+    ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh"
-        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
-        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends.");
+        ? "掌纹蕴含丰富信息，完整版将深度解读事业线推进节奏、情绪线能量流动与财富线聚散规律，助你把握今日关键节点。"
+        : "Palm lines contain rich information. Full version provides deep insights into career rhythm, emotional energy flow, and wealth accumulation patterns to help you grasp today's key moments.");
   const palmEmotionPreview = hasFullAccess
-    ? (palmSentences[1] || palmLifePreview)
+    ? null
     : palmLifePreview;
   const palmWealthPreview = hasFullAccess
-    ? (palmSentences[2] || palmLifePreview)
+    ? null
     : palmLifePreview;
   
-  // 完整版掌象文案
+  // 完整版掌象文案：深度内容，不与预览重复
   const palmLifeFull = hasFullAccess
     ? (locale === "zh"
         ? `事业线走势显示今日计划推进度受『${careerXiang}』影响，应以稳为主。`
         : `Career line shows today's plan progress is affected by '${careerXiang}', should prioritize stability.`)
-    : palmLifePreview;
+    : (palmLifePreview || (locale === "zh" 
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
   const palmEmotionFull = hasFullAccess
     ? (locale === "zh"
         ? `情绪线呈现『${emotionXiang}』，提示今日避免能量外泄。`
         : `Emotion line shows '${emotionXiang}' trend, indicating today needs to avoid emotional energy leakage.`)
-    : palmEmotionPreview;
+    : (palmEmotionPreview || palmLifePreview || (locale === "zh"
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
   const palmWealthFull = hasFullAccess
     ? (locale === "zh"
         ? `财富线显示财气处于『${wealthXiang}』状态，为'聚 / 泄 / 稳 / 动'四象之一。`
         : `Wealth line shows today's wealth qi is in '${wealthXiang}' state, belonging to one of the four patterns '${wealthState}'.`)
-    : palmWealthPreview;
+    : (palmWealthPreview || palmLifePreview || (locale === "zh"
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
 
+  // 预览版：简洁但高级的摘要，增加付费动机
   const tonguePreview = hasFullAccess
-    ? (takeSentences(tongueSummary, 2, locale) || fallbackText(locale, "tongue"))
+    ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh"
-        ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。"
-        : "Tongue texture and color have blurred areas, unable to generate constitution judgment. Full version will provide qi-blood, fire-qi, and daily qi-nourishing suggestions.");
+        ? "舌象是体质的重要窗口，完整版将精准解读气血状态、火气/湿气指数，并提供个性化的今日调理方案，助你优化身心节奏。"
+        : "Tongue is a key window to constitution. Full version precisely interprets qi-blood state, fire-qi/dampness index, and provides personalized daily adjustment strategies to optimize your body-mind rhythm.");
   
   // 提取舌象相关字段
   const bodyTongue = normalized?.body_tongue ?? (report as any)?.body_tongue ?? null;
@@ -499,17 +510,21 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
   const huoQiValue = bodyTongue?.energy_state || (locale === "zh" ? "中等" : "moderate");
   const tiaoLiAdvice = bodyTongue?.health_care_advice?.[0] || bodyTongue?.suggestions?.[0] || (locale === "zh" ? "温和调理" : "gentle adjustment");
   
+  // 完整版舌象文案：深度内容，不与预览重复
   const tongueFull = hasFullAccess
     ? (locale === "zh"
         ? `舌象反映气血偏向『${qiXueXiang}』，火气/湿气指数为 ${huoQiValue}，建议今日采取 ${tiaoLiAdvice}。`
         : `Today's tongue reflects your qi-blood state leaning towards '${qiXueXiang}', fire-qi/dampness/cold-heat index is ${huoQiValue}. Suggest taking ${tiaoLiAdvice} today.`)
-    : tonguePreview;
+    : (tonguePreview || (locale === "zh"
+        ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。"
+        : "Tongue texture and color have blurred areas, unable to generate constitution judgment. Full version will provide qi-blood, fire-qi, and daily qi-nourishing suggestions."));
 
+  // 预览版：简洁但高级的摘要，增加付费动机
   const dreamPreview = hasFullAccess
-    ? (takeSentences(dreamSummary, 2, locale) || fallbackText(locale, "dream"))
+    ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh"
-        ? "梦境线索不足，无法形成完整梦兆。完整版将结合象征体系解析趋势与心理伏笔。"
-        : "Dream symbols show key clues, but description is insufficient for complete dream omen judgment. Full version will provide fortune trends and mental analysis.");
+        ? "梦境是潜意识的映射，完整版将深入解析梦象象征、心理伏笔与运势趋势，揭示你内心深处的信号与今日行动指引。"
+        : "Dreams are reflections of the subconscious. Full version deeply interprets dream symbols, psychological undercurrents, and fortune trends, revealing signals from your inner depths and today's action guidance.");
   
   // 提取梦象相关字段
   const dreamInsight = normalized?.dream_insight ?? (report as any)?.dream_insight ?? null;
@@ -519,38 +534,48 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
     || dreamSummary.split(/[。！？\n]/)[0] 
     || (locale === "zh" ? "思维转换" : "mental transition");
   
+  // 完整版梦象文案：深度内容，不与预览重复
   const dreamFull = hasFullAccess
     ? (locale === "zh"
         ? `梦兆出现『${mengXiangCode}』，象征你正跨越心念关隘，今日宜顺势而为。`
         : `Dream omen shows typical symbol '${mengXiangCode}', corresponding to inner mind crossing a mental threshold, today should follow the flow.`)
-    : dreamPreview;
+    : (dreamPreview || (locale === "zh"
+        ? "梦境线索不足，无法形成完整梦兆。完整版将结合象征体系解析趋势与心理伏笔。"
+        : "Dream symbols show key clues, but description is insufficient for complete dream omen judgment. Full version will provide fortune trends and mental analysis."));
 
   const yiList = sanitizeList(lunar.yi);
   const jiList = sanitizeList(lunar.ji);
   const luckyHours = sanitizeList(lunar.lucky_hours);
   const unluckyHours = sanitizeList(lunar.unlucky_hours);
 
+  // 预览版：简洁但高级的摘要，增加付费动机
   const previewQi = hasFullAccess
-    ? buildQiPreview(locale, yiList, jiList, luckyHours)
+    ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh"
-        ? "今日节奏未成吉凶，仍处在临界区。完整版包含今日宜忌、吉时与破局法。"
-        : "Today's rhythm is at a critical point, great fortune not yet opened, light misfortune not yet fallen. Full version can view do's and don'ts, lucky hours, and today's breakthrough suggestions.");
+        ? "今日气运处于关键节点，完整版将提供精准的宜忌事项、吉时窗口与破局方法，助你把握最佳行动时机。"
+        : "Today's qi rhythm is at a critical point. Full version provides precise do's and don'ts, lucky time windows, and breakthrough methods to help you grasp the best action timing.");
   
   // 提取气运相关字段
   const qiRhythm = normalized?.qi_rhythm ?? (report as any)?.qi_rhythm ?? null;
+  // 完整版气运文案：深度内容，不与预览重复
   const fullQi = hasFullAccess
     ? buildQiFull(locale, yiList, jiList, luckyHours, unluckyHours, qiRhythm)
-    : previewQi;
+    : (previewQi || (locale === "zh"
+        ? "今日节奏未成吉凶，仍处在临界区。完整版包含今日宜忌、吉时与破局法。"
+        : "Today's rhythm is at a critical point, great fortune not yet opened, light misfortune not yet fallen. Full version can view do's and don'ts, lucky hours, and today's breakthrough suggestions."));
 
   const trimmedYi = hasFullAccess ? yiList : yiList.slice(0, 2);
   const trimmedJi = hasFullAccess ? jiList : jiList.slice(0, 2);
   const trimmedLucky = hasFullAccess ? luckyHours : luckyHours.slice(0, 1);
   const trimmedUnlucky = hasFullAccess ? unluckyHours : unluckyHours.slice(0, 1);
 
+  // summaryBlock：确保预览版和完整版不重复
+  // 完整版时，preview 为 null，只显示 overall（完整内容）
+  // 预览版时，preview 显示高级摘要，overall 也显示预览内容（避免客户端重复渲染）
   const summaryBlock = {
     overall_label: locale === "zh" ? "象局" : "Essence",
-    overall: fullOverall,
-    preview: previewOverall,
+    overall: hasFullAccess ? fullOverall : (previewOverall || fullOverall), // 完整版显示完整内容，预览版显示预览内容
+    preview: hasFullAccess ? null : previewOverall, // 完整版不显示预览，预览版显示高级摘要
   };
 
   const palmBlock = {

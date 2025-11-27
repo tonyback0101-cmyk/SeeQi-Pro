@@ -421,19 +421,23 @@ function extractFiveAspectData(report: AnalysisV2Result, locale: Locale): FiveAs
   }
 
   // 总结数据：优先使用 page.tsx 注入的 preview/detail
+  // 确保预览版和完整版不重复：完整版时 preview 为 null，只显示 detail（完整内容）
   const summaryOverall =
     normalizeText(summaryBlock?.overall, locale) ??
     normalizeText(qiBlock?.overall, locale) ??
     normalizeText(qiRhythm?.summary, locale) ??
     normalizeText(palmInsight?.palm_overview_summary, locale);
 
-  const summaryPreview = normalizeText(summaryBlock?.preview, locale) ?? getPreviewSentence(summaryOverall, locale);
+  // 如果 summaryBlock.preview 存在，使用它；如果为 null（完整版），也使用 null（不提取预览）
+  const summaryPreview = summaryBlock?.preview !== undefined 
+    ? normalizeText(summaryBlock.preview, locale) 
+    : null;
 
   return {
     summary: buildAspectFromBlock(
       summaryBlock?.overall_label ?? (locale === "zh" ? "今日象局" : "Essence"),
-      summaryPreview,
-      summaryOverall,
+      summaryPreview, // 完整版时为 null，预览版时为高级摘要
+      summaryOverall, // 完整版时为完整内容，预览版时为预览内容
     ) ?? buildAspect(
       summaryBlock?.overall_label ?? (locale === "zh" ? "今日象局" : "Essence"),
       summaryOverall,
@@ -830,54 +834,31 @@ export default function V2AnalysisResultClient({
         {/* ③ 掌纹简批（预览可见） */}
         <PalmistryBlock
           lifeLine={
-            getPreviewSentence(
-              palmBlock?.life_line?.summary ??
-                palmResultV2?.life?.interpretation ??
-                palmInsight?.life_rhythm ??
-                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Lines are clear; early years slightly weak, with recovery in later stages."),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (palmBlock?.life_line?.detail ?? palmBlock?.life_line?.summary ?? null)
+              : getPreviewSentence(palmBlock?.life_line?.summary ?? null, locale)
           }
           wisdomLine={
-            getPreviewSentence(
-              palmBlock?.life_line?.summary ??
-                palmResultV2?.wisdom?.interpretation ??
-                palmInsight?.thought_style ??
-                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making."),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (palmBlock?.life_line?.detail ?? palmBlock?.life_line?.summary ?? null)
+              : getPreviewSentence(palmBlock?.life_line?.summary ?? null, locale)
           }
           heartLine={
-            getPreviewSentence(
-              palmBlock?.emotion?.summary ??
-                palmResultV2?.emotion?.interpretation ??
-                palmInsight?.emotion_pattern ??
-                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly."),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (palmBlock?.emotion?.detail ?? palmBlock?.emotion?.summary ?? null)
+              : getPreviewSentence(palmBlock?.emotion?.summary ?? null, locale)
           }
           wealthLine={
-            // 预览版：优先使用 page.tsx 注入的预览文案
-            getPreviewSentence(
-              palmBlock?.wealth?.summary ??
-                (report as any)?.palm_result?.features?.moneyLine ??
-                (palmInsight as any)?.wealth?.summary ??
-                palmResultV2?.wealth?.summary ??
-                palmInsight?.wealth_insight ??
-                palmResult?.lines?.wealth ??
-                (locale === "zh"
-                  ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
-                  : "Wealth lines are slightly shallow and straight, indicating 'steady accumulation and gradual growth'; should focus on stable management, less gambling, more accumulation."),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (palmBlock?.wealth?.detail ?? palmBlock?.wealth?.summary ?? null)
+              : getPreviewSentence(palmBlock?.wealth?.summary ?? null, locale)
           }
           fullData={
-            isPro
+            resolvedAccessLevel === "full"
               ? {
                   life: palmResultV2?.life ?? null,
                   emotion: palmResultV2?.emotion ?? null,
                   wisdom: palmResultV2?.wisdom ?? null,
-                  // 完整版：从 palm_insight.wealth 或 palmResultV2.wealth 读取完整数据
                   wealth: (palmInsight as any)?.wealth
                     ? {
                         level: (palmInsight as any).wealth.level ?? palmResultV2?.wealth?.level ?? "medium",
@@ -900,91 +881,105 @@ export default function V2AnalysisResultClient({
 
         {/* ④ 舌象简批（预览可见） */}
         <TongueBlock
-          tongueColor={getPreviewSentence(
-            tongueBlock?.constitution?.summary ??
-              (rawTongueResult?.color
-                ? (locale === "zh" ? `舌色：${rawTongueResult.color}` : `Tongue color: ${rawTongueResult.color}`)
-                : bodyTongue?.tongue_color_signal ??
-                    (locale === "zh" ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。" : "Tongue color is pale, indicating qi and blood deficiency.")),
-            locale,
-          )}
-          tongueCoating={getPreviewSentence(
-            rawTongueResult?.coating
-              ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
-              : bodyTongue?.tongue_coating_signal ??
-                  (locale === "zh" ? "苔薄略白，寒湿稍重。" : "Coating is thin and slightly white, indicating slight cold-dampness."),
-            locale,
-          )}
+          tongueColor={
+            resolvedAccessLevel === "full"
+              ? (tongueBlock?.constitution?.detail ?? tongueBlock?.constitution?.summary ?? null)
+              : getPreviewSentence(tongueBlock?.constitution?.summary ?? null, locale)
+          }
+          tongueCoating={
+            resolvedAccessLevel === "full"
+              ? (rawTongueResult?.coating
+                  ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
+                  : bodyTongue?.tongue_coating_signal ?? null)
+              : getPreviewSentence(
+                  rawTongueResult?.coating
+                    ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
+                    : null,
+                  locale,
+                )
+          }
           cracks={
-            getPreviewSentence(
-              rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
-                ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
-                : (rawTongueResult?.texture && rawTongueResult.texture !== "cracked") ||
-                    (rawTongueResult?.shape && rawTongueResult.shape !== "cracked")
-                  ? (locale === "zh" ? "无明显裂纹。" : "No obvious cracks.")
-                  : null,
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
+                  ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
+                  : null)
+              : getPreviewSentence(
+                  rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
+                    ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
+                    : null,
+                  locale,
+                )
           }
           swelling={
-            getPreviewSentence(
-              rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
-                ? (locale === "zh"
-                    ? rawTongueResult.shape === "swollen"
-                      ? "舌体偏肿，提示脾虚水湿。"
-                      : "舌边有齿痕，提示脾气不足。"
-                    : rawTongueResult.shape === "swollen"
-                    ? "Tongue is swollen, indicating spleen deficiency with dampness."
-                    : "Teeth marks present, indicating spleen qi deficiency.")
-                : rawTongueResult?.shape === "thin"
-                  ? (locale === "zh" ? "舌体偏薄，提示阴血不足。" : "Tongue is thin, indicating yin blood deficiency.")
-                  : rawTongueResult?.shape === "normal"
-                    ? (locale === "zh" ? "舌体形态正常。" : "Tongue shape is normal.")
+            resolvedAccessLevel === "full"
+              ? (rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
+                  ? (locale === "zh"
+                      ? rawTongueResult.shape === "swollen"
+                        ? "舌体偏肿，提示脾虚水湿。"
+                        : "舌边有齿痕，提示脾气不足。"
+                      : rawTongueResult.shape === "swollen"
+                      ? "Tongue is swollen, indicating spleen deficiency with dampness."
+                      : "Teeth marks present, indicating spleen qi deficiency.")
+                  : null)
+              : getPreviewSentence(
+                  rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
+                    ? (locale === "zh"
+                        ? rawTongueResult.shape === "swollen"
+                          ? "舌体偏肿，提示脾虚水湿。"
+                          : "舌边有齿痕，提示脾气不足。"
+                        : rawTongueResult.shape === "swollen"
+                        ? "Tongue is swollen, indicating spleen deficiency with dampness."
+                        : "Teeth marks present, indicating spleen qi deficiency.")
                     : null,
-              locale,
-            )
+                  locale,
+                )
           }
           redPoints={
-            getPreviewSentence(
-              rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
-                ? (locale === "zh"
-                    ? rawTongueResult.color === "purple"
-                      ? "舌色偏紫，提示血瘀。"
-                      : "舌色偏红，提示内热。"
-                    : rawTongueResult.color === "purple"
-                    ? "Purple tongue color indicates blood stasis."
-                    : "Red tongue color indicates internal heat.")
-                : null,
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
+                  ? (locale === "zh"
+                      ? rawTongueResult.color === "purple"
+                        ? "舌色偏紫，提示血瘀。"
+                        : "舌色偏红，提示内热。"
+                      : rawTongueResult.color === "purple"
+                      ? "Purple tongue color indicates blood stasis."
+                      : "Red tongue color indicates internal heat.")
+                  : null)
+              : getPreviewSentence(
+                  rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
+                    ? (locale === "zh"
+                        ? rawTongueResult.color === "purple"
+                          ? "舌色偏紫，提示血瘀。"
+                          : "舌色偏红，提示内热。"
+                        : rawTongueResult.color === "purple"
+                        ? "Purple tongue color indicates blood stasis."
+                        : "Red tongue color indicates internal heat.")
+                    : null,
+                  locale,
+                )
           }
           moisture={
-            getPreviewSentence(
-              bodyTongue?.tongue_moisture_signal ??
-                bodyTongue?.moisture_pattern ??
-                (rawTongueResult?.texture === "moist"
-                  ? (locale === "zh" ? "湿度：湿润" : "Moisture: Moist")
-                  : rawTongueResult?.texture === "cracked"
-                    ? (locale === "zh" ? "湿度：偏燥" : "Moisture: Dry")
-                    : (locale === "zh" ? "湿度：正常" : "Moisture: Normal")),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (bodyTongue?.tongue_moisture_signal ?? bodyTongue?.moisture_pattern ?? null)
+              : getPreviewSentence(
+                  bodyTongue?.tongue_moisture_signal ?? bodyTongue?.moisture_pattern ?? null,
+                  locale,
+                )
           }
           temperatureTrend={
-            getPreviewSentence(
-              bodyTongue?.heat_pattern ?? (locale === "zh" ? "寒热趋势：中性" : "Temperature trend: Neutral"),
-              locale,
-            )
+            resolvedAccessLevel === "full"
+              ? (bodyTongue?.heat_pattern ?? null)
+              : getPreviewSentence(bodyTongue?.heat_pattern ?? null, locale)
           }
           accessLevel={resolvedAccessLevel}
           fullContent={
-            isPro
+            resolvedAccessLevel === "full"
               ? {
                   qiPattern: bodyTongue?.qi_pattern ?? null,
                   energyState: bodyTongue?.energy_state ?? null,
                   bodyTrend: bodyTongue?.body_trend ?? null,
                   healthCareAdvice: bodyTongue?.health_care_advice ?? [],
-                  summary: bodyTongue?.summary ?? null,
+                  summary: tongueBlock?.constitution?.detail ?? bodyTongue?.summary ?? null,
                   suggestions: bodyTongue?.suggestions ?? [],
                 }
               : null
@@ -998,18 +993,14 @@ export default function V2AnalysisResultClient({
 
         {/* ⑤ 梦境简批（预览可见） */}
         <DreamBlock
-          dreamSummary={getPreviewSentence(
-            dreamBlock?.main_symbol?.summary ??
-              dreamLLM?.mood ??
-              dreamLLM?.symbol ??
-              dreamInsight?.archetype?.mood_pattern ??
-              dreamInsight?.archetype?.symbol_meaning ??
-              (locale === "zh" ? "梦境线索不足，无法形成完整梦兆。完整版将结合象征体系解析趋势与心理伏笔。" : "Dream clues are insufficient to form a complete dream omen."),
-            locale,
-          )}
+          dreamSummary={
+            resolvedAccessLevel === "full"
+              ? (dreamBlock?.main_symbol?.detail ?? dreamBlock?.main_symbol?.summary ?? null)
+              : getPreviewSentence(dreamBlock?.main_symbol?.summary ?? null, locale)
+          }
           accessLevel={resolvedAccessLevel}
           fullContent={
-            isPro
+            resolvedAccessLevel === "full"
               ? {
                   // 象义说明（符号）- 周公解梦风格
                   imageSymbol: dreamLLM?.ImageSymbol ?? dreamLLM?.symbolic ?? dreamInsight?.symbol ?? null,
@@ -1049,10 +1040,9 @@ export default function V2AnalysisResultClient({
             []
           }
           bodyMindStatus={
-            qiBlock?.today_phase?.summary?.split(/[。！？.!?\n]/)[0] ??
-            qiRhythm?.summary?.split(/[。！？.!?\n]/)[0] ??
-            bodyTongue?.energy_state?.split(/[。！？.!?\n]/)[0] ??
-            (locale === "zh" ? "今日节奏未成吉凶，仍处在临界区。完整版包含今日宜忌、吉时与破局法。" : "Body-mind state is stable, suitable for daily rhythm.")
+            resolvedAccessLevel === "full"
+              ? (qiBlock?.today_phase?.detail ?? qiBlock?.today_phase?.summary ?? null)
+              : (qiBlock?.today_phase?.summary?.split(/[。！？.!?\n]/)[0] ?? null)
           }
           delay={0.3}
           locale={locale}
@@ -1060,8 +1050,8 @@ export default function V2AnalysisResultClient({
           onUnlock={handleUnlockClick}
         />
 
-        {/* 付费版内容：仅 isPro 时渲染 */}
-        {isPro && <ProFullReportSection report={report} locale={locale} />}
+        {/* 付费版内容：仅完整版时渲染 */}
+        {resolvedAccessLevel === "full" && <ProFullReportSection report={report} locale={locale} />}
 
         {/* 统一解锁按钮（仅非 Pro 用户显示） */}
         {showPaywall && (
