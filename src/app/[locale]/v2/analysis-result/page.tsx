@@ -78,6 +78,7 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           payment_status: checkoutSession.payment_status,
           status: checkoutSession.status,
           metadata: checkoutSession.metadata,
+          mode: checkoutSession.mode,
         });
         
         if (checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") {
@@ -93,17 +94,29 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           console.log(`[V2AnalysisResultPage] Order lookup result:`, order);
           
-          // 判断是否为单次购买：优先检查 metadata，其次检查订单
+          // 判断是否为单次购买：优先检查 metadata，其次检查 checkout mode，最后检查订单
           const metadataMode = checkoutSession.metadata?.mode;
-          const isSinglePurchase = metadataMode === "single" || 
-                                   order?.kind === "single" ||
-                                   (checkoutSession.metadata?.report_id && checkoutSession.metadata.report_id === reportId);
+          const checkoutMode = checkoutSession.mode; // 'payment' | 'subscription'
+          const metadataReportId = checkoutSession.metadata?.report_id;
+          
+          // 判断逻辑：
+          // 1. metadata.mode === "single"
+          // 2. checkout.mode === "payment" (单次支付)
+          // 3. metadata.report_id === reportId (有报告ID说明是单次购买)
+          // 4. order.kind === "single" (如果订单存在)
+          const isSinglePurchase = 
+            metadataMode === "single" || 
+            checkoutMode === "payment" ||
+            (metadataReportId && metadataReportId === reportId) ||
+            order?.kind === "single";
           
           console.log(`[V2AnalysisResultPage] Is single purchase: ${isSinglePurchase}`, {
             metadata_mode: metadataMode,
+            checkout_mode: checkoutMode,
             order_kind: order?.kind,
-            metadata_report_id: checkoutSession.metadata?.report_id,
-            reportId,
+            metadata_report_id: metadataReportId,
+            current_reportId: reportId,
+            match: metadataReportId === reportId,
           });
           
           // 如果是单次购买，创建 report_access 记录
