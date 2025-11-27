@@ -90,7 +90,7 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           if (isSinglePurchase) {
             // 创建或更新 report_access 记录（单次购买）
-            const { error: accessError } = await supabase
+            const { error: accessError, data: accessData } = await supabase
               .from("report_access")
               .upsert(
                 {
@@ -100,12 +100,16 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
                   created_at: new Date().toISOString(),
                 },
                 { onConflict: "report_id,user_id" }
-              );
+              )
+              .select();
             
             if (accessError) {
               console.error("[V2AnalysisResultPage] Failed to create report_access:", accessError);
             } else {
-              console.log(`[V2AnalysisResultPage] Created report_access for user ${userId}, report ${reportId}`);
+              console.log(`[V2AnalysisResultPage] Created/updated report_access for user ${userId}, report ${reportId}`, accessData);
+              // 支付成功且创建了 report_access，重定向到同一页面（不带 success 参数）以刷新权限
+              // 这样 computeV2Access 就能立即识别到新创建的权限
+              redirect(`/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`);
             }
           }
           
