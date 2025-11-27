@@ -182,15 +182,6 @@ export default function FiveAspectOverview({
         >
           {unlocked ? t.badgeUnlocked : t.badgePreview}
         </span>
-        {!unlocked && onUnlock && (
-          <button
-            type="button"
-            onClick={onUnlock}
-            className="ml-auto text-xs px-3 py-1 rounded-full border border-accent-gold/50 text-accent-gold hover:bg-accent-gold/10 transition-colors"
-          >
-            {t.unlockCta}
-          </button>
-        )}
       </div>
       <motion.div
         variants={fadeUp(delay + 0.05)}
@@ -220,17 +211,6 @@ export default function FiveAspectOverview({
                   {item.icon}
                 </span>
               </div>
-          {!unlocked && onUnlock && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={onUnlock}
-                className="text-xs font-semibold text-accent-gold hover:text-yellow-200 transition-colors"
-              >
-                {t.unlockPerItem}
-              </button>
-            </div>
-          )}
               {unlocked && item.sections && (
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   {item.sections.map((section) => (
@@ -249,18 +229,6 @@ export default function FiveAspectOverview({
           ))}
         </div>
 
-        {!unlocked && onUnlock && (
-          <div className="mt-2 flex flex-col gap-3 text-sm text-text-light-secondary/80 md:flex-row md:items-center md:justify-between">
-            <p>{t.unlockHint}</p>
-            <button
-              type="button"
-              onClick={onUnlock}
-              className="self-start md:self-auto px-4 py-2 text-xs font-semibold rounded-full bg-accent-gold/90 text-mystic-primary hover:bg-accent-gold transition-colors"
-            >
-              {t.unlockButton}
-            </button>
-          </div>
-        )}
       </motion.div>
     </motion.section>
   );
