@@ -184,6 +184,11 @@ export async function POST(request: Request) {
     }
 
     const appUrl = getPublicAppUrl();
+    const successUrl = `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&cancel=1`;
+    
+    console.log("checkout redirect", { success_url: successUrl, cancel_url: cancelUrl });
+    
     const checkoutSession = await stripeClient.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -193,8 +198,8 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&success=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&canceled=1`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       customer_email: userEmail,
       metadata: {
         user_id: userId ?? "", // V2 统一格式：user_id

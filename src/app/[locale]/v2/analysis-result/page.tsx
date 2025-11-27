@@ -32,12 +32,15 @@ export async function generateMetadata({
 export default async function V2AnalysisResultPage({ params, searchParams }: PageProps) {
   const { locale: localeParam } = await params;
   const locale: Locale = localeParam === "en" ? "en" : "zh";
-  const { reportId, success, intent } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { reportId, success, session_id } = resolvedSearchParams;
 
   if (!reportId) {
     // 如果没有 reportId，重定向到首页或显示错误
     redirect(`/${locale}/v2/analyze`);
   }
+
+  console.log("[V2AnalysisResultPage] URL params:", { reportId, success, session_id });
 
   // Server 端获取 report 和 session
   const session = await getServerSession(authOptions).catch(() => null);
@@ -64,8 +67,8 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
   }
 
   // 如果支付成功（success=1），立即检查 Stripe session 状态并更新订单
-  if (success === "1") {
-    const sessionId = (await searchParams).session_id;
+  if (success === "1" && session_id) {
+    const sessionId = session_id;
     console.log(`[V2AnalysisResultPage] Payment success detected, sessionId: ${sessionId}, userId: ${userId}, reportId: ${reportId}`);
     
     if (sessionId && userId && reportId) {
@@ -229,8 +232,22 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     }
   }
 
-  // 计算 access
+  // 如果有 session_id（即使没有 success=1），也检查权限
+  // 因为用户可能直接通过 URL 访问，权限可能已经通过 webhook 创建
+  if (session_id && userId && reportId) {
+    console.log(`[V2AnalysisResultPage] Session ID present, verifying access for sessionId: ${session_id}, userId: ${userId}, reportId: ${reportId}`);
+    // 权限检查会在 computeV2Access 中进行，这里只是记录日志
+  }
+
+  // 计算 access（会查询 report_access 和 orders 表）
   const access = await computeV2Access({ userId, reportId });
+  console.log(`[V2AnalysisResultPage] Access computed:`, {
+    level: access.level,
+    hasFullAccess: access.hasFullAccess,
+    isFree: access.isFree,
+    userId,
+    reportId,
+  });
 
   // 获取 user 信息（从 user_profiles 表读取 is_pro）
   let user: { is_pro?: boolean } | null = null;
@@ -251,7 +268,13 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     }
   }
 
+  // 根据 access.hasFullAccess 决定展示完整版还是预览版
   const enrichedReport = injectFiveAspectContent(report, locale, access.hasFullAccess);
+  
+  console.log(`[V2AnalysisResultPage] Report enriched with access:`, {
+    hasFullAccess: access.hasFullAccess,
+    reportId,
+  });
 
   return (
     <V2AnalysisResultClient
@@ -291,7 +314,11 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
       unlucky_hours: normalized?.qi_rhythm?.calendar?.unlucky_hours ?? null,
     };
 
-  const previewOverall = takeSentences(`${palmSummary} ${tongueSummary} ${dreamSummary}`, 2, locale) || fallbackText(locale, "overall");
+  const previewOverall = hasFullAccess
+    ? (takeSentences(`${palmSummary} ${tongueSummary} ${dreamSummary}`, 2, locale) || fallbackText(locale, "overall"))
+    : (locale === "zh" 
+        ? "今日五象呈轻微波动，信息不足以判断整体趋势。完整报告将展示五象局分析与今日破局方案。"
+        : "Five aspects show slight fluctuations today, but more information is needed to determine the final trend. Full version will show complete five-aspect analysis and breakthrough suggestions.");
   const fullOverall = hasFullAccess
     ? buildFullNarrative({
         locale,
@@ -303,31 +330,120 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
     : previewOverall;
 
   const palmSentences = splitIntoSentences(palmSummary, locale);
-  const palmLifePreview = palmSentences[0] || fallbackText(locale, "palm");
-  const palmEmotionPreview = palmSentences[1] || palmLifePreview;
-  const palmWealthPreview = palmSentences[2] || palmLifePreview;
-  const palmLifeFull = hasFullAccess ? `${palmLifePreview} ${buildGanzhiLine(locale, lunar.ganzhi_day)}`.trim() : palmLifePreview;
+  const palmInsight = normalized?.palm_insight ?? (report as any)?.palm_insight ?? null;
+  
+  // 提取掌象相关字段
+  const careerXiang = palmInsight?.life_rhythm || palmSentences[0] || (locale === "zh" ? "稳中求进" : "steady progress");
+  const emotionXiang = palmInsight?.emotion_pattern || palmSentences[1] || (locale === "zh" ? "情绪波动" : "emotional fluctuation");
+  const wealthXiang = (palmInsight as any)?.wealth || palmSentences[2] || (locale === "zh" ? "财气稳定" : "stable wealth");
+  
+  // 从财富描述中判断四象状态（聚/泄/稳/动）
+  const wealthXiangText = String(wealthXiang);
+  let wealthState = (locale === "zh" ? "稳" : "stable"); // 默认值
+  if (locale === "zh") {
+    if (wealthXiangText.includes("聚") || wealthXiangText.includes("收") || wealthXiangText.includes("积")) {
+      wealthState = "聚";
+    } else if (wealthXiangText.includes("泄") || wealthXiangText.includes("散") || wealthXiangText.includes("失")) {
+      wealthState = "泄";
+    } else if (wealthXiangText.includes("动") || wealthXiangText.includes("变") || wealthXiangText.includes("转")) {
+      wealthState = "动";
+    } else {
+      wealthState = "稳";
+    }
+  } else {
+    if (wealthXiangText.includes("gather") || wealthXiangText.includes("accumulate")) {
+      wealthState = "gather";
+    } else if (wealthXiangText.includes("disperse") || wealthXiangText.includes("leak")) {
+      wealthState = "disperse";
+    } else if (wealthXiangText.includes("move") || wealthXiangText.includes("change")) {
+      wealthState = "move";
+    } else {
+      wealthState = "stable";
+    }
+  }
+  
+  const palmLifePreview = hasFullAccess
+    ? (palmSentences[0] || fallbackText(locale, "palm"))
+    : (locale === "zh"
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends.");
+  const palmEmotionPreview = hasFullAccess
+    ? (palmSentences[1] || palmLifePreview)
+    : palmLifePreview;
+  const palmWealthPreview = hasFullAccess
+    ? (palmSentences[2] || palmLifePreview)
+    : palmLifePreview;
+  
+  // 完整版掌象文案
+  const palmLifeFull = hasFullAccess
+    ? (locale === "zh"
+        ? `事业线走势显示今日计划推进度受『${careerXiang}』影响，应以稳为主。`
+        : `Career line shows today's plan progress is affected by '${careerXiang}', should prioritize stability.`)
+    : palmLifePreview;
   const palmEmotionFull = hasFullAccess
-    ? `${palmEmotionPreview} ${locale === "zh" ? "情绪纹随日干起伏，宜以柔克刚。" : "Emotion line echoes today's stem, reply with softness."}`.trim()
+    ? (locale === "zh"
+        ? `情绪线呈现『${emotionXiang}』，提示今日避免能量外泄。`
+        : `Emotion line shows '${emotionXiang}' trend, indicating today needs to avoid emotional energy leakage.`)
     : palmEmotionPreview;
   const palmWealthFull = hasFullAccess
-    ? `${palmWealthPreview} ${locale === "zh" ? "结合节气势能，财富线宜稳步累积、少做激进决策。" : "With the current term, focus on steady accumulation and avoid drastic bets."}`.trim()
+    ? (locale === "zh"
+        ? `财富线显示财气处于『${wealthXiang}』状态，为'聚 / 泄 / 稳 / 动'四象之一。`
+        : `Wealth line shows today's wealth qi is in '${wealthXiang}' state, belonging to one of the four patterns '${wealthState}'.`)
     : palmWealthPreview;
 
-  const tonguePreview = takeSentences(tongueSummary, 2, locale) || fallbackText(locale, "tongue");
-  const tongueFull = hasFullAccess ? `${tongueSummary || fallbackText(locale, "tongue")} ${buildTermInteraction(locale, lunar.term)}`.trim() : tonguePreview;
+  const tonguePreview = hasFullAccess
+    ? (takeSentences(tongueSummary, 2, locale) || fallbackText(locale, "tongue"))
+    : (locale === "zh"
+        ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。"
+        : "Tongue texture and color have blurred areas, unable to generate constitution judgment. Full version will provide qi-blood, fire-qi, and daily qi-nourishing suggestions.");
+  
+  // 提取舌象相关字段
+  const bodyTongue = normalized?.body_tongue ?? (report as any)?.body_tongue ?? null;
+  const qiXueXiang = bodyTongue?.qi_pattern || bodyTongue?.energy_state || (locale === "zh" ? "气血平衡" : "balanced qi-blood");
+  const huoQiValue = bodyTongue?.energy_state || (locale === "zh" ? "中等" : "moderate");
+  const tiaoLiAdvice = bodyTongue?.health_care_advice?.[0] || bodyTongue?.suggestions?.[0] || (locale === "zh" ? "温和调理" : "gentle adjustment");
+  
+  const tongueFull = hasFullAccess
+    ? (locale === "zh"
+        ? `舌象反映气血偏向『${qiXueXiang}』，火气/湿气指数为 ${huoQiValue}，建议今日采取 ${tiaoLiAdvice}。`
+        : `Today's tongue reflects your qi-blood state leaning towards '${qiXueXiang}', fire-qi/dampness/cold-heat index is ${huoQiValue}. Suggest taking ${tiaoLiAdvice} today.`)
+    : tonguePreview;
 
-  const dreamPreview = takeSentences(dreamSummary, 2, locale) || fallbackText(locale, "dream");
-  const dreamFull = hasFullAccess ? `${dreamSummary || fallbackText(locale, "dream")} ${buildDreamYiJiLink(locale, lunar.yi, lunar.ji)}`.trim() : dreamPreview;
+  const dreamPreview = hasFullAccess
+    ? (takeSentences(dreamSummary, 2, locale) || fallbackText(locale, "dream"))
+    : (locale === "zh"
+        ? "梦境线索不足，无法形成完整梦兆。完整版将结合象征体系解析趋势与心理伏笔。"
+        : "Dream symbols show key clues, but description is insufficient for complete dream omen judgment. Full version will provide fortune trends and mental analysis.");
+  
+  // 提取梦象相关字段
+  const dreamInsight = normalized?.dream_insight ?? (report as any)?.dream_insight ?? null;
+  const mengXiangCode = dreamInsight?.archetype?.type 
+    || dreamInsight?.llm?.symbolic 
+    || dreamInsight?.llm?.ImageSymbol 
+    || dreamSummary.split(/[。！？\n]/)[0] 
+    || (locale === "zh" ? "思维转换" : "mental transition");
+  
+  const dreamFull = hasFullAccess
+    ? (locale === "zh"
+        ? `梦兆出现『${mengXiangCode}』，象征你正跨越心念关隘，今日宜顺势而为。`
+        : `Dream omen shows typical symbol '${mengXiangCode}', corresponding to inner mind crossing a mental threshold, today should follow the flow.`)
+    : dreamPreview;
 
   const yiList = sanitizeList(lunar.yi);
   const jiList = sanitizeList(lunar.ji);
   const luckyHours = sanitizeList(lunar.lucky_hours);
   const unluckyHours = sanitizeList(lunar.unlucky_hours);
 
-  const previewQi = buildQiPreview(locale, yiList, jiList, luckyHours);
+  const previewQi = hasFullAccess
+    ? buildQiPreview(locale, yiList, jiList, luckyHours)
+    : (locale === "zh"
+        ? "今日节奏未成吉凶，仍处在临界区。完整版包含今日宜忌、吉时与破局法。"
+        : "Today's rhythm is at a critical point, great fortune not yet opened, light misfortune not yet fallen. Full version can view do's and don'ts, lucky hours, and today's breakthrough suggestions.");
+  
+  // 提取气运相关字段
+  const qiRhythm = normalized?.qi_rhythm ?? (report as any)?.qi_rhythm ?? null;
   const fullQi = hasFullAccess
-    ? buildQiFull(locale, yiList, jiList, luckyHours, unluckyHours)
+    ? buildQiFull(locale, yiList, jiList, luckyHours, unluckyHours, qiRhythm)
     : previewQi;
 
   const trimmedYi = hasFullAccess ? yiList : yiList.slice(0, 2);
@@ -496,18 +612,24 @@ function buildFullNarrative({
   dreamSummary: string;
   lunar: LunarMeta;
 }) {
-  const termText = lunar.term ? (locale === "zh" ? `节气「${lunar.term}」` : `the "${lunar.term}" solar term`) : "";
-  const ganzhiText = lunar.ganzhi_day ? (locale === "zh" ? `当天干支「${lunar.ganzhi_day}」` : `Ganzhi day "${lunar.ganzhi_day}"`) : "";
-  const palm = palmSummary || fallbackText(locale, "palm");
-  const tongue = tongueSummary || fallbackText(locale, "tongue");
-  const dream = dreamSummary || fallbackText(locale, "dream");
+  // 提取象局结论：综合掌象、舌象、梦象的简要描述
+  const palmBrief = palmSummary ? takeSentences(palmSummary, 1, locale) || palmSummary.split(/[。！？\n]/)[0] : "";
+  const tongueBrief = tongueSummary ? takeSentences(tongueSummary, 1, locale) || tongueSummary.split(/[。！？\n]/)[0] : "";
+  const dreamBrief = dreamSummary ? takeSentences(dreamSummary, 1, locale) || dreamSummary.split(/[。！？\n]/)[0] : "";
+  
+  // 构建象局结论：综合三个方面的关键词
+  const conclusionParts: string[] = [];
+  if (palmBrief) conclusionParts.push(palmBrief);
+  if (tongueBrief) conclusionParts.push(tongueBrief);
+  if (dreamBrief) conclusionParts.push(dreamBrief);
+  const xiangJuConclusion = conclusionParts.length > 0 
+    ? conclusionParts.join("、") 
+    : (locale === "zh" ? "稳中求进" : "steady progress");
 
   if (locale === "zh") {
-    return `${termText || "当令气机"}与${ganzhiText || "天地轮替"}交织，令今日象局呈现层次分明的缓进之势。${palm}；${tongue}；${dream}。整体气场宜慢收慢放，兼顾现实行动与内在沉淀。`
-      .replace(/；；/g, "；")
-      .replace(/；。/g, "。");
+    return `根据掌象、舌象、梦象与节气推算，你今日的整体五象呈『${xiangJuConclusion}』，影响行动力、财气流动、心念稳定度及贵人位置。`;
   }
-  return `${termText || "Current seasonal qi"} together with ${ganzhiText || "the day's cyclical stem-branch"} sets a layered yet measured tone. ${palm} ${tongue} ${dream} Keep actions steady while allowing inner insights to settle.`;
+  return `Based on palm, tongue, dream symbols and today's solar term calculation, your five aspects today show a '${xiangJuConclusion}' pattern. This pattern affects action rhythm, mental stability, wealth gathering/dispersal, and noble person movements.`;
 }
 
 function sanitizeList(list?: string[] | null): string[] {
@@ -524,15 +646,16 @@ function buildQiPreview(locale: Locale, yi: string[], ji: string[], lucky: strin
   return `${firstLucky ? `First lucky window: ${firstLucky}` : "Lucky window still forming"}, do: ${yiText || "slow breath"}, avoid: ${jiText || "rush"}`;
 }
 
-function buildQiFull(locale: Locale, yi: string[], ji: string[], lucky: string[], unlucky: string[]) {
-  const luckyText = lucky.length
-    ? (locale === "zh" ? `吉时涵盖：${lucky.join("、")}。` : `Lucky hours cover: ${lucky.join(", ")}.`)
-    : "";
-  const unluckyText = unlucky.length
-    ? (locale === "zh" ? `慎避时段：${unlucky.join("、")}。` : `Take care around: ${unlucky.join(", ")}.`)
-    : "";
-  const yiText = yi.length ? (locale === "zh" ? `宜：${yi.join("、")}。` : `Do: ${yi.join(", ")}.`) : "";
-  const jiText = ji.length ? (locale === "zh" ? `忌：${ji.join("、")}。` : `Avoid: ${ji.join(", ")}.`) : "";
-  const action = locale === "zh" ? "行动宜循序渐进，先稳住呼吸与节奏，再推关键事项。" : "Move in measured steps—center breath and rhythm before key moves.";
-  return `${luckyText} ${unluckyText} ${yiText} ${jiText} ${action}`.trim();
+function buildQiFull(locale: Locale, yi: string[], ji: string[], lucky: string[], unlucky: string[], qiRhythm?: any) {
+  const yiText = yi.length ? yi.join("、") : (locale === "zh" ? "调息" : "breath adjustment");
+  const jiText = ji.length ? ji.join("、") : (locale === "zh" ? "躁进" : "rushing");
+  const luckyText = lucky.length ? lucky.join("、") : (locale === "zh" ? "待定" : "TBD");
+  const poJuFa = qiRhythm?.advice?.[0] 
+    || qiRhythm?.suggestions?.[0] 
+    || (locale === "zh" ? "循序渐进，先稳后进" : "step by step, stabilize first then advance");
+  
+  if (locale === "zh") {
+    return `根据天干地支与节气推算：宜 ${yiText}，忌 ${jiText}，吉时为 ${luckyText}。今日破局法：${poJuFa}。`;
+  }
+  return `Based on heavenly stems and earthly branches calculation, today do: ${yiText}, avoid: ${jiText}, lucky hours: ${luckyText}. Today's breakthrough method: ${poJuFa}.`;
 }

@@ -196,7 +196,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id || null;
   const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || null;
 
-  // 1. 更新 orders 表：标记为 paid
+  // 1. 更新 orders 表：标记为 paid（必须写入）
+  let orderWritten = false;
   try {
     const { data: existingOrder } = await supabase
       .from("orders")
@@ -205,7 +206,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       .maybeSingle();
 
     if (existingOrder?.id) {
-      await supabase
+      const { error: updateError } = await supabase
         .from("orders")
         .update({
           status: "paid",
@@ -213,7 +214,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingOrder.id);
-      console.log(`[handleCheckoutCompleted] Updated order ${existingOrder.id} to paid`);
+      
+      if (updateError) {
+        console.error("stripe-webhook:update-order-error", {
+          sessionId: session.id,
+          orderId: existingOrder.id,
+          error: updateError.message,
+          errorCode: updateError.code,
+          errorDetails: updateError.details,
+        });
+      } else {
+        orderWritten = true;
+        console.log("stripe-webhook:order-updated", {
+          sessionId: session.id,
+          orderId: existingOrder.id,
+          table: "orders",
+        });
+      }
     } else {
       // 如果没有找到 pending 订单，创建新订单（兼容旧流程）
       const amountCents = session.amount_total ?? 0;
@@ -222,34 +239,89 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         : mode === "sub_year" ? "sub_year"
         : "single";
       
-      await supabase.from("orders").insert({
-        user_id: userId,
-        stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id: paymentIntentId,
-        amount: amountCents,
-        currency: session.currency?.toLowerCase() ?? "usd",
-        kind,
-        report_id: mode === "single" ? reportId : null,
-        status: "paid",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-      console.log(`[handleCheckoutCompleted] Created new order for session ${session.id}`);
+      const { data: insertedOrder, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: userId,
+          stripe_checkout_session_id: session.id,
+          stripe_payment_intent_id: paymentIntentId,
+          amount: amountCents,
+          currency: session.currency?.toLowerCase() ?? "usd",
+          kind,
+          report_id: mode === "single" ? reportId : null,
+          status: "paid",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      
+      if (insertError) {
+        console.error("stripe-webhook:create-order-error", {
+          sessionId: session.id,
+          userId,
+          error: insertError.message,
+          errorCode: insertError.code,
+          errorDetails: insertError.details,
+        });
+      } else {
+        orderWritten = true;
+        console.log("stripe-webhook:order-created", {
+          sessionId: session.id,
+          orderId: insertedOrder.id,
+          table: "orders",
+        });
+      }
     }
   } catch (error) {
-    console.error("stripe-webhook:update-order-error", { sessionId: session.id, error });
-    // 不阻止流程继续
+    console.error("stripe-webhook:order-write-exception", {
+      sessionId: session.id,
+      error: error instanceof Error ? error.message : String(error),
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    // 不阻止流程继续，但记录错误
+  }
+  
+  if (!orderWritten) {
+    console.error("stripe-webhook:order-not-written", {
+      sessionId: session.id,
+      warning: "No order record was written to database",
+    });
   }
 
   // 2. 更新 user_profiles.stripe_customer_id
   if (customerId) {
     try {
-      await supabase
+      const { error: updateError } = await supabase
         .from("user_profiles")
         .update({ stripe_customer_id: customerId })
         .eq("user_id", userId);
+      
+      if (updateError) {
+        console.error("stripe-webhook:update-customer-id-error", {
+          userId,
+          customerId,
+          error: updateError.message,
+          errorCode: updateError.code,
+          errorDetails: updateError.details,
+          table: "user_profiles",
+        });
+      } else {
+        console.log("stripe-webhook:customer-id-updated", {
+          userId,
+          customerId,
+          table: "user_profiles",
+        });
+      }
     } catch (error) {
-      console.error("stripe-webhook:update-customer-id-error", { userId, customerId, error });
+      console.error("stripe-webhook:update-customer-id-exception", {
+        userId,
+        customerId,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        table: "user_profiles",
+      });
     }
   }
 
@@ -267,24 +339,65 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       
       if (existingAccess) {
         // 已存在，更新 tier
-        await supabase
+        const { error: updateError } = await supabase
           .from("report_access")
           .update({ tier: "full" })
           .eq("user_id", userId)
           .eq("report_id", reportId);
+        
+        if (updateError) {
+          console.error("stripe-webhook:update-report-access-error", {
+            userId,
+            reportId,
+            error: updateError.message,
+            errorCode: updateError.code,
+            errorDetails: updateError.details,
+            table: "report_access",
+          });
+        } else {
+          console.log("stripe-webhook:report-access-updated", {
+            userId,
+            reportId,
+            table: "report_access",
+          });
+        }
       } else {
         // 不存在，插入新记录
-        await supabase
+        const { error: insertError } = await supabase
           .from("report_access")
           .insert({
             user_id: userId,
             report_id: reportId,
             tier: "full",
           });
+        
+        if (insertError) {
+          console.error("stripe-webhook:create-report-access-error", {
+            userId,
+            reportId,
+            error: insertError.message,
+            errorCode: insertError.code,
+            errorDetails: insertError.details,
+            table: "report_access",
+          });
+        } else {
+          console.log("stripe-webhook:report-access-created", {
+            userId,
+            reportId,
+            table: "report_access",
+          });
+        }
       }
       console.log("stripe-webhook:single-access-granted", { userId, reportId });
     } catch (error) {
-      console.error("stripe-webhook:single-access-error", { userId, reportId, error });
+      console.error("stripe-webhook:single-access-exception", {
+        userId,
+        reportId,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
+        table: "report_access",
+      });
     }
   } else if (mode === "sub_month" || mode === "sub_year") {
     if (!subscriptionId || !customerId) {
@@ -307,7 +420,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     // 写 subscriptions 表
     try {
-      await supabase
+      const { error: upsertError } = await supabase
         .from("subscriptions")
         .upsert(
           {
@@ -323,14 +436,40 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
             onConflict: "stripe_subscription_id",
           }
         );
-      console.log("stripe-webhook:subscription-recorded", { userId, subscriptionId, plan });
+      
+      if (upsertError) {
+        console.error("stripe-webhook:subscription-error", {
+          userId,
+          subscriptionId,
+          plan,
+          error: upsertError.message,
+          errorCode: upsertError.code,
+          errorDetails: upsertError.details,
+          table: "subscriptions",
+        });
+      } else {
+        console.log("stripe-webhook:subscription-recorded", {
+          userId,
+          subscriptionId,
+          plan,
+          table: "subscriptions",
+        });
+      }
     } catch (error) {
-      console.error("stripe-webhook:subscription-error", { userId, subscriptionId, error });
+      console.error("stripe-webhook:subscription-exception", {
+        userId,
+        subscriptionId,
+        plan,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
+        table: "subscriptions",
+      });
     }
 
     // 更新 user_profiles.is_pro / pro_plan
     try {
-      await supabase
+      const { error: updateError } = await supabase
         .from("user_profiles")
         .update({
           is_pro: true,
@@ -338,9 +477,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
-      console.log("stripe-webhook:user-pro-updated", { userId, plan });
+      
+      if (updateError) {
+        console.error("stripe-webhook:user-pro-update-error", {
+          userId,
+          plan,
+          error: updateError.message,
+          errorCode: updateError.code,
+          errorDetails: updateError.details,
+          table: "user_profiles",
+        });
+      } else {
+        console.log("stripe-webhook:user-pro-updated", {
+          userId,
+          plan,
+          table: "user_profiles",
+        });
+      }
     } catch (error) {
-      console.error("stripe-webhook:user-pro-update-error", { userId, plan, error });
+      console.error("stripe-webhook:user-pro-update-exception", {
+        userId,
+        plan,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
+        table: "user_profiles",
+      });
     }
   } else {
     console.warn("stripe-webhook:unknown-mode", { mode, sessionId: session.id });
@@ -676,7 +838,13 @@ export async function POST(req: Request) {
       webhookSecret,
     );
   } catch (err) {
-    console.error("Webhook signature verification failed", err);
+    console.error("stripe-webhook:signature-verification-failed", {
+      error: err instanceof Error ? err.message : String(err),
+      errorType: err instanceof Error ? err.constructor.name : typeof err,
+      hasWebhookSecret: !!webhookSecret,
+      webhookSecretLength: webhookSecret?.length ?? 0,
+      signatureLength: sig?.length ?? 0,
+    });
     return new Response("Bad signature", { status: 400 });
   }
 
@@ -685,26 +853,52 @@ export async function POST(req: Request) {
       case "checkout.session.completed":
         // 单次/订阅首付成功
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        console.log("stripe-webhook:event-processed", {
+          eventType: event.type,
+          tablesWritten: ["orders", "report_access", "user_profiles"],
+          sessionId: (event.data.object as Stripe.Checkout.Session).id,
+        });
         break;
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
         // 订阅状态变更
         await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        console.log("stripe-webhook:event-processed", {
+          eventType: event.type,
+          tablesWritten: ["subscriptions", "user_profiles"],
+          subscriptionId: (event.data.object as Stripe.Subscription).id,
+        });
         break;
       case "invoice.payment_succeeded":
         // 订阅续费成功（可选）
         await handleInvoicePaid(event.data.object as Stripe.Invoice);
+        console.log("stripe-webhook:event-processed", {
+          eventType: event.type,
+          tablesWritten: ["orders", "subscriptions", "user_profiles"],
+          invoiceId: (event.data.object as Stripe.Invoice).id,
+        });
         break;
       case "invoice.payment_failed":
         // 支付失败（可选）
         await handleInvoiceFailed(event.data.object as Stripe.Invoice);
+        console.log("stripe-webhook:event-processed", {
+          eventType: event.type,
+          tablesWritten: [],
+          invoiceId: (event.data.object as Stripe.Invoice).id,
+        });
         break;
       default:
         console.log(`stripe-webhook:unhandled-event-type`, { type: event.type });
         break;
     }
   } catch (e) {
-    console.error("Webhook handler error", e);
+    console.error("stripe-webhook:handler-error", {
+      eventType: event.type,
+      error: e instanceof Error ? e.message : String(e),
+      errorType: e instanceof Error ? e.constructor.name : typeof e,
+      stack: e instanceof Error ? e.stack : undefined,
+      eventId: event.id,
+    });
     return new Response("Webhook error", { status: 500 });
   }
 
