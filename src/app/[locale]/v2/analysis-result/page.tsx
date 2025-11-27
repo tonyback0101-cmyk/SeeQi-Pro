@@ -66,30 +66,31 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
   // 如果支付成功（success=1），立即检查 Stripe session 状态并更新订单
   if (success === "1") {
     const sessionId = (await searchParams).session_id;
-    if (sessionId && userId) {
+    if (sessionId && userId && reportId) {
       try {
         const { getStripeClient } = await import("@/lib/stripe");
         const stripe = getStripeClient();
         const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
         
         if (checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") {
-          // 支付成功，立即更新订单状态（不等待 webhook）
+          // 支付成功，立即更新订单状态和创建 report_access（不等待 webhook）
           const supabase = getSupabaseAdminClient();
+          
+          // 检查订单是否存在
           const { data: order } = await supabase
             .from("orders")
-            .select("id, status")
+            .select("id, status, kind, report_id")
             .eq("stripe_checkout_session_id", sessionId)
             .maybeSingle();
           
-          if (order && order.status !== "paid") {
-            // 更新订单状态
-            await supabase
-              .from("orders")
-              .update({ status: "paid", updated_at: new Date().toISOString() })
-              .eq("id", order.id);
-            
-            // 创建 report_access 记录（如果不存在）
-            await supabase
+          // 如果是单次购买（single），确保创建 report_access
+          const isSinglePurchase = checkoutSession.metadata?.mode === "single" || 
+                                   order?.kind === "single" ||
+                                   (checkoutSession.metadata?.report_id && checkoutSession.metadata.report_id === reportId);
+          
+          if (isSinglePurchase) {
+            // 创建或更新 report_access 记录（单次购买）
+            const { error: accessError } = await supabase
               .from("report_access")
               .upsert(
                 {
@@ -101,6 +102,29 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
                 { onConflict: "report_id,user_id" }
               );
             
+            if (accessError) {
+              console.error("[V2AnalysisResultPage] Failed to create report_access:", accessError);
+            } else {
+              console.log(`[V2AnalysisResultPage] Created report_access for user ${userId}, report ${reportId}`);
+            }
+          }
+          
+          // 如果订单存在且状态不是 paid，更新订单状态
+          if (order && order.status !== "paid") {
+            const { error: updateError } = await supabase
+              .from("orders")
+              .update({ status: "paid", updated_at: new Date().toISOString() })
+              .eq("id", order.id);
+            
+            if (updateError) {
+              console.error("[V2AnalysisResultPage] Failed to update order status:", updateError);
+            } else {
+              console.log(`[V2AnalysisResultPage] Updated order ${order.id} to paid status`);
+            }
+          } else if (!order) {
+            // 如果订单不存在，尝试创建订单（用于记录）
+            // 注意：这里不强制创建，因为 webhook 会处理
+            console.warn(`[V2AnalysisResultPage] Order not found for session ${sessionId}, webhook will handle it`);
           }
         }
       } catch (error) {

@@ -12,7 +12,7 @@ export const metadata = {
   description: {
     default: "SeeQi · 东方玄学洞察系统 | Eastern Insight System",
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
