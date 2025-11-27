@@ -257,18 +257,31 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (mode === "single" && reportId) {
     // 单次报告权限：写入 report_access
     try {
-      await supabase
+      // 先检查是否已存在
+      const { data: existingAccess } = await supabase
         .from("report_access")
-        .upsert(
-          {
+        .select("id")
+        .eq("user_id", userId)
+        .eq("report_id", reportId)
+        .maybeSingle();
+      
+      if (existingAccess) {
+        // 已存在，更新 tier
+        await supabase
+          .from("report_access")
+          .update({ tier: "full" })
+          .eq("user_id", userId)
+          .eq("report_id", reportId);
+      } else {
+        // 不存在，插入新记录
+        await supabase
+          .from("report_access")
+          .insert({
             user_id: userId,
             report_id: reportId,
             tier: "full",
-          },
-          {
-            onConflict: "report_id,user_id",
-          }
-        );
+          });
+      }
       console.log("stripe-webhook:single-access-granted", { userId, reportId });
     } catch (error) {
       console.error("stripe-webhook:single-access-error", { userId, reportId, error });

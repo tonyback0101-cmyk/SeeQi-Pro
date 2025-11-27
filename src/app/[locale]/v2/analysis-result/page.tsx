@@ -125,33 +125,59 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           // 如果是单次购买，创建 report_access 记录
           if (isSinglePurchase && reportId) {
-            // 创建或更新 report_access 记录（单次购买）
-            const { error: accessError, data: accessData } = await supabase
+            // 先检查是否已存在
+            const { data: existingAccess } = await supabase
               .from("report_access")
-              .upsert(
-                {
+              .select("id")
+              .eq("user_id", userId)
+              .eq("report_id", reportId)
+              .maybeSingle();
+            
+            if (existingAccess) {
+              // 已存在，更新 tier
+              const { error: updateError } = await supabase
+                .from("report_access")
+                .update({ tier: "full" })
+                .eq("user_id", userId)
+                .eq("report_id", reportId);
+              
+              if (updateError) {
+                console.error("[V2AnalysisResultPage] Failed to update report_access:", updateError);
+              } else {
+                console.log(`[V2AnalysisResultPage] Updated report_access for user ${userId}, report ${reportId}`);
+              }
+            } else {
+              // 不存在，插入新记录
+              const { error: insertError, data: insertData } = await supabase
+                .from("report_access")
+                .insert({
                   user_id: userId,
                   report_id: reportId,
                   tier: "full",
-                },
-                { onConflict: "report_id,user_id" }
-              )
-              .select();
-            
-            if (accessError) {
-              console.error("[V2AnalysisResultPage] Failed to create report_access:", accessError);
-              // 即使创建失败，也继续处理，webhook 会处理
-            } else {
-              console.log(`[V2AnalysisResultPage] Created/updated report_access for user ${userId}, report ${reportId}`, accessData);
-              // 支付成功且创建了 report_access，重定向到同一页面（不带 success 参数）以刷新权限
-              // 这样 computeV2Access 就能立即识别到新创建的权限
-              const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
-              console.log(`[V2AnalysisResultPage] Redirecting to: ${redirectUrl}`);
-              redirect(redirectUrl);
+                })
+                .select();
+              
+              if (insertError) {
+                console.error("[V2AnalysisResultPage] Failed to create report_access:", insertError);
+              } else {
+                console.log(`[V2AnalysisResultPage] Created report_access for user ${userId}, report ${reportId}`, insertData);
+              }
             }
+            
+            // 无论创建成功与否，都重定向以刷新页面（webhook 会确保权限创建）
+            // 等待一小段时间确保数据库写入完成
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
+            console.log(`[V2AnalysisResultPage] Redirecting to: ${redirectUrl}`);
+            redirect(redirectUrl);
           } else if (!isSinglePurchase) {
             // 如果不是单次购买，可能是订阅，不需要创建 report_access（订阅用户通过 hasActiveSubscription 判断）
             console.log(`[V2AnalysisResultPage] Not a single purchase, skipping report_access creation`);
+            // 即使是订阅，也重定向以刷新页面，让 computeV2Access 重新检查订阅状态
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
+            console.log(`[V2AnalysisResultPage] Redirecting to refresh subscription status: ${redirectUrl}`);
+            redirect(redirectUrl);
           }
           
           // 如果订单存在且状态不是 paid，更新订单状态
