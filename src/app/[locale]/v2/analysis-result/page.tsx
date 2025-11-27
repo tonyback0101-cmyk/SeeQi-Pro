@@ -6,6 +6,7 @@ import { computeV2Access } from "@/lib/access/v2Access";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import V2AnalysisResultClient from "./V2AnalysisResultClient";
 import { redirect } from "next/navigation";
+import { grantFullReportAccess } from "@/lib/reportAccess";
 
 type Locale = "zh" | "en";
 
@@ -128,52 +129,16 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           // 如果是单次购买，创建 report_access 记录
           if (isSinglePurchase && reportId) {
-            let accessError: any = null;
-            let accessCreated = false;
-            
-            // 先检查是否已存在
-            const { data: existingAccess } = await supabase
-              .from("report_access")
-              .select("id")
-              .eq("user_id", userId)
-              .eq("report_id", reportId)
-              .maybeSingle();
-            
-            if (existingAccess) {
-              // 已存在，更新 tier
-              const { error: updateError } = await supabase
-                .from("report_access")
-                .update({ tier: "full" })
-                .eq("user_id", userId)
-                .eq("report_id", reportId);
-              
-              if (updateError) {
-                console.error("[V2AnalysisResultPage] Failed to update report_access:", updateError);
-                accessError = updateError;
-              } else {
-                console.log(`[V2AnalysisResultPage] Updated report_access for user ${userId}, report ${reportId}`);
-                accessCreated = true;
-              }
-            } else {
-              // 不存在，插入新记录
-              const { error: insertError, data: insertData } = await supabase
-                .from("report_access")
-                .insert({
-                  user_id: userId,
-                  report_id: reportId,
-                  tier: "full",
-                })
-                .select();
-              
-              if (insertError) {
-                console.error("[V2AnalysisResultPage] Failed to create report_access:", insertError);
-                accessError = insertError;
-              } else {
-                console.log(`[V2AnalysisResultPage] Created report_access for user ${userId}, report ${reportId}`, insertData);
-                accessCreated = true;
-              }
-            }
-            
+            const accessResult = await grantFullReportAccess({
+              supabase,
+              reportId,
+              userId,
+              report,
+              locale,
+            });
+            const accessError = accessResult.ok ? null : accessResult.error;
+            const accessCreated = accessResult.ok;
+
             // 无论创建成功与否，都重定向以刷新页面（webhook 会确保权限创建）
             // 如果创建失败，等待更长时间让 webhook 处理
             const waitTime = accessError ? 2000 : 1000;
@@ -251,29 +216,15 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
                                  (metadataReportId && metadataReportId === reportId);
         
         if (isSinglePurchase && reportId) {
-          // 检查是否已存在
-          const { data: existingAccess } = await supabase
-            .from("report_access")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("report_id", reportId)
-            .maybeSingle();
-          
-          if (!existingAccess) {
-            // 不存在，插入新记录
-            const { error: insertError } = await supabase
-              .from("report_access")
-              .insert({
-                user_id: userId,
-                report_id: reportId,
-                tier: "full",
-              });
-            
-            if (insertError) {
-              console.error("[V2AnalysisResultPage] Failed to create report_access from session_id:", insertError);
-            } else {
-              console.log(`[V2AnalysisResultPage] Created report_access from session_id for user ${userId}, report ${reportId}`);
-            }
+          const fallbackAccessResult = await grantFullReportAccess({
+            supabase,
+            reportId,
+            userId,
+            report,
+            locale,
+          });
+          if (!fallbackAccessResult.ok) {
+            console.error("[V2AnalysisResultPage] Failed to grant report_access from session_id:", fallbackAccessResult.error);
           }
         }
       }
@@ -308,39 +259,22 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     
     if (paidOrder) {
       console.log(`[V2AnalysisResultPage] Found paid order but no access, creating report_access:`, paidOrder);
-      // 检查是否已存在
-      const { data: existingAccess } = await supabase
-        .from("report_access")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("report_id", reportId)
-        .maybeSingle();
-      
-      if (!existingAccess) {
-        const { error: insertError } = await supabase
-          .from("report_access")
-          .insert({
-            user_id: userId,
-            report_id: reportId,
-            tier: "full",
-          });
-        
-        if (insertError) {
-          console.error("[V2AnalysisResultPage] Failed to create report_access from paid order:", insertError);
-        } else {
-          console.log(`[V2AnalysisResultPage] Created report_access from paid order for user ${userId}, report ${reportId}`);
-          // 重新计算 access
-          access = await computeV2Access({ userId, reportId });
-          console.log(`[V2AnalysisResultPage] Access recomputed after creating report_access:`, {
-            level: access.level,
-            hasFullAccess: access.hasFullAccess,
-            isFree: access.isFree,
-          });
-        }
-      } else {
-        // 已存在但 computeV2Access 没查到，可能是查询问题，直接设置为有权限
-        console.log(`[V2AnalysisResultPage] report_access exists but computeV2Access didn't find it, forcing full access`);
-        access = { level: "single_paid", isFree: false, hasFullAccess: true };
+      const forcedAccessResult = await grantFullReportAccess({
+        supabase,
+        reportId,
+        userId,
+        report,
+        locale,
+      });
+      if (forcedAccessResult.ok) {
+        access = await computeV2Access({ userId, reportId });
+        console.log(`[V2AnalysisResultPage] Access recomputed after granting access:`, {
+          level: access.level,
+          hasFullAccess: access.hasFullAccess,
+          isFree: access.isFree,
+        });
+      } else if (forcedAccessResult.error) {
+        console.error("[V2AnalysisResultPage] Failed to grant access from paid order:", forcedAccessResult.error);
       }
     }
   }

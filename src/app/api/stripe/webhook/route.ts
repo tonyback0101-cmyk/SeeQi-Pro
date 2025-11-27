@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { distributeAffiliateCommissions, reverseCommissionsForOrder } from "@/lib/affiliate/commission";
+import { grantFullReportAccess } from "@/lib/reportAccess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -327,75 +328,26 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   // 3. 根据 mode 分流处理
   if (mode === "single" && reportId) {
-    // 单次报告权限：写入 report_access
-    try {
-      // 先检查是否已存在
-      const { data: existingAccess } = await supabase
-        .from("report_access")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("report_id", reportId)
-        .maybeSingle();
-      
-      if (existingAccess) {
-        // 已存在，更新 tier
-        const { error: updateError } = await supabase
-          .from("report_access")
-          .update({ tier: "full" })
-          .eq("user_id", userId)
-          .eq("report_id", reportId);
-        
-        if (updateError) {
-          console.error("stripe-webhook:update-report-access-error", {
-            userId,
-            reportId,
-            error: updateError.message,
-            errorCode: updateError.code,
-            errorDetails: updateError.details,
-            table: "report_access",
-          });
-        } else {
-          console.log("stripe-webhook:report-access-updated", {
-            userId,
-            reportId,
-            table: "report_access",
-          });
-        }
-      } else {
-        // 不存在，插入新记录
-        const { error: insertError } = await supabase
-          .from("report_access")
-          .insert({
-            user_id: userId,
-            report_id: reportId,
-            tier: "full",
-          });
-        
-        if (insertError) {
-          console.error("stripe-webhook:create-report-access-error", {
-            userId,
-            reportId,
-            error: insertError.message,
-            errorCode: insertError.code,
-            errorDetails: insertError.details,
-            table: "report_access",
-          });
-        } else {
-          console.log("stripe-webhook:report-access-created", {
-            userId,
-            reportId,
-            table: "report_access",
-          });
-        }
-      }
-      console.log("stripe-webhook:single-access-granted", { userId, reportId });
-    } catch (error) {
+    const accessResult = await grantFullReportAccess({
+      supabase,
+      reportId,
+      userId,
+      locale: session.metadata?.locale === "en" ? "en" : "zh",
+      report: null,
+    });
+
+    if (accessResult.ok) {
+      console.log("stripe-webhook:single-access-granted", {
+        userId,
+        reportId,
+        action: accessResult.action,
+        table: "report_access",
+      });
+    } else {
       console.error("stripe-webhook:single-access-exception", {
         userId,
         reportId,
-        error: error instanceof Error ? error.message : String(error),
-        errorType: error instanceof Error ? error.constructor.name : typeof error,
-        stack: error instanceof Error ? error.stack : undefined,
+        error: accessResult.error instanceof Error ? accessResult.error.message : String(accessResult.error),
         table: "report_access",
       });
     }

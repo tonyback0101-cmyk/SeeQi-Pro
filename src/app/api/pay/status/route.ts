@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { grantFullReportAccess, ensureLegacyReportRow } from "@/lib/reportAccess";
 
 export const runtime = "nodejs";
 
@@ -102,6 +103,24 @@ export async function GET(request: Request) {
         console.error("[GET /api/pay/status] Failed to unlock report:", unlockError);
         // 即使解锁失败，也返回成功，因为订单已经支付成功
         // 可以通过其他方式（如 webhook）来解锁报告
+      }
+
+      const legacyLocale = metadata.locale === "en" ? "en" : "zh";
+      await ensureLegacyReportRow({ supabase, reportId, report: null, locale: legacyLocale }).catch((error) => {
+        console.warn("[GET /api/pay/status] Failed to ensure legacy reports row", error);
+      });
+
+      if (metadata.userId) {
+        const grantResult = await grantFullReportAccess({
+          supabase,
+          reportId,
+          userId: metadata.userId,
+          locale: legacyLocale,
+          report: null,
+        });
+        if (!grantResult.ok) {
+          console.warn("[GET /api/pay/status] Failed to grant user report_access", grantResult.error);
+        }
       }
 
       let accessSessionId = metadata.sessionId ?? null;

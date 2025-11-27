@@ -80,6 +80,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
   const [isPointerCoarse, setIsPointerCoarse] = useState(false);
   const [activeCameraMode, setActiveCameraMode] = useState<null | "palm" | "tongue">(null);
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -106,7 +107,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
         // 启动新的摄像头流
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: "environment", // 使用后置摄像头
+            facingMode: cameraFacingMode,
           },
           audio: false,
         });
@@ -162,7 +163,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
         videoRef.current.srcObject = null;
       }
     };
-  }, [activeCameraMode, locale]);
+  }, [activeCameraMode, locale, cameraFacingMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -346,6 +347,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
     }
     
     setCameraMessage(null);
+    setCameraFacingMode("environment");
     return true;
   };
 
@@ -360,6 +362,19 @@ function V2AnalyzePageContent({ params }: PageProps) {
     }
     setActiveCameraMode(null);
     setCameraMessage(null);
+    setCameraFacingMode("environment");
+  };
+
+  const handleCameraSwitch = () => {
+    // 先关闭当前流，避免前后摄切换时旧流占用硬件
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
   };
 
   const handleCameraConfirm = (mode: "palm" | "tongue") => async (file: File): Promise<boolean> => {
@@ -1647,9 +1662,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
               <button 
                 type="button"
                 className="control-button icon-button"
-                onClick={() => {
-                  // TODO: 切换前后摄像头功能
-                }}
+                onClick={handleCameraSwitch}
               >
                 <span className="icon">🔄</span>
                 切换前后摄像头
