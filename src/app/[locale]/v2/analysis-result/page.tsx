@@ -431,10 +431,11 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
   const palmSentences = splitIntoSentences(palmSummary, locale);
   const palmInsight = normalized?.palm_insight ?? (report as any)?.palm_insight ?? null;
   
-  // 提取掌象相关字段
-  const careerXiang = palmInsight?.life_rhythm || palmSentences[0] || (locale === "zh" ? "稳中求进" : "steady progress");
-  const emotionXiang = palmInsight?.emotion_pattern || palmSentences[1] || (locale === "zh" ? "情绪波动" : "emotional fluctuation");
-  const wealthXiang = (palmInsight as any)?.wealth || palmSentences[2] || (locale === "zh" ? "财气稳定" : "stable wealth");
+  // 提取掌象相关字段（四条主线）
+  const lifeXiang = palmInsight?.life_rhythm || palmSentences[0] || (locale === "zh" ? "稳中求进" : "steady progress");
+  const wisdomXiang = palmInsight?.thought_style || palmSentences[1] || (locale === "zh" ? "思维清晰" : "clear thinking");
+  const emotionXiang = palmInsight?.emotion_pattern || palmSentences[2] || (locale === "zh" ? "情绪波动" : "emotional fluctuation");
+  const wealthXiang = (palmInsight as any)?.wealth || palmSentences[3] || (locale === "zh" ? "财气稳定" : "stable wealth");
   
   // 从财富描述中判断四象状态（聚/泄/稳/动）
   const wealthXiangText = String(wealthXiang);
@@ -461,41 +462,57 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
     }
   }
   
-  // 预览版：简洁但高级的摘要，增加付费动机
+  // 预览版：简洁但高级的摘要，增加付费动机（四条主线）
   const palmLifePreview = hasFullAccess
     ? null // 完整版不显示预览，直接显示完整内容
     : (locale === "zh"
-        ? "掌纹蕴含丰富信息，完整版将深度解读事业线推进节奏、情绪线能量流动与财富线聚散规律，助你把握今日关键节点。"
-        : "Palm lines contain rich information. Full version provides deep insights into career rhythm, emotional energy flow, and wealth accumulation patterns to help you grasp today's key moments.");
+        ? "生命线走势需完整版查看，完整版将展示生命线、智慧线、感情线与事业财运线的深度解读。"
+        : "Life line details require full version. Full version provides deep insights into life, wisdom, emotion, and career & wealth lines.");
+  const palmWisdomPreview = hasFullAccess
+    ? null
+    : (locale === "zh"
+        ? "智慧线走势需完整版查看，完整版将展示生命线、智慧线、感情线与事业财运线的深度解读。"
+        : "Wisdom line details require full version. Full version provides deep insights into life, wisdom, emotion, and career & wealth lines.");
   const palmEmotionPreview = hasFullAccess
     ? null
-    : palmLifePreview;
+    : (locale === "zh"
+        ? "感情线走势需完整版查看，完整版将展示生命线、智慧线、感情线与事业财运线的深度解读。"
+        : "Heart line details require full version. Full version provides deep insights into life, wisdom, emotion, and career & wealth lines.");
   const palmWealthPreview = hasFullAccess
     ? null
-    : palmLifePreview;
+    : (locale === "zh"
+        ? "事业财运线走势需完整版查看，完整版将展示生命线、智慧线、感情线与事业财运线的深度解读。"
+        : "Career & wealth line details require full version. Full version provides deep insights into life, wisdom, emotion, and career & wealth lines.");
   
-  // 完整版掌象文案：深度内容，不与预览重复
+  // 完整版掌象文案：深度内容，不与预览重复（四条主线）
   const palmLifeFull = hasFullAccess
     ? (locale === "zh"
-        ? `事业线走势显示今日计划推进度受『${careerXiang}』影响，应以稳为主。`
-        : `Career line shows today's plan progress is affected by '${careerXiang}', should prioritize stability.`)
+        ? `生命线走势显示今日计划推进度受『${lifeXiang}』影响，应以稳为主。`
+        : `Life line shows today's plan progress is affected by '${lifeXiang}', should prioritize stability.`)
     : (palmLifePreview || (locale === "zh" 
-        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
-        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含生命线、智慧线、感情线与事业财运线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide life, wisdom, emotion, and career & wealth line trends."));
+  const palmWisdomFull = hasFullAccess
+    ? (locale === "zh"
+        ? `智慧线呈现『${wisdomXiang}』，提示今日思维节奏与决策方向。`
+        : `Wisdom line shows '${wisdomXiang}' pattern, indicating today's thinking rhythm and decision direction.`)
+    : (palmWisdomPreview || palmLifePreview || (locale === "zh"
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含生命线、智慧线、感情线与事业财运线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide life, wisdom, emotion, and career & wealth line trends."));
   const palmEmotionFull = hasFullAccess
     ? (locale === "zh"
-        ? `情绪线呈现『${emotionXiang}』，提示今日避免能量外泄。`
+        ? `感情线呈现『${emotionXiang}』，提示今日避免能量外泄。`
         : `Emotion line shows '${emotionXiang}' trend, indicating today needs to avoid emotional energy leakage.`)
     : (palmEmotionPreview || palmLifePreview || (locale === "zh"
-        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
-        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含生命线、智慧线、感情线与事业财运线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide life, wisdom, emotion, and career & wealth line trends."));
   const palmWealthFull = hasFullAccess
     ? (locale === "zh"
-        ? `财富线显示财气处于『${wealthXiang}』状态，为'聚 / 泄 / 稳 / 动'四象之一。`
-        : `Wealth line shows today's wealth qi is in '${wealthXiang}' state, belonging to one of the four patterns '${wealthState}'.`)
+        ? `事业财运线显示财气处于『${wealthXiang}』状态，为'聚 / 泄 / 稳 / 动'四象之一。`
+        : `Career & wealth line shows today's wealth qi is in '${wealthXiang}' state, belonging to one of the four patterns '${wealthState}'.`)
     : (palmWealthPreview || palmLifePreview || (locale === "zh"
-        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
-        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide career, emotion, and wealth line trends."));
+        ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含生命线、智慧线、感情线与事业财运线走势解读。"
+        : "Palm lines have light or pattern interference, unable to generate high-recognition results. Full version will provide life, wisdom, emotion, and career & wealth line trends."));
 
   // 预览版：简洁但高级的摘要，增加付费动机
   const tonguePreview = hasFullAccess
@@ -584,13 +601,18 @@ function injectFiveAspectContent(report: any, locale: Locale, hasFullAccess: boo
       summary: palmLifePreview,
       detail: palmLifeFull,
     },
+    wisdom: {
+      label: locale === "zh" ? "智慧线" : "Wisdom Line",
+      summary: palmWisdomPreview,
+      detail: palmWisdomFull,
+    },
     emotion: {
-      label: locale === "zh" ? "情绪纹" : "Emotion Line",
+      label: locale === "zh" ? "感情线" : "Heart Line",
       summary: palmEmotionPreview,
       detail: palmEmotionFull,
     },
     wealth: {
-      label: locale === "zh" ? "财富纹" : "Wealth Line",
+      label: locale === "zh" ? "事业财运线" : "Career & Wealth Line",
       summary: palmWealthPreview,
       detail: palmWealthFull,
     },

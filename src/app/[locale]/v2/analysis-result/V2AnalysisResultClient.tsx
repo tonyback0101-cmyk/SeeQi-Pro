@@ -827,8 +827,8 @@ export default function V2AnalysisResultClient({
           data={fiveAspectData}
           delay={0.1}
           locale={locale}
-          unlocked={resolvedAccessLevel === "full"}
-          onUnlock={undefined}
+          unlocked={isFiveAspectUnlocked}
+          onUnlock={handleUnlockClick}
         />
 
         {/* ③ 掌纹简批（预览可见） */}
@@ -840,8 +840,8 @@ export default function V2AnalysisResultClient({
           }
           wisdomLine={
             resolvedAccessLevel === "full"
-              ? (palmBlock?.life_line?.detail ?? palmBlock?.life_line?.summary ?? null)
-              : getPreviewSentence(palmBlock?.life_line?.summary ?? null, locale)
+              ? (palmBlock?.wisdom?.detail ?? palmBlock?.wisdom?.summary ?? null)
+              : getPreviewSentence(palmBlock?.wisdom?.summary ?? null, locale)
           }
           heartLine={
             resolvedAccessLevel === "full"
@@ -876,7 +876,7 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={palmNotice}
-          onUnlock={undefined}
+          onUnlock={handleUnlockClick}
         />
 
         {/* ④ 舌象简批（预览可见） */}
@@ -988,7 +988,7 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={tongueNotice}
-          onUnlock={undefined}
+          onUnlock={handleUnlockClick}
         />
 
         {/* ⑤ 梦境简批（预览可见） */}
@@ -1019,7 +1019,7 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={dreamNotice}
-          onUnlock={undefined}
+          onUnlock={handleUnlockClick}
         />
 
         {/* ⑥ 吉凶提示 + 身心状态（预览可见） */}
@@ -1047,11 +1047,69 @@ export default function V2AnalysisResultClient({
           delay={0.3}
           locale={locale}
           isFullAccess={resolvedAccessLevel === "full"}
-          onUnlock={undefined}
+          onUnlock={handleUnlockClick}
         />
 
         {/* 付费版内容：仅完整版时渲染 */}
         {resolvedAccessLevel === "full" && <ProFullReportSection report={report} locale={locale} />}
+
+        {/* 统一解锁按钮（仅非 Pro 用户显示） */}
+        {showPaywall && (
+          <motion.section
+            variants={fadeUp(0.4)}
+            initial="hidden"
+            animate="visible"
+            className="report-section paywall-section"
+          >
+            <div className="paywall-upgrade-card">
+              <div className="paywall-upgrade-header">
+                <span className="paywall-tag emphasize">
+                  {locale === "zh" ? "完整报告" : "Full Report"}
+                </span>
+                <h3 className="paywall-panel-title">
+                  {locale === "zh" ? "升级即可获得" : "Unlock to receive"}
+                </h3>
+              </div>
+              <ul className="paywall-list">
+                {proHighlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <div className="paywall-price-row">
+                <div>
+                  <p className="paywall-price-label">{locale === "zh" ? "解锁方式" : "Options"}</p>
+                  <p className="paywall-price-main">{locale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
+                </div>
+                <div className="paywall-chip-list">
+                  {unlockPerks.map((perk) => (
+                    <span key={perk}>{perk}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="paywall-action-row">
+                <button
+                  type="button"
+                  onClick={handleUnlockClick}
+                  className="paywall-button"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+                  </svg>
+                  {locale === "zh"
+                    ? "解锁完整报告 · 查看财富线与今日修身方案"
+                    : "Unlock full report · detailed plan today"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUnlockClick}
+                  className="paywall-secondary-link"
+                >
+                  {locale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        )}
 
         </motion.div>
 
@@ -1079,26 +1137,29 @@ export default function V2AnalysisResultClient({
         </p>
       </footer>
 
-      {/* 统一解锁按钮（仅在整个分析结果页底部出现一次，仅非完整版用户显示） */}
-      {resolvedAccessLevel !== "full" && (
+      {/* 固定底部解锁按钮（仅非 Pro 用户显示） */}
+      {/* fixed bottom-0: 确保按钮始终在屏幕底部 */}
+      {/* bg-mystic-primary/90 backdrop-blur-sm: 与顶部导航类似，半透明背景带模糊 */}
+      {!isPro && (
         <div className="fixed bottom-0 left-0 right-0 bg-mystic-primary/90 backdrop-blur-sm border-t border-card-border-light p-4 shadow-lg z-50">
           <div className="max-w-md mx-auto">
-            <button
-              type="button"
-              onClick={handleUnlockClick}
-              className="w-full bg-accent-gold text-mystic-primary py-3.5 rounded-full font-bold text-sm shadow-xl hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
-              </svg>
-              {locale === "zh" ? "解锁完整报告：查看精密象与今日修身建议" : "Unlock Full Report: View Detailed Insights & Today's Guidance"}
-            </button>
+            {/* 按钮颜色: bg-accent-gold text-mystic-primary: 强烈的金色按钮，配上深色文字，形成醒目的视觉焦点，引导用户点击解锁 */}
+                   <button
+                     type="button"
+                     onClick={handleUnlockClick}
+                     className="w-full bg-accent-gold text-mystic-primary py-3.5 rounded-full font-bold text-sm shadow-xl hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2"
+                   >
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                       <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
+                     </svg>
+                     {locale === "zh" ? "解锁完整报告：查看精密象与今日修身建议" : "Unlock Full Report: View Detailed Insights & Today's Guidance"}
+                   </button>
           </div>
         </div>
       )}
 
       {/* 解锁 Modal */}
-      {resolvedAccessLevel !== "full" && (
+      {!isPro && (
         <UnlockModal
           locale={locale}
           reportId={reportId}

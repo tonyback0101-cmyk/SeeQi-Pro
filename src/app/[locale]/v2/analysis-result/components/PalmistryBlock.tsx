@@ -62,11 +62,7 @@ export default function PalmistryBlock({
           lifeLine: "生命线",
           wisdomLine: "智慧线",
           heartLine: "感情线",
-          wealthLine: "财富线",
-          wealthDetail: "财富线深度分析",
-          risk: "破财风险点",
-          potential: "聚财途径",
-          previewCTA: "解锁完整掌象",
+          wealthLine: "事业财运线",
           disclaimer: "掌纹仅为象学观察，不构成医学判断，仅作气运象意判断参考",
         }
       : {
@@ -75,123 +71,74 @@ export default function PalmistryBlock({
           lifeLine: "Life Line",
           wisdomLine: "Wisdom Line",
           heartLine: "Heart Line",
-          wealthLine: "Wealth Line",
-          wealthDetail: "Wealth Line Deep Analysis",
-          risk: "Risk Points",
-          potential: "Wealth Accumulation",
-          previewCTA: "Unlock full palmistry",
+          wealthLine: "Career & Wealth Line",
           disclaimer: "Palmistry is a symbolic observation, not medical advice.",
         };
 
-  const previewSummary =
-    notice ||
-    wealthLine ||
-    lifeLine ||
-    heartLine ||
-    wisdomLine ||
-    (locale === "zh"
-      ? "掌纹数据正在生成，请稍后再试。"
-      : "Palm insights are being prepared, please check back soon.");
+  // 预览版：显示四条线，每条线只展示标题和一句模糊预览
+  if (!isFull) {
+    const lines = [
+      { title: t.lifeLine, preview: lifeLine || (locale === "zh" ? "生命线走势需完整版查看" : "Life line details require full version") },
+      { title: t.wisdomLine, preview: wisdomLine || (locale === "zh" ? "智慧线走势需完整版查看" : "Wisdom line details require full version") },
+      { title: t.heartLine, preview: heartLine || (locale === "zh" ? "感情线走势需完整版查看" : "Heart line details require full version") },
+      { title: t.wealthLine, preview: wealthLine || (locale === "zh" ? "事业财运线走势需完整版查看" : "Career & wealth line details require full version") },
+    ];
 
-  const renderPreviewCard = () => (
+    return (
+      <motion.section
+        variants={fadeUp(delay)}
+        initial="hidden"
+        animate="visible"
+        className="report-section"
+      >
+        <div className="report-content">
+          <div className="rounded-2xl border border-card-border-light bg-card-bg-dark/60 px-5 py-4">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-text-light-secondary mb-3">
+              {t.previewLabel}
+            </p>
+            <div className="space-y-3">
+              {lines.map((line, index) => (
+                <div key={index} className="border-b border-card-border-light/30 pb-3 last:border-b-0 last:pb-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-1">
+                    {line.title}
+                  </p>
+                  <p className="text-sm text-light-primary leading-relaxed line-clamp-1">
+                    {line.preview}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-text-light-secondary/70 mt-4">{t.disclaimer}</p>
+          </div>
+        </div>
+      </motion.section>
+    );
+  }
+
+  // 完整版：展示四条线的完整版内容，顺序固定：生命→智慧→感情→事业财运
+  // 不允许 preview + full 混合，完整版必须覆盖预览内容
+  return (
     <motion.section
       variants={fadeUp(delay)}
       initial="hidden"
       animate="visible"
       className="report-section"
     >
-      <div className="report-content">
-        <div className="rounded-2xl border border-card-border-light bg-card-bg-dark/60 px-5 py-4">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-text-light-secondary mb-2">
-            {t.previewLabel}
-          </p>
-          <p className="text-sm text-light-primary leading-relaxed">{previewSummary}</p>
-          <p className="text-[11px] text-text-light-secondary/70 mt-3">{t.disclaimer}</p>
-        </div>
-      </div>
-    </motion.section>
-  );
-
-  if (!isFull) {
-    return renderPreviewCard();
-  }
-
-  return (
-    <>
-      {renderPreviewCard()}
-
-      <motion.section
-        variants={fadeUp(delay + 0.05)}
-        initial="hidden"
-        animate="visible"
-        className="report-section"
-      >
-        <h2 className="text-lg font-serif font-bold mb-3 flex items-center gap-2 text-light-primary">
-          <span className="w-1 h-4 bg-accent-gold rounded-full"></span>
-          {t.title}
-        </h2>
-        <div className="report-content space-y-4">
-
-          {/* 财富线详细分析 */}
-          {fullData?.wealth && (
-            <div className="space-y-4">
-              <div className="rounded-xl border-2 border-accent-gold/30 bg-gradient-to-br from-accent-gold/5 to-accent-gold/10 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold">
-                  {t.wealthDetail}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-light-primary">
-                  {fullData.wealth.summary}
-                </p>
-                <div className="mt-3 space-y-2">
-                  <div>
-                    <p className="text-xs font-semibold text-light-secondary">
-                      {locale === "zh" ? "财源模式" : "Wealth Pattern"}: {fullData.wealth.pattern}
-                    </p>
-                    <p className="text-xs text-light-secondary">
-                      {locale === "zh" ? "财富线强弱" : "Wealth Level"}: {fullData.wealth.level}
-                    </p>
-                  </div>
-                  {fullData.wealth.risk.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-accent-red">
-                        {locale === "zh" ? "风险指数" : "Risk Index"}
-                      </p>
-                      <ul className="mt-1 space-y-1 text-sm text-accent-red">
-                        {fullData.wealth.risk.map((item, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-red" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {fullData.wealth.potential.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-                        {t.potential}
-                      </p>
-                      <ul className="mt-1 space-y-1 text-sm text-light-primary">
-                        {fullData.wealth.potential.map((item, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 其它纹理解释 */}
-          {fullData?.life?.advice && fullData.life.advice.length > 0 && (
-            <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-                {t.lifeLine} {locale === "zh" ? "建议" : "Advice"}
-              </p>
+      <h2 className="text-lg font-serif font-bold mb-3 flex items-center gap-2 text-light-primary">
+        <span className="w-1 h-4 bg-accent-gold rounded-full"></span>
+        {t.title}
+      </h2>
+      <div className="report-content space-y-4">
+        {/* ① 生命线 */}
+        {fullData?.life && (
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-2">
+              {t.lifeLine}
+            </p>
+            <p className="text-sm leading-relaxed text-light-primary mb-2">
+              {fullData.life.interpretation || fullData.life.description}
+            </p>
+            {fullData.life.advice && fullData.life.advice.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm text-light-primary">
                 {fullData.life.advice.map((item, index) => (
                   <li key={index} className="flex items-start gap-2">
@@ -200,30 +147,20 @@ export default function PalmistryBlock({
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {fullData?.emotion?.advice && fullData.emotion.advice.length > 0 && (
-            <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-                {t.heartLine} {locale === "zh" ? "建议" : "Advice"}
-              </p>
-              <ul className="mt-2 space-y-1 text-sm text-light-primary">
-                {fullData.emotion.advice.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {fullData?.wisdom?.advice && fullData.wisdom.advice.length > 0 && (
-            <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-                {locale === "zh" ? "智慧纹" : "Wisdom Line"} {locale === "zh" ? "建议" : "Advice"}
-              </p>
+        {/* ② 智慧线 */}
+        {fullData?.wisdom && (
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-2">
+              {t.wisdomLine}
+            </p>
+            <p className="text-sm leading-relaxed text-light-primary mb-2">
+              {fullData.wisdom.interpretation || fullData.wisdom.description}
+            </p>
+            {fullData.wisdom.advice && fullData.wisdom.advice.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm text-light-primary">
                 {fullData.wisdom.advice.map((item, index) => (
                   <li key={index} className="flex items-start gap-2">
@@ -232,11 +169,85 @@ export default function PalmistryBlock({
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        )}
+
+        {/* ③ 感情线 */}
+        {fullData?.emotion && (
+          <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-2">
+              {t.heartLine}
+            </p>
+            <p className="text-sm leading-relaxed text-light-primary mb-2">
+              {fullData.emotion.interpretation || fullData.emotion.description}
+            </p>
+            {fullData.emotion.advice && fullData.emotion.advice.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm text-light-primary">
+                {fullData.emotion.advice.map((item, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* ④ 事业财运线 */}
+        {fullData?.wealth && (
+          <div className="rounded-xl border-2 border-accent-gold/30 bg-gradient-to-br from-accent-gold/5 to-accent-gold/10 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold mb-2">
+              {t.wealthLine}
+            </p>
+            <p className="text-sm leading-relaxed text-light-primary mb-2">
+              {fullData.wealth.summary}
+            </p>
+            <div className="mt-3 space-y-2">
+              <div>
+                <p className="text-xs font-semibold text-light-secondary">
+                  {locale === "zh" ? "财源模式" : "Wealth Pattern"}: {fullData.wealth.pattern}
+                </p>
+                <p className="text-xs text-light-secondary">
+                  {locale === "zh" ? "财富线强弱" : "Wealth Level"}: {fullData.wealth.level}
+                </p>
+              </div>
+              {fullData.wealth.risk.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-accent-red">
+                    {locale === "zh" ? "破财风险点" : "Risk Points"}
+                  </p>
+                  <ul className="mt-1 space-y-1 text-sm text-accent-red">
+                    {fullData.wealth.risk.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-accent-red" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {fullData.wealth.potential.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
+                    {locale === "zh" ? "聚财途径" : "Wealth Accumulation"}
+                  </p>
+                  <ul className="mt-1 space-y-1 text-sm text-light-primary">
+                    {fullData.wealth.potential.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-light-highlight" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </motion.section>
-    </>
+          </div>
+        )}
+      </div>
+    </motion.section>
   );
 }
 
