@@ -51,6 +51,7 @@ export default function CalendarAndStatusBlock({
           lifeAdvice: "生活建议",
         }
       : {
+          previewLabel: "Qi Rhythm · Today",
           title: "Today's Qi Rhythm (Full Version)",
           date: "Date",
           solarTerm: "Solar Term",
@@ -62,7 +63,6 @@ export default function CalendarAndStatusBlock({
           unluckyHours: "Unlucky Hours",
           qiTrend: "Five Elements Trend",
           lifeAdvice: "Life Advice",
-          previewLabel: "Qi Rhythm · Today",
         };
 
   // 格式化日期
