@@ -184,7 +184,7 @@ export async function POST(request: Request) {
     }
 
     const appUrl = getPublicAppUrl();
-    const successUrl = `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&success=1&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${appUrl}/${checkoutLocale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}&cancel=1`;
     
     console.log("checkout redirect", { success_url: successUrl, cancel_url: cancelUrl });

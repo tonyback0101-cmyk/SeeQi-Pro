@@ -232,22 +232,118 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
     }
   }
 
-  // 如果有 session_id（即使没有 success=1），也检查权限
-  // 因为用户可能直接通过 URL 访问，权限可能已经通过 webhook 创建
-  if (session_id && userId && reportId) {
-    console.log(`[V2AnalysisResultPage] Session ID present, verifying access for sessionId: ${session_id}, userId: ${userId}, reportId: ${reportId}`);
-    // 权限检查会在 computeV2Access 中进行，这里只是记录日志
+  // 如果有 session_id（即使没有 success=1），也检查并处理支付成功
+  // 因为用户可能直接通过 URL 访问，或者 success 参数丢失
+  if (session_id && userId && reportId && success !== "1") {
+    console.log(`[V2AnalysisResultPage] Session ID present but success=1 missing, verifying payment for sessionId: ${session_id}, userId: ${userId}, reportId: ${reportId}`);
+    try {
+      const { getStripeClient } = await import("@/lib/stripe");
+      const stripe = getStripeClient();
+      const checkoutSession = await stripe.checkout.sessions.retrieve(session_id);
+      
+      // 如果支付已完成，创建 report_access
+      if ((checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") && 
+          (checkoutSession.metadata?.mode === "single" || checkoutSession.mode === "payment")) {
+        const supabase = getSupabaseAdminClient();
+        const metadataReportId = checkoutSession.metadata?.report_id;
+        const isSinglePurchase = checkoutSession.metadata?.mode === "single" || 
+                                 (checkoutSession.mode === "payment" && metadataReportId) ||
+                                 (metadataReportId && metadataReportId === reportId);
+        
+        if (isSinglePurchase && reportId) {
+          // 检查是否已存在
+          const { data: existingAccess } = await supabase
+            .from("report_access")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("report_id", reportId)
+            .maybeSingle();
+          
+          if (!existingAccess) {
+            // 不存在，插入新记录
+            const { error: insertError } = await supabase
+              .from("report_access")
+              .insert({
+                user_id: userId,
+                report_id: reportId,
+                tier: "full",
+              });
+            
+            if (insertError) {
+              console.error("[V2AnalysisResultPage] Failed to create report_access from session_id:", insertError);
+            } else {
+              console.log(`[V2AnalysisResultPage] Created report_access from session_id for user ${userId}, report ${reportId}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[V2AnalysisResultPage] Failed to verify payment from session_id:", error);
+      // 不阻止流程继续
+    }
   }
 
   // 计算 access（会查询 report_access 和 orders 表）
-  const access = await computeV2Access({ userId, reportId });
-  console.log(`[V2AnalysisResultPage] Access computed:`, {
+  // 如果 access 检查失败，但订单存在且已支付，强制创建 report_access 并重试
+  let access = await computeV2Access({ userId, reportId });
+  console.log(`[V2AnalysisResultPage] Access computed (first attempt):`, {
     level: access.level,
     hasFullAccess: access.hasFullAccess,
     isFree: access.isFree,
     userId,
     reportId,
   });
+  
+  // 如果仍然没有权限，但存在已支付的订单，强制创建 report_access
+  if (!access.hasFullAccess && userId && reportId) {
+    const supabase = getSupabaseAdminClient();
+    const { data: paidOrder } = await supabase
+      .from("orders")
+      .select("id, status, kind, report_id")
+      .eq("user_id", userId)
+      .eq("report_id", reportId)
+      .eq("status", "paid")
+      .eq("kind", "single")
+      .maybeSingle();
+    
+    if (paidOrder) {
+      console.log(`[V2AnalysisResultPage] Found paid order but no access, creating report_access:`, paidOrder);
+      // 检查是否已存在
+      const { data: existingAccess } = await supabase
+        .from("report_access")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("report_id", reportId)
+        .maybeSingle();
+      
+      if (!existingAccess) {
+        const { error: insertError } = await supabase
+          .from("report_access")
+          .insert({
+            user_id: userId,
+            report_id: reportId,
+            tier: "full",
+          });
+        
+        if (insertError) {
+          console.error("[V2AnalysisResultPage] Failed to create report_access from paid order:", insertError);
+        } else {
+          console.log(`[V2AnalysisResultPage] Created report_access from paid order for user ${userId}, report ${reportId}`);
+          // 重新计算 access
+          access = await computeV2Access({ userId, reportId });
+          console.log(`[V2AnalysisResultPage] Access recomputed after creating report_access:`, {
+            level: access.level,
+            hasFullAccess: access.hasFullAccess,
+            isFree: access.isFree,
+          });
+        }
+      } else {
+        // 已存在但 computeV2Access 没查到，可能是查询问题，直接设置为有权限
+        console.log(`[V2AnalysisResultPage] report_access exists but computeV2Access didn't find it, forcing full access`);
+        access = { level: "single_paid", isFree: false, hasFullAccess: true };
+      }
+    }
+  }
 
   // 获取 user 信息（从 user_profiles 表读取 is_pro）
   let user: { is_pro?: boolean } | null = null;
