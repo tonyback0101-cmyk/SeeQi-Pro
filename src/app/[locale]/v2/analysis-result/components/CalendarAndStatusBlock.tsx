@@ -17,7 +17,6 @@ interface CalendarAndStatusBlockProps {
   delay?: number;
   locale?: "zh" | "en";
   isFullAccess?: boolean;
-  onUnlock?: () => void;
 }
 
 export default function CalendarAndStatusBlock({
@@ -34,7 +33,6 @@ export default function CalendarAndStatusBlock({
   delay = 0.3,
   locale = "zh",
   isFullAccess = false,
-  onUnlock = () => {},
 }: CalendarAndStatusBlockProps) {
   const t =
     locale === "zh"

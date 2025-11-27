@@ -24,7 +24,6 @@ interface TongueBlockProps {
   locale?: "zh" | "en";
   reportId?: string | null;
   notice?: string | null;
-  onUnlock?: () => void;
 }
 
 export default function TongueBlock({
@@ -41,7 +40,6 @@ export default function TongueBlock({
   locale = "zh",
   reportId,
   notice = null,
-  onUnlock = () => {},
 }: TongueBlockProps) {
   const isFull = accessLevel === "full";
   const t =
@@ -49,13 +47,11 @@ export default function TongueBlock({
       ? {
           previewLabel: "舌象 · 体质提示",
           title: "舌诊详细分析",
-          previewCTA: "解锁舌象全貌",
           disclaimer: "舌象属于朴素中医象意观察，不能等同现代医学诊断",
         }
       : {
           previewLabel: "Tongue · Constitution Hint",
           title: "Detailed Tongue Diagnosis",
-          previewCTA: "Unlock full tongue insight",
           disclaimer: "Tongue inspection is symbolic and not a medical diagnosis.",
         };
 
@@ -64,6 +60,8 @@ export default function TongueBlock({
     const previewText = notice || tongueColor || (locale === "zh"
       ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。"
       : "Tongue texture and color have blurred areas, unable to generate constitution judgment. Full version will provide qi-blood, fire-qi, and daily qi-nourishing suggestions.");
+    
+    if (!previewText) return null;
     
     return (
       <motion.section

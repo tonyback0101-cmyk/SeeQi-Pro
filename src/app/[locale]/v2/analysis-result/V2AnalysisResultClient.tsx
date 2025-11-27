@@ -12,7 +12,6 @@ import PalmistryBlock from "./components/PalmistryBlock";
 import TongueBlock from "./components/TongueBlock";
 import DreamBlock from "./components/DreamBlock";
 import CalendarAndStatusBlock from "./components/CalendarAndStatusBlock";
-import ProFullReportSection from "./components/ProFullReportSection";
 import type { V2AccessResult } from "@/lib/access/v2Access";
 import type { AnalysisV2Result } from "@/lib/analysis/v2/reportStore";
 import UnlockModal from "@/components/v2/UnlockModal";
@@ -828,7 +827,6 @@ export default function V2AnalysisResultClient({
           delay={0.1}
           locale={locale}
           unlocked={isFiveAspectUnlocked}
-          onUnlock={handleUnlockClick}
         />
 
         {/* ② PalmSection - 掌纹简批 */}
@@ -876,7 +874,6 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={palmNotice}
-          onUnlock={handleUnlockClick}
         />
 
         {/* ③ TongueSection - 舌象简批 */}
@@ -988,7 +985,6 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={tongueNotice}
-          onUnlock={handleUnlockClick}
         />
 
         {/* ④ DreamSection - 梦境简批 */}
@@ -1019,7 +1015,6 @@ export default function V2AnalysisResultClient({
           locale={locale}
           reportId={report.id}
           notice={dreamNotice}
-          onUnlock={handleUnlockClick}
         />
 
         {/* ⑤ FortuneSection - 今日气运 */}
@@ -1075,7 +1070,6 @@ export default function V2AnalysisResultClient({
           delay={0.3}
           locale={locale}
           isFullAccess={resolvedAccessLevel === "full"}
-          onUnlock={handleUnlockClick}
         />
 
         {/* ⑥ UpgradeCard - 升级卡片（付费入口，只能出现一次，仅预览版出现） */}

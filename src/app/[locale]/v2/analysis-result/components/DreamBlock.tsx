@@ -18,7 +18,6 @@ interface DreamBlockProps {
   locale?: "zh" | "en";
   reportId?: string | null;
   notice?: string | null;
-  onUnlock?: () => void;
 }
 
 export default function DreamBlock({
@@ -29,7 +28,6 @@ export default function DreamBlock({
   locale = "zh",
   reportId,
   notice = null,
-  onUnlock = () => {},
 }: DreamBlockProps) {
   const isFull = accessLevel === "full";
   const t =
@@ -37,12 +35,10 @@ export default function DreamBlock({
       ? {
           previewLabel: "梦象 · 心意提示",
           title: "梦境深度解梦",
-          previewCTA: "解锁梦境详情",
         }
       : {
           previewLabel: "Dream · Symbol Hint",
           title: "Deep Dream Interpretation",
-          previewCTA: "Unlock dream details",
         };
 
   // 预览版：提示"梦境解读参见详情板"，禁止展示任何解读，不出现按钮

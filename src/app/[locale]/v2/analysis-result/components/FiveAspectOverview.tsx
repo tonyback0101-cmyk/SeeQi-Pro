@@ -26,7 +26,6 @@ interface FiveAspectOverviewProps {
   delay?: number;
   locale?: "zh" | "en";
   unlocked: boolean;
-  onUnlock?: () => void;
 }
 
 type FiveAspectItem = {
@@ -42,11 +41,7 @@ const COPY = {
     title: "五象总览",
     badgeUnlocked: "已解锁",
     badgePreview: "预览",
-    unlockCta: "解锁",
-    unlockHint: "解锁后可查看完整掌象、舌象、梦象、气运。",
-    unlockButton: "解锁完整五象",
-    unlockPerItem: "解锁完整版",
-    placeholder: "数据生成中",
+    placeholder: "",
     labels: {
       summary: "象局",
       palm: "掌象",
@@ -64,11 +59,7 @@ const COPY = {
     title: "Five Aspects Overview",
     badgeUnlocked: "Unlocked",
     badgePreview: "Preview",
-    unlockCta: "Unlock",
-    unlockHint: "Unlock to explore full palm, tongue, dream and qi insights.",
-    unlockButton: "Unlock Five Aspects",
-    unlockPerItem: "Unlock full view",
-    placeholder: "Data is being prepared",
+    placeholder: "",
     labels: {
       summary: "Essence",
       palm: "Palm",
@@ -97,18 +88,17 @@ export default function FiveAspectOverview({
   delay = 0.1,
   locale = "zh",
   unlocked,
-  onUnlock,
 }: FiveAspectOverviewProps) {
   const t = COPY[locale];
-  const placeholder = t.placeholder;
 
   const renderValue = (value?: AspectValue | null, emphasizeDetail = false) => {
     if (!value || (!value.preview && !value.detail)) {
-      return placeholder;
+      return null;
     }
     // 预览版：只显示1行摘要、标签：预览、一句提示，绝不能显示完整版内容
     if (!unlocked) {
-      const previewText = value.preview ?? placeholder;
+      const previewText = value.preview;
+      if (!previewText) return null;
       return (
         <div>
           <span className="mr-2 text-xs uppercase tracking-wide text-amber-400/70">预览</span>
@@ -118,7 +108,8 @@ export default function FiveAspectOverview({
       );
     }
     // 完整版：展示完整版描述，去除所有预览按钮
-    const detailText = value.detail ?? value.preview ?? placeholder;
+    const detailText = value.detail ?? value.preview;
+    if (!detailText) return null;
     return (
       <div className="space-y-1">
         {value.tag && <span className="text-xs uppercase tracking-wide text-accent-gold">{value.tag}</span>}

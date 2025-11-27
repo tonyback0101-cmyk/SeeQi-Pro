@@ -37,7 +37,6 @@ interface PalmistryBlockProps {
   locale?: "zh" | "en";
   reportId?: string;
   notice?: string | null;
-  onUnlock?: () => void;
 }
 
 export default function PalmistryBlock({
@@ -51,7 +50,6 @@ export default function PalmistryBlock({
   locale = "zh",
   reportId,
   notice = null,
-  onUnlock = () => {},
 }: PalmistryBlockProps) {
   const isFull = accessLevel === "full";
   const t =
@@ -78,11 +76,13 @@ export default function PalmistryBlock({
   // 预览版：显示四条线，每条线只展示标题和一句模糊预览
   if (!isFull) {
     const lines = [
-      { title: t.lifeLine, preview: lifeLine || (locale === "zh" ? "生命线走势需完整版查看" : "Life line details require full version") },
-      { title: t.wisdomLine, preview: wisdomLine || (locale === "zh" ? "智慧线走势需完整版查看" : "Wisdom line details require full version") },
-      { title: t.heartLine, preview: heartLine || (locale === "zh" ? "感情线走势需完整版查看" : "Heart line details require full version") },
-      { title: t.wealthLine, preview: wealthLine || (locale === "zh" ? "事业财运线走势需完整版查看" : "Career & wealth line details require full version") },
-    ];
+      { title: t.lifeLine, preview: lifeLine },
+      { title: t.wisdomLine, preview: wisdomLine },
+      { title: t.heartLine, preview: heartLine },
+      { title: t.wealthLine, preview: wealthLine },
+    ].filter((line) => line.preview); // 过滤掉空值，避免显示无意义内容
+
+    if (lines.length === 0) return null; // 如果所有线都没有预览内容，不渲染
 
     return (
       <motion.section
