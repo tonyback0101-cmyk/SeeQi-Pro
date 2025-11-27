@@ -94,19 +94,19 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
           
           console.log(`[V2AnalysisResultPage] Order lookup result:`, order);
           
-          // 判断是否为单次购买：优先检查 metadata，其次检查 checkout mode，最后检查订单
+          // 判断是否为单次购买：优先检查 metadata，其次检查 checkout mode 和 report_id，最后检查订单
           const metadataMode = checkoutSession.metadata?.mode;
           const checkoutMode = checkoutSession.mode; // 'payment' | 'subscription'
           const metadataReportId = checkoutSession.metadata?.report_id;
           
-          // 判断逻辑：
-          // 1. metadata.mode === "single"
-          // 2. checkout.mode === "payment" (单次支付)
-          // 3. metadata.report_id === reportId (有报告ID说明是单次购买)
+          // 判断逻辑（按优先级）：
+          // 1. metadata.mode === "single" (最可靠，直接来自 checkout 接口)
+          // 2. checkout.mode === "payment" 且 metadata.report_id 存在 (单次支付且有报告ID)
+          // 3. metadata.report_id === reportId (有报告ID且匹配当前报告)
           // 4. order.kind === "single" (如果订单存在)
           const isSinglePurchase = 
             metadataMode === "single" || 
-            checkoutMode === "payment" ||
+            (checkoutMode === "payment" && metadataReportId) ||
             (metadataReportId && metadataReportId === reportId) ||
             order?.kind === "single";
           
@@ -117,6 +117,10 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
             metadata_report_id: metadataReportId,
             current_reportId: reportId,
             match: metadataReportId === reportId,
+            reason: metadataMode === "single" ? "metadata.mode === 'single'" :
+                   (checkoutMode === "payment" && metadataReportId) ? "checkout.mode === 'payment' && has report_id" :
+                   (metadataReportId && metadataReportId === reportId) ? "metadata.report_id matches" :
+                   order?.kind === "single" ? "order.kind === 'single'" : "none",
           });
           
           // 如果是单次购买，创建 report_access 记录
