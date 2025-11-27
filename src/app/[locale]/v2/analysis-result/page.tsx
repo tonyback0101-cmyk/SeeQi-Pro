@@ -66,11 +66,19 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
   // 如果支付成功（success=1），立即检查 Stripe session 状态并更新订单
   if (success === "1") {
     const sessionId = (await searchParams).session_id;
+    console.log(`[V2AnalysisResultPage] Payment success detected, sessionId: ${sessionId}, userId: ${userId}, reportId: ${reportId}`);
+    
     if (sessionId && userId && reportId) {
       try {
         const { getStripeClient } = await import("@/lib/stripe");
         const stripe = getStripeClient();
         const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+        
+        console.log(`[V2AnalysisResultPage] Checkout session status:`, {
+          payment_status: checkoutSession.payment_status,
+          status: checkoutSession.status,
+          metadata: checkoutSession.metadata,
+        });
         
         if (checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") {
           // 支付成功，立即更新订单状态和创建 report_access（不等待 webhook）
@@ -83,12 +91,23 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
             .eq("stripe_checkout_session_id", sessionId)
             .maybeSingle();
           
-          // 如果是单次购买（single），确保创建 report_access
-          const isSinglePurchase = checkoutSession.metadata?.mode === "single" || 
+          console.log(`[V2AnalysisResultPage] Order lookup result:`, order);
+          
+          // 判断是否为单次购买：优先检查 metadata，其次检查订单
+          const metadataMode = checkoutSession.metadata?.mode;
+          const isSinglePurchase = metadataMode === "single" || 
                                    order?.kind === "single" ||
                                    (checkoutSession.metadata?.report_id && checkoutSession.metadata.report_id === reportId);
           
-          if (isSinglePurchase) {
+          console.log(`[V2AnalysisResultPage] Is single purchase: ${isSinglePurchase}`, {
+            metadata_mode: metadataMode,
+            order_kind: order?.kind,
+            metadata_report_id: checkoutSession.metadata?.report_id,
+            reportId,
+          });
+          
+          // 如果是单次购买，创建 report_access 记录
+          if (isSinglePurchase && reportId) {
             // 创建或更新 report_access 记录（单次购买）
             const { error: accessError, data: accessData } = await supabase
               .from("report_access")
@@ -105,12 +124,18 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
             
             if (accessError) {
               console.error("[V2AnalysisResultPage] Failed to create report_access:", accessError);
+              // 即使创建失败，也继续处理，webhook 会处理
             } else {
               console.log(`[V2AnalysisResultPage] Created/updated report_access for user ${userId}, report ${reportId}`, accessData);
               // 支付成功且创建了 report_access，重定向到同一页面（不带 success 参数）以刷新权限
               // 这样 computeV2Access 就能立即识别到新创建的权限
-              redirect(`/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`);
+              const redirectUrl = `/${locale}/v2/analysis-result?reportId=${encodeURIComponent(reportId)}`;
+              console.log(`[V2AnalysisResultPage] Redirecting to: ${redirectUrl}`);
+              redirect(redirectUrl);
             }
+          } else if (!isSinglePurchase) {
+            // 如果不是单次购买，可能是订阅，不需要创建 report_access（订阅用户通过 hasActiveSubscription 判断）
+            console.log(`[V2AnalysisResultPage] Not a single purchase, skipping report_access creation`);
           }
           
           // 如果订单存在且状态不是 paid，更新订单状态

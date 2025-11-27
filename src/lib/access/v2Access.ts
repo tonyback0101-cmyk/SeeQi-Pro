@@ -30,7 +30,14 @@ export async function hasSingleReportAccess(
       .maybeSingle();
 
     if (!accessError && accessData) {
+      console.log(`[access] hasSingleReportAccess: Found report_access for user ${userId}, report ${reportId}`);
       return true;
+    }
+
+    if (accessError) {
+      console.error("[access] hasSingleReportAccess: Error querying report_access", accessError);
+    } else {
+      console.log(`[access] hasSingleReportAccess: No report_access found for user ${userId}, report ${reportId}, checking orders table`);
     }
 
     // 如果没有 report_access 记录，检查 orders 表
@@ -48,7 +55,13 @@ export async function hasSingleReportAccess(
       return false;
     }
 
-    return !!orderData;
+    if (orderData) {
+      console.log(`[access] hasSingleReportAccess: Found paid order for user ${userId}, report ${reportId}`);
+      return true;
+    }
+
+    console.log(`[access] hasSingleReportAccess: No access found for user ${userId}, report ${reportId}`);
+    return false;
   } catch (error) {
     console.error("[access] hasSingleReportAccess exception", error);
     return false;
