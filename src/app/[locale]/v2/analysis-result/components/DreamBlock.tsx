@@ -52,7 +52,7 @@ export default function DreamBlock({
       ? "梦境数据暂未生成，可记录更完整的梦境内容后再试。"
       : "Dream insight is not ready yet. Record more details and try again.");
 
-  const renderPreviewCard = (showUnlock: boolean) => (
+  const renderPreviewCard = () => (
     <motion.section
       variants={fadeUp(delay)}
       initial="hidden"
@@ -65,25 +65,13 @@ export default function DreamBlock({
             {t.previewLabel}
           </p>
           <p className="text-sm text-light-primary leading-relaxed">{previewSummary}</p>
-          {showUnlock && (
-            <button
-              type="button"
-              onClick={onUnlock}
-              className="mt-4 inline-flex items-center gap-2 rounded-full border border-accent-gold/50 px-4 py-2 text-xs font-semibold text-accent-gold hover:bg-accent-gold/10 transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
-              </svg>
-              {t.previewCTA}
-            </button>
-          )}
         </div>
       </div>
     </motion.section>
   );
 
   if (!isFull) {
-    return renderPreviewCard(true);
+    return renderPreviewCard();
   }
 
   const symbolText = fullContent?.imageSymbol ?? fullContent?.symbol ?? null;
@@ -93,7 +81,7 @@ export default function DreamBlock({
 
   return (
     <>
-      {renderPreviewCard(false)}
+      {renderPreviewCard()}
       {fullContent && (
         <motion.section
           variants={fadeUp(delay + 0.05)}

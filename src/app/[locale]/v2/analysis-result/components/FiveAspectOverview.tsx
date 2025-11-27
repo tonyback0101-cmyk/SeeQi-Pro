@@ -106,21 +106,24 @@ export default function FiveAspectOverview({
     if (!value || (!value.preview && !value.detail)) {
       return placeholder;
     }
-    const previewText = value.preview ?? value.detail ?? placeholder;
-    const detailText = value.detail;
+    // 预览版：只显示1行摘要、标签：预览、一句提示，绝不能显示完整版内容
     if (!unlocked) {
+      const previewText = value.preview ?? placeholder;
       return (
         <div>
+          <span className="mr-2 text-xs uppercase tracking-wide text-amber-400/70">预览</span>
           {value.tag && <span className="mr-2 text-xs uppercase tracking-wide text-accent-gold">{value.tag}</span>}
-          <p className="text-sm text-text-light-primary">{previewText}</p>
+          <p className="text-sm text-text-light-primary line-clamp-1">{previewText}</p>
         </div>
       );
     }
+    // 完整版：展示完整版描述，去除所有预览按钮
+    const detailText = value.detail ?? value.preview ?? placeholder;
     return (
       <div className="space-y-1">
         {value.tag && <span className="text-xs uppercase tracking-wide text-accent-gold">{value.tag}</span>}
         <p className={`text-sm leading-relaxed text-text-light-primary ${emphasizeDetail ? "font-medium" : ""}`}>
-          {detailText ?? previewText}
+          {detailText}
         </p>
       </div>
     );
@@ -228,7 +231,6 @@ export default function FiveAspectOverview({
             </motion.div>
           ))}
         </div>
-
       </motion.div>
     </motion.section>
   );
