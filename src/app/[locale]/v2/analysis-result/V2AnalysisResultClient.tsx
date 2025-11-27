@@ -825,38 +825,42 @@ export default function V2AnalysisResultClient({
         <PalmistryBlock
           lifeLine={
             getPreviewSentence(
-              palmResultV2?.life?.interpretation ??
+              palmBlock?.life_line?.summary ??
+                palmResultV2?.life?.interpretation ??
                 palmInsight?.life_rhythm ??
-                (locale === "zh" ? "纹路尚清，早岁略虚，后半程有回升之势。" : "Lines are clear; early years slightly weak, with recovery in later stages."),
+                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Lines are clear; early years slightly weak, with recovery in later stages."),
               locale,
             )
           }
           wisdomLine={
             getPreviewSentence(
-              palmResultV2?.wisdom?.interpretation ??
+              palmBlock?.life_line?.summary ??
+                palmResultV2?.wisdom?.interpretation ??
                 palmInsight?.thought_style ??
-                (locale === "zh" ? "智慧纹清晰，思维敏捷，适合学习与决策。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making."),
+                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Wisdom line is clear, thinking is agile, suitable for learning and decision-making."),
               locale,
             )
           }
           heartLine={
             getPreviewSentence(
-              palmResultV2?.emotion?.interpretation ??
+              palmBlock?.emotion?.summary ??
+                palmResultV2?.emotion?.interpretation ??
                 palmInsight?.emotion_pattern ??
-                (locale === "zh" ? "尾端略有分支，情感上易多思，宜坦诚沟通。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly."),
+                (locale === "zh" ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。" : "Slight branching at the end; emotionally prone to overthinking, should communicate openly."),
               locale,
             )
           }
           wealthLine={
-            // 预览版：优先从 palm_result.features.moneyLine 或 AI summaries 读取
+            // 预览版：优先使用 page.tsx 注入的预览文案
             getPreviewSentence(
-              (report as any)?.palm_result?.features?.moneyLine ??
+              palmBlock?.wealth?.summary ??
+                (report as any)?.palm_result?.features?.moneyLine ??
                 (palmInsight as any)?.wealth?.summary ??
                 palmResultV2?.wealth?.summary ??
                 palmInsight?.wealth_insight ??
                 palmResult?.lines?.wealth ??
                 (locale === "zh"
-                  ? "财帛纹略浅偏直，属'勤聚缓发'之象，宜重视稳健经营，少赌多积。"
+                  ? "掌纹光线或纹理识别度不足，仅能提供基础判断。完整版包含事业线、情绪线与财富线走势解读。"
                   : "Wealth lines are slightly shallow and straight, indicating 'steady accumulation and gradual growth'; should focus on stable management, less gambling, more accumulation."),
               locale,
             )
@@ -891,10 +895,11 @@ export default function V2AnalysisResultClient({
         {/* ④ 舌象简批（预览可见） */}
         <TongueBlock
           tongueColor={getPreviewSentence(
-            rawTongueResult?.color
-              ? (locale === "zh" ? `舌色：${rawTongueResult.color}` : `Tongue color: ${rawTongueResult.color}`)
-              : bodyTongue?.tongue_color_signal ??
-                  (locale === "zh" ? "舌色偏淡，主气血不足。" : "Tongue color is pale, indicating qi and blood deficiency."),
+            tongueBlock?.constitution?.summary ??
+              (rawTongueResult?.color
+                ? (locale === "zh" ? `舌色：${rawTongueResult.color}` : `Tongue color: ${rawTongueResult.color}`)
+                : bodyTongue?.tongue_color_signal ??
+                    (locale === "zh" ? "舌象纹理模糊，暂无法判断体质类别。完整版将提供气血、火气和今日调理建议。" : "Tongue color is pale, indicating qi and blood deficiency.")),
             locale,
           )}
           tongueCoating={getPreviewSentence(
@@ -988,10 +993,12 @@ export default function V2AnalysisResultClient({
         {/* ⑤ 梦境简批（预览可见） */}
         <DreamBlock
           dreamSummary={getPreviewSentence(
-            dreamLLM?.mood ??
+            dreamBlock?.main_symbol?.summary ??
+              dreamLLM?.mood ??
               dreamLLM?.symbol ??
               dreamInsight?.archetype?.mood_pattern ??
-              dreamInsight?.archetype?.symbol_meaning,
+              dreamInsight?.archetype?.symbol_meaning ??
+              (locale === "zh" ? "梦境线索不足，无法形成完整梦兆。完整版将结合象征体系解析趋势与心理伏笔。" : "Dream clues are insufficient to form a complete dream omen."),
             locale,
           )}
           accessLevel={resolvedAccessLevel}
@@ -1036,9 +1043,10 @@ export default function V2AnalysisResultClient({
             []
           }
           bodyMindStatus={
+            qiBlock?.today_phase?.summary?.split(/[。！？.!?\n]/)[0] ??
             qiRhythm?.summary?.split(/[。！？.!?\n]/)[0] ??
             bodyTongue?.energy_state?.split(/[。！？.!?\n]/)[0] ??
-            (locale === "zh" ? "身心状态平稳，适合日常节奏。" : "Body-mind state is stable, suitable for daily rhythm.")
+            (locale === "zh" ? "今日节奏未成吉凶，仍处在临界区。完整版包含今日宜忌、吉时与破局法。" : "Body-mind state is stable, suitable for daily rhythm.")
           }
           delay={0.3}
           locale={locale}
