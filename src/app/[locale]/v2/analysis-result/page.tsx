@@ -116,7 +116,6 @@ export default async function V2AnalysisResultPage({ params, searchParams }: Pag
                   user_id: userId,
                   report_id: reportId,
                   tier: "full",
-                  created_at: new Date().toISOString(),
                 },
                 { onConflict: "report_id,user_id" }
               )

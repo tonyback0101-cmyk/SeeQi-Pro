@@ -264,7 +264,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
             user_id: userId,
             report_id: reportId,
             tier: "full",
-            created_at: new Date().toISOString(),
           },
           {
             onConflict: "report_id,user_id",
