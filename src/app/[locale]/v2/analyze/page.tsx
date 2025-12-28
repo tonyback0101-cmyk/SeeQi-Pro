@@ -1881,6 +1881,7 @@ function UploadField({
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputId = useId();
   const cameraInputId = useId();
+  const t = TEXT[locale];
 
   useEffect(() => {
     if (!file) {
