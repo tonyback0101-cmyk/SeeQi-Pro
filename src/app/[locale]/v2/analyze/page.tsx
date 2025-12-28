@@ -41,6 +41,14 @@ const TEXT = {
     uploadTip: "点击下方按钮上传或拍照",
     selectFile: "选择文件",
     noFileSelected: "未选择文件",
+    backToHome: "← 返回首页",
+    cameraTipPalm: "请摊开手掌，保持在取景框内并光线均匀。",
+    cameraTipTongue: "请伸出舌头，保持在取景框内并光线均匀。",
+    switchCamera: "切换前后摄像头",
+    galleryEnhance: "画廊增强",
+    back: "返回",
+    privacyStatement: "隐私声明：我们尊重并保护你的个人数据，所有信息仅用于生成个人洞察。",
+    disclaimer: "使用与免责说明：本产品基于东方易象体系与身心养生观，适合作为自我观察与生活参考，不构成医疗诊断或治疗建议。如有不适，请及时就医或咨询专业医生。",
   },
   en: {
     title: "Start Today's Eastern Insight",
@@ -63,6 +71,14 @@ const TEXT = {
     uploadTip: "Click the button below to upload or take a photo",
     selectFile: "Choose File",
     noFileSelected: "No file chosen",
+    backToHome: "← Back to Home",
+    cameraTipPalm: "Please spread your palm, keep it within the frame with even lighting.",
+    cameraTipTongue: "Please stick out your tongue, keep it within the frame with even lighting.",
+    switchCamera: "Switch Camera",
+    galleryEnhance: "Gallery Enhance",
+    back: "Back",
+    privacyStatement: "Privacy: We respect and protect your personal data. All information is used only to generate personal insights.",
+    disclaimer: "Use & Disclaimer: This product is based on Eastern symbolism and wellness concepts. It is suitable for self-observation and life reference only, and does not constitute medical diagnosis or treatment advice. If you feel unwell, please seek medical attention or consult a professional doctor.",
   },
 } as const;
 
@@ -1333,7 +1349,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
         <header className="sub-page-header">
           <div className="header-container container">
             <Link href={buildHomePage(locale)} className="back-link">
-              ← 返回首页
+              {t.backToHome}
           </Link>
         </div>
         </header>
@@ -1642,8 +1658,8 @@ function V2AnalyzePageContent({ params }: PageProps) {
         <footer>
           <div className="footer-container container">
             <p>© 2025 SeeQi</p>
-            <p>隐私声明：我们尊重并保护你的个人数据，所有信息仅用于生成个人洞察。</p>
-            <p>使用与免责说明：本产品基于东方易象体系与身心养生观，适合作为自我观察与生活参考，不构成医疗诊断或治疗建议。如有不适，请及时就医或咨询专业医生。</p>
+            <p>{t.privacyStatement}</p>
+            <p>{t.disclaimer}</p>
           </div>
         </footer>
       </div>
@@ -1663,8 +1679,8 @@ function V2AnalyzePageContent({ params }: PageProps) {
           <div className="camera-header">
             <span className="camera-tip">
               {activeCameraMode === "palm"
-                ? "请摊开手掌，保持在取景框内并光线均匀。"
-                : "请伸出舌头，保持在取景框内并光线均匀。"}
+                ? t.cameraTipPalm
+                : t.cameraTipTongue}
             </span>
             <div className="camera-controls">
               <button 
@@ -1673,10 +1689,10 @@ function V2AnalyzePageContent({ params }: PageProps) {
                 onClick={handleCameraSwitch}
               >
                 <span className="icon">🔄</span>
-                切换前后摄像头
+                {t.switchCamera}
               </button>
               <div className="slider-group">
-                <label htmlFor="gallery-enhance-slider" className="slider-label">画廊增强</label>
+                <label htmlFor="gallery-enhance-slider" className="slider-label">{t.galleryEnhance}</label>
                 <input 
                   type="range" 
                   id="gallery-enhance-slider"
@@ -1685,7 +1701,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                   max="100" 
                   defaultValue={50}
                   className="slider"
-                  aria-label="画廊增强"
+                  aria-label={t.galleryEnhance}
                 />
               </div>
               <button 
@@ -1694,7 +1710,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
           onClick={handleCameraClose}
         >
                 <span className="icon">✕</span>
-                返回
+                {t.back}
               </button>
           </div>
         </div>
