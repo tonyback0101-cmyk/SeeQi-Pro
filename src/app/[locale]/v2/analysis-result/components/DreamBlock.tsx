@@ -35,10 +35,18 @@ export default function DreamBlock({
       ? {
           previewLabel: "梦象 · 心意提示",
           title: "梦境深度解梦",
+          dreamTheme: "梦境主题",
+          emotionalTrend: "心绪趋势",
+          nourishingSuggestions: "补益建议",
+          seeDetails: "梦境解读参见详情板",
         }
       : {
           previewLabel: "Dream · Symbol Hint",
           title: "Deep Dream Interpretation",
+          dreamTheme: "Dream Theme",
+          emotionalTrend: "Emotional Trend",
+          nourishingSuggestions: "Nourishing Suggestions",
+          seeDetails: "Dream interpretation see details panel",
         };
 
   // 预览版：提示"梦境解读参见详情板"，禁止展示任何解读，不出现按钮
@@ -56,7 +64,7 @@ export default function DreamBlock({
               {t.previewLabel}
             </p>
             <p className="text-sm text-light-primary leading-relaxed">
-              {locale === "zh" ? "梦境解读参见详情板" : "Dream interpretation see details panel"}
+              {t.seeDetails}
             </p>
           </div>
         </div>
@@ -85,7 +93,7 @@ export default function DreamBlock({
         {symbolText && (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-              {locale === "zh" ? "梦境主题" : "Dream Theme"}
+              {t.dreamTheme}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-light-primary">{symbolText}</p>
           </div>
@@ -95,7 +103,7 @@ export default function DreamBlock({
         {trendText && (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-              {locale === "zh" ? "心绪趋势" : "Emotional Trend"}
+              {t.emotionalTrend}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-light-primary">{trendText}</p>
           </div>
@@ -105,7 +113,7 @@ export default function DreamBlock({
         {adviceList.length > 0 && (
           <div className="rounded-xl border-2 border-accent-gold/30 bg-gradient-to-br from-accent-gold/5 to-accent-gold/10 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold">
-              {locale === "zh" ? "补益建议" : "Nourishing Suggestions"}
+              {t.nourishingSuggestions}
             </p>
             <ul className="mt-2 space-y-2 text-sm leading-relaxed text-light-primary">
               {adviceList.map((item, index) => (

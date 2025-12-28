@@ -62,6 +62,10 @@ export default function PalmistryBlock({
           heartLine: "感情线",
           wealthLine: "事业财运线",
           disclaimer: "掌纹仅为象学观察，不构成医学判断，仅作气运象意判断参考",
+          wealthPattern: "财源模式",
+          wealthLevel: "财富线强弱",
+          riskPoints: "破财风险点",
+          wealthAccumulation: "聚财途径",
         }
       : {
           previewLabel: "Palmistry · Today",
@@ -71,6 +75,10 @@ export default function PalmistryBlock({
           heartLine: "Heart Line",
           wealthLine: "Career & Wealth Line",
           disclaimer: "Palmistry is a symbolic observation, not medical advice.",
+          wealthPattern: "Wealth Pattern",
+          wealthLevel: "Wealth Level",
+          riskPoints: "Risk Points",
+          wealthAccumulation: "Wealth Accumulation",
         };
 
   // 预览版：显示四条线，每条线只展示标题和一句模糊预览
@@ -207,16 +215,16 @@ export default function PalmistryBlock({
             <div className="mt-3 space-y-2">
               <div>
                 <p className="text-xs font-semibold text-light-secondary">
-                  {locale === "zh" ? "财源模式" : "Wealth Pattern"}: {fullData.wealth.pattern}
+                  {t.wealthPattern}: {fullData.wealth.pattern}
                 </p>
                 <p className="text-xs text-light-secondary">
-                  {locale === "zh" ? "财富线强弱" : "Wealth Level"}: {fullData.wealth.level}
+                  {t.wealthLevel}: {fullData.wealth.level}
                 </p>
               </div>
               {fullData.wealth.risk.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-accent-red">
-                    {locale === "zh" ? "破财风险点" : "Risk Points"}
+                    {t.riskPoints}
                   </p>
                   <ul className="mt-1 space-y-1 text-sm text-accent-red">
                     {fullData.wealth.risk.map((item, index) => (
@@ -231,7 +239,7 @@ export default function PalmistryBlock({
               {fullData.wealth.potential.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-                    {locale === "zh" ? "聚财途径" : "Wealth Accumulation"}
+                    {t.wealthAccumulation}
                   </p>
                   <ul className="mt-1 space-y-1 text-sm text-light-primary">
                     {fullData.wealth.potential.map((item, index) => (

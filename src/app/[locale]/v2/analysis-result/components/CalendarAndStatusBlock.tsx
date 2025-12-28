@@ -49,6 +49,7 @@ export default function CalendarAndStatusBlock({
           unluckyHours: "凶时",
           qiTrend: "五行趋势",
           lifeAdvice: "生活建议",
+          timePeriods: "时间段",
         }
       : {
           previewLabel: "Qi Rhythm · Today",
@@ -63,6 +64,7 @@ export default function CalendarAndStatusBlock({
           unluckyHours: "Unlucky Hours",
           qiTrend: "Five Elements Trend",
           lifeAdvice: "Life Advice",
+          timePeriods: "Time Periods",
         };
 
   // 格式化日期
@@ -165,7 +167,7 @@ export default function CalendarAndStatusBlock({
         {(luckyHours && luckyHours.length > 0) || (unluckyHours && unluckyHours.length > 0) ? (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight mb-2">
-              {locale === "zh" ? "时间段" : "Time Periods"}
+              {t.timePeriods}
             </p>
             <div className="flex gap-4 text-sm">
               {luckyHours && luckyHours.length > 0 && (

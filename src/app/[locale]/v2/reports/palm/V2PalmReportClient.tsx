@@ -53,6 +53,16 @@ const TEXT = {
     back: "返回综合报告",
     overviewTitle: "掌纹特征概览",
     overviewHint: "关键标签取自掌色、掌质与图像质量，帮助你快速感知今日底气。",
+    palmColor: "掌色",
+    texture: "掌质",
+    imageQuality: "图像质量",
+    lifeLine: "生命线",
+    heartLine: "感情线",
+    headLine: "智慧线",
+    wealthLine: "财富线",
+    palmLines: "掌纹线条",
+    palmInterpretation: "掌纹解读",
+    suggestionsReminders: "建议与提醒",
   },
   en: {
     title: "Full Palm Reading",
@@ -63,6 +73,16 @@ const TEXT = {
     back: "Back to Report",
     overviewTitle: "Palm Features Overview",
     overviewHint: "Key tags from palm color, texture, and image quality help you quickly sense today's foundation.",
+    palmColor: "Palm Color",
+    texture: "Texture",
+    imageQuality: "Image Quality",
+    lifeLine: "Life Line",
+    heartLine: "Heart Line",
+    headLine: "Head Line",
+    wealthLine: "Wealth Line",
+    palmLines: "Palm Lines",
+    palmInterpretation: "Palm Interpretation",
+    suggestionsReminders: "Suggestions & Reminders",
   },
 } as const;
 
@@ -116,19 +136,19 @@ export default function V2PalmReportClient({ locale }: V2PalmReportClientProps) 
     const items: Array<{ label: string; value: string }> = [];
     if (palmResult?.color) {
       items.push({
-        label: locale === "zh" ? "掌色" : "Palm Color",
+        label: copy.palmColor,
         value: palmResult.color,
       });
     }
     if (palmResult?.texture) {
       items.push({
-        label: locale === "zh" ? "掌质" : "Texture",
+        label: copy.texture,
         value: palmResult.texture,
       });
     }
     if (palmResult?.qualityScore) {
       items.push({
-        label: locale === "zh" ? "图像质量" : "Image Quality",
+        label: copy.imageQuality,
         value: `${palmResult.qualityScore}%`,
       });
     }
@@ -139,25 +159,25 @@ export default function V2PalmReportClient({ locale }: V2PalmReportClientProps) 
     const items: Array<{ label: string; value: string }> = [];
     if (palmResult?.lines?.life) {
       items.push({
-        label: locale === "zh" ? "生命线" : "Life Line",
+        label: copy.lifeLine,
         value: palmResult.lines.life,
       });
     }
     if (palmResult?.lines?.heart) {
       items.push({
-        label: locale === "zh" ? "感情线" : "Heart Line",
+        label: copy.heartLine,
         value: palmResult.lines.heart,
       });
     }
     if (palmResult?.lines?.wisdom) {
       items.push({
-        label: locale === "zh" ? "智慧线" : "Head Line",
+        label: copy.headLine,
         value: palmResult.lines.wisdom,
       });
     }
     if (palmResult?.lines?.wealth) {
       items.push({
-        label: locale === "zh" ? "财富线" : "Wealth Line",
+        label: copy.wealthLine,
         value: palmResult.lines.wealth,
       });
     }
@@ -235,7 +255,7 @@ export default function V2PalmReportClient({ locale }: V2PalmReportClientProps) 
         {lines.length > 0 && (
           <motion.div variants={fadeUp(0.2)} className="v2-card space-y-4">
             <V2PageTitle level="card" as="h3">
-              {locale === "zh" ? "掌纹线条" : "Palm Lines"}
+              {copy.palmLines}
             </V2PageTitle>
             <div className="space-y-3">
               {lines.map((item) => (
@@ -256,7 +276,7 @@ export default function V2PalmReportClient({ locale }: V2PalmReportClientProps) 
         {summary.length > 0 && (
           <motion.div variants={fadeUp(0.3)} className="v2-card space-y-4">
             <V2PageTitle level="card" as="h3">
-              {locale === "zh" ? "掌纹解读" : "Palm Interpretation"}
+              {copy.palmInterpretation}
             </V2PageTitle>
             <div className="space-y-3">
               {summary.map((para, idx) => (
@@ -271,7 +291,7 @@ export default function V2PalmReportClient({ locale }: V2PalmReportClientProps) 
         {bullets.length > 0 && (
           <motion.div variants={fadeUp(0.4)} className="v2-card space-y-4">
             <V2PageTitle level="card" as="h3">
-              {locale === "zh" ? "建议与提醒" : "Suggestions & Reminders"}
+              {copy.suggestionsReminders}
             </V2PageTitle>
             <ul className="space-y-2 text-sm leading-relaxed text-gray-700">
               {bullets.map((item, index) => (

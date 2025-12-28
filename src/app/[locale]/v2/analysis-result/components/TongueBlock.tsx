@@ -48,11 +48,19 @@ export default function TongueBlock({
           previewLabel: "舌象 · 体质提示",
           title: "舌诊详细分析",
           disclaimer: "舌象属于朴素中医象意观察，不能等同现代医学诊断",
+          constitutionTrend: "体质趋势",
+          fiveElementsTrend: "五行趋势",
+          qiBloodState: "气血状态",
+          nourishingSuggestions: "补益建议",
         }
       : {
           previewLabel: "Tongue · Constitution Hint",
           title: "Detailed Tongue Diagnosis",
           disclaimer: "Tongue inspection is symbolic and not a medical diagnosis.",
+          constitutionTrend: "Constitution Trend",
+          fiveElementsTrend: "Five Elements Trend",
+          qiBloodState: "Qi & Blood State",
+          nourishingSuggestions: "Nourishing Suggestions",
         };
 
   // 预览版：仅一句模糊描述，不推断体质，不输出五行结果，不允许重复渲染
@@ -100,7 +108,7 @@ export default function TongueBlock({
         {fullContent?.bodyTrend && (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-              {locale === "zh" ? "体质趋势" : "Constitution Trend"}
+              {t.constitutionTrend}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-light-primary">{fullContent.bodyTrend}</p>
           </div>
@@ -110,7 +118,7 @@ export default function TongueBlock({
         {fullContent?.qiPattern && (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-              {locale === "zh" ? "五行趋势" : "Five Elements Trend"}
+              {t.fiveElementsTrend}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-light-primary">{fullContent.qiPattern}</p>
           </div>
@@ -120,7 +128,7 @@ export default function TongueBlock({
         {fullContent?.energyState && (
           <div className="rounded-xl border border-card-border-light bg-mystic-secondary px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-light-highlight">
-              {locale === "zh" ? "气血状态" : "Qi & Blood State"}
+              {t.qiBloodState}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-light-primary">{fullContent.energyState}</p>
           </div>
@@ -131,7 +139,7 @@ export default function TongueBlock({
         (fullContent?.suggestions && fullContent.suggestions.length > 0) ? (
           <div className="rounded-xl border-2 border-accent-gold/30 bg-gradient-to-br from-accent-gold/5 to-accent-gold/10 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent-gold">
-              {locale === "zh" ? "补益建议" : "Nourishing Suggestions"}
+              {t.nourishingSuggestions}
             </p>
             <ul className="mt-2 space-y-2 text-sm leading-relaxed text-light-primary">
               {(fullContent.healthCareAdvice && fullContent.healthCareAdvice.length > 0
