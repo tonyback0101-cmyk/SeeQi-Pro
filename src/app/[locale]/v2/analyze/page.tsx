@@ -29,6 +29,7 @@ const TEXT = {
     tongueDescription: "参考中医保健视角，从舌色与舌苔，看最近的气机、精力与消化状态（非医疗）。",
     dreamTitle: "梦境 · 内心在说什么",
     dreamIntro: "",
+    dreamDescription: "梦境亦真亦幻，景象皆藏其间。它是一种提醒，更是一种来自心灵深处的无声暗示。",
     dreamPlaceholder: "用几句话描述一个最近印象最深的梦，越具体越好：发生了什么？谁在场？你当时什么感受？",
     bottomHint: "SeeQi 会综合掌纹、舌苔与梦境，为你生成一份今日东方状态报告，不构成医疗或确定性预测。",
     submitButton: "开始生成今日洞察",
@@ -37,6 +38,9 @@ const TEXT = {
     openCamera: "拍照",
     remove: "移除",
     preview: "已选择",
+    uploadTip: "点击下方按钮上传或拍照",
+    selectFile: "选择文件",
+    noFileSelected: "未选择文件",
   },
   en: {
     title: "Start Today's Eastern Insight",
@@ -47,6 +51,7 @@ const TEXT = {
     tongueDescription: "From a TCM wellness perspective, observe your recent qi, energy, and digestion through tongue color and coating (not medical).",
     dreamTitle: "Dream · What Your Inner Self Says",
     dreamIntro: "",
+    dreamDescription: "Dreams are both real and illusory, and images are hidden within them. It is a kind of reminder, and even more, a silent hint from the depths of the soul.",
     dreamPlaceholder: "Describe a recent dream that left a strong impression. Be specific: What happened? Who was there? How did you feel?",
     bottomHint: "SeeQi will synthesize palm, tongue, and dream data to generate a daily Eastern state report. Not medical or predictive.",
     submitButton: "Generate Today's Insight",
@@ -55,6 +60,9 @@ const TEXT = {
     openCamera: "Take Photo",
     remove: "Remove",
     preview: "Selected",
+    uploadTip: "Click the button below to upload or take a photo",
+    selectFile: "Choose File",
+    noFileSelected: "No file chosen",
   },
 } as const;
 
@@ -1346,7 +1354,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                 <h2 className="card-title">{t.palmTitle}</h2>
                 <p className="card-description">{t.palmDescription}</p>
                 <div className="upload-area">
-                  <p className="upload-tip">点击下方按钮上传或拍照</p>
+                  <p className="upload-tip">{t.uploadTip}</p>
                   <div className="file-inputs">
                     <label className="file-label" htmlFor="palm-file-input">
                       <input
@@ -1363,13 +1371,13 @@ function V2AnalyzePageContent({ params }: PageProps) {
                             if (fileNameSpan) fileNameSpan.textContent = file.name;
                           } else if (e.target) {
                             const fileNameSpan = document.getElementById("palm-image-name");
-                            if (fileNameSpan) fileNameSpan.textContent = "未选择文件";
+                            if (fileNameSpan) fileNameSpan.textContent = t.noFileSelected;
                           }
                         }}
                       />
-                      <span>选择文件</span>
+                      <span>{t.selectFile}</span>
                       <span className="file-name" id="palm-image-name">
-                        {palmFile ? palmFile.name : "未选择文件"}
+                        {palmFile ? palmFile.name : t.noFileSelected}
                       </span>
                     </label>
                     <button
@@ -1377,7 +1385,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                       className="action-button primary-action"
                       onClick={() => document.getElementById("palm-file-input")?.click()}
                     >
-                      上传图片
+                      {t.upload}
                     </button>
                     <button
                       type="button"
@@ -1403,7 +1411,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                         fontWeight: 700
                       }}
                     >
-                      拍照
+                      {t.openCamera}
                     </button>
                   </div>
                 </div>
@@ -1417,7 +1425,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                 <h2 className="card-title">{t.tongueTitle}</h2>
                 <p className="card-description">{t.tongueDescription}</p>
                 <div className="upload-area">
-                  <p className="upload-tip">点击下方按钮上传或拍照</p>
+                  <p className="upload-tip">{t.uploadTip}</p>
                   <div className="file-inputs">
                     <label className="file-label" htmlFor="tongue-file-input">
                       <input
@@ -1434,13 +1442,13 @@ function V2AnalyzePageContent({ params }: PageProps) {
                             if (fileNameSpan) fileNameSpan.textContent = file.name;
                           } else if (e.target) {
                             const fileNameSpan = document.getElementById("tongue-image-name");
-                            if (fileNameSpan) fileNameSpan.textContent = "未选择文件";
+                            if (fileNameSpan) fileNameSpan.textContent = t.noFileSelected;
                           }
                         }}
                       />
-                      <span>选择文件</span>
+                      <span>{t.selectFile}</span>
                       <span className="file-name" id="tongue-image-name">
-                        {tongueFile ? tongueFile.name : "未选择文件"}
+                        {tongueFile ? tongueFile.name : t.noFileSelected}
                       </span>
                     </label>
                     <button
@@ -1448,7 +1456,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                       className="action-button primary-action"
                       onClick={() => document.getElementById("tongue-file-input")?.click()}
                     >
-                      上传图片
+                      {t.upload}
                     </button>
                     <button
                       type="button"
@@ -1474,7 +1482,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                         fontWeight: 700
                       }}
                     >
-                      拍照
+                      {t.openCamera}
                     </button>
                   </div>
                 </div>
@@ -1487,7 +1495,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                 </div>
                 <h2 className="card-title">{t.dreamTitle}</h2>
                 <p className="card-description">
-                  梦境亦真亦幻，景象皆藏其间。它是一种提醒，更是一种来自心灵深处的无声暗示。
+                  {t.dreamDescription}
                 </p>
                 <div className="dream-input-area">
           <textarea
@@ -1495,7 +1503,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
             name="dream-text"
             value={dreamText}
             onChange={(event) => setDreamText(event.target.value)}
-            placeholder="请描述您最近的梦境，越详细越好。比如：梦里发生了什么？谁在？你当时有什么感受？"
+            placeholder={t.dreamPlaceholder}
             className="dream-textarea"
           />
             </div>
@@ -1503,7 +1511,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
             </div>
             
             {/* 第五步：最终提示语与提交按钮 */}
-            <p className="final-remark">SeeQi 会综合掌纹、舌苔与梦境，为你生成一份今日东方状态报告，不构成医疗诊断或确定性预测。</p>
+            <p className="final-remark">{t.bottomHint}</p>
             
             <div className="submit-button-wrapper">
           <button 
@@ -1818,7 +1826,7 @@ function V2AnalyzePageContent({ params }: PageProps) {
                 }
               }}
             >
-              拍照
+              {t.openCamera}
             </button>
           </div>
         </div>
@@ -2028,9 +2036,7 @@ function UploadField({
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-[var(--v2-color-text-secondary)] font-medium">
-              {locale === "zh"
-                ? "点击下方按钮上传或拍照"
-                : "Click the button below to upload or take a photo"}
+              {t.uploadTip}
             </p>
           </div>
         )}
