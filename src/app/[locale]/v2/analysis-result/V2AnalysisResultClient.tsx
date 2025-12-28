@@ -469,7 +469,6 @@ export default function V2AnalysisResultClient({
   isLoggedIn,
   user,
 }: V2AnalysisResultClientProps) {
-  const t = TEXT[locale];
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -483,9 +482,10 @@ export default function V2AnalysisResultClient({
   const [paymentFeedback, setPaymentFeedback] = useState<{ type: "error" | "success"; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // 获取当前 reportId 与 locale
+  // 获取当前 reportId 与 locale（确保 locale 有效）
   const reportId = searchParams?.get("reportId") ?? report?.id ?? "";
-  const effectiveLocale = locale ?? "zh";
+  const effectiveLocale: Locale = (locale === "en" ? "en" : "zh");
+  const t = TEXT[effectiveLocale];
 
   // 构建当前页面的 URL（用于 UnlockModal 的登录回调）
   const currentUrl = buildV2ResultPage(effectiveLocale, reportId);
@@ -513,7 +513,7 @@ export default function V2AnalysisResultClient({
     }
   }, [searchParams, effectiveLocale, reportId, router, urlCleaned]);
 
-  const fiveAspectData = useMemo(() => extractFiveAspectData(report, locale), [report, locale]);
+  const fiveAspectData = useMemo(() => extractFiveAspectData(report, effectiveLocale), [report, effectiveLocale]);
   const reportAccessStatus = useMemo(() => extractReportAccessStatus(report), [report]);
   const accessLevel = getAccessLevel(report, access);
   const isFullAccess = accessLevel === "full";
@@ -529,7 +529,7 @@ export default function V2AnalysisResultClient({
           <p style={{ color: '#AABBC9' }}>{t.failed}</p>
           {reportId && (
             <p style={{ color: '#AABBC9', marginTop: '16px', fontSize: '14px' }}>
-              {locale === "zh" ? `报告ID: ${reportId}` : `Report ID: ${reportId}`}
+              {effectiveLocale === "zh" ? `报告ID: ${reportId}` : `Report ID: ${reportId}`}
             </p>
           )}
         </div>
@@ -630,9 +630,9 @@ export default function V2AnalysisResultClient({
 
   // 处理 fallback 逻辑
   const palmRuntimeWarningText =
-    runtimeWarnings?.palm && runtimeWarnings.palm.length > 0 ? runtimeWarnings.palm.join(locale === "zh" ? "；" : " · ") : null;
+    runtimeWarnings?.palm && runtimeWarnings.palm.length > 0 ? runtimeWarnings.palm.join(effectiveLocale === "zh" ? "；" : " · ") : null;
   const tongueRuntimeWarningText =
-    runtimeWarnings?.tongue && runtimeWarnings.tongue.length > 0 ? runtimeWarnings.tongue.join(locale === "zh" ? "；" : " · ") : null;
+    runtimeWarnings?.tongue && runtimeWarnings.tongue.length > 0 ? runtimeWarnings.tongue.join(effectiveLocale === "zh" ? "；" : " · ") : null;
 
   const palmFallback =
     Boolean(palmRuntimeWarningText) ||
@@ -656,40 +656,40 @@ export default function V2AnalysisResultClient({
   };
 
   const palmNotice =
-    palmRuntimeWarningText ?? (palmFallback ? fallbackTexts[locale].palm : null);
+    palmRuntimeWarningText ?? (palmFallback ? fallbackTexts[effectiveLocale].palm : null);
   const tongueNotice =
-    tongueRuntimeWarningText ?? (tongueFallback ? fallbackTexts[locale].tongue : null);
-  const dreamNotice = dreamFallback ? fallbackTexts[locale].dream : null;
+    tongueRuntimeWarningText ?? (tongueFallback ? fallbackTexts[effectiveLocale].tongue : null);
+  const dreamNotice = dreamFallback ? fallbackTexts[effectiveLocale].dream : null;
 
   const analysisWarnings: Array<{ label: string; message: string }> = [];
   if (palmNotice) {
     analysisWarnings.push({
-      label: locale === "zh" ? "掌纹" : "Palm",
+      label: effectiveLocale === "zh" ? "掌纹" : "Palm",
       message: palmNotice,
     });
   }
   if (tongueNotice) {
     analysisWarnings.push({
-      label: locale === "zh" ? "舌象" : "Tongue",
+      label: effectiveLocale === "zh" ? "舌象" : "Tongue",
       message: tongueNotice,
     });
   }
   if (dreamNotice) {
     analysisWarnings.push({
-      label: locale === "zh" ? "梦境" : "Dream",
+      label: effectiveLocale === "zh" ? "梦境" : "Dream",
       message: dreamNotice,
     });
   }
 
-  const previewHighlights = locale === "zh"
+  const previewHighlights = effectiveLocale === "zh"
     ? ["掌纹 / 舌苔 / 梦境三大模块概览", "今日气运节奏 + 公历宜忌提示", "基础建议（3-4 条，供日常参考）"]
     : ["Palm / tongue / dream quick overview", "Today's qi rhythm + calendar tips", "Baseline advice (3-4 items for daily use)"];
 
-  const proHighlights = locale === "zh"
+  const proHighlights = effectiveLocale === "zh"
     ? ["掌纹财富线 · 事业线深度解读", "舌象体质调理方案（饮食 / 作息 / 情绪）", "梦境象意 + 心绪趋势 + 行动建议", "体质类型 + 今日节律安排"]
     : ["Deep dive on wealth & career lines", "Tongue-based regimen (diet / rest / emotion)", "Dream symbolism + mood trend + actions", "Constitution type + detailed rhythm planning"];
 
-  const unlockPerks = locale === "zh"
+  const unlockPerks = effectiveLocale === "zh"
     ? ["一次解锁本报告", "或订阅 PRO（月/年）", "解锁历史报告与新分析"]
     : ["Unlock this report once", "Or subscribe PRO (monthly / yearly)", "Access history + new analyses"];
 
@@ -767,13 +767,13 @@ export default function V2AnalysisResultClient({
       {/* border-b border-card-border: 底部边框使用卡片边框色，形成统一感 */}
       <header className="sticky top-0 z-50 bg-mystic-primary/80 backdrop-blur-sm px-4 h-12 flex items-center border-b border-card-border-light" style={{ backgroundColor: 'rgba(13, 27, 42, 0.8)', borderBottom: '1px solid rgba(80, 120, 160, 0.4)', color: '#AABBC9' }}>
         <Link
-          href={buildHomePage(locale)}
+          href={buildHomePage(effectiveLocale)}
           className="back-link"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-light-secondary">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          {locale === "zh" ? "返回首页" : "Back to Home"}
+          {effectiveLocale === "zh" ? "返回首页" : "Back to Home"}
         </Link>
       </header>
 
@@ -788,7 +788,7 @@ export default function V2AnalysisResultClient({
             className="mb-6 card bg-card-bg-dark border border-card-border-light rounded-lg px-4 py-3 text-left"
           >
             <p className="text-sm font-medium text-accent-red">
-              ⚠ {locale === "zh" ? "数据缺失（测试环境）— 显示降级内容。" : "Data Missing (Test Environment) — Showing Fallback Content."}
+              ⚠ {effectiveLocale === "zh" ? "数据缺失（测试环境）— 显示降级内容。" : "Data Missing (Test Environment) — Showing Fallback Content."}
             </p>
           </motion.div>
         )}
@@ -803,23 +803,23 @@ export default function V2AnalysisResultClient({
         {/* ① 头部信息 + 今日气运节奏（预览可见） */}
         <section className="report-section" style={{ color: '#AABBC9' }}>
           <h1 className="report-title">
-            {isFullAccess ? (locale === "zh" ? "综合测评报告" : "Comprehensive Report") : t.title}
+            {isFullAccess ? (effectiveLocale === "zh" ? "综合测评报告" : "Comprehensive Report") : t.title}
           </h1>
           <p className="report-subtitle">{t.subtitle}</p>
           
           <div className="report-content mt-4 flex justify-between items-center">
             <div>
               <div className="text-xs text-light-secondary mb-1">
-                {locale === "zh" ? "今日气运节奏" : "Today's Qi Rhythm"}
+                {effectiveLocale === "zh" ? "今日气运节奏" : "Today's Qi Rhythm"}
               </div>
               {dayGanzhi && (
                 <div className="font-serif font-bold text-light-highlight">
-                  {locale === "zh" ? `当天干支为「${dayGanzhi}」` : `Day Ganzhi: ${dayGanzhi}`}
+                  {effectiveLocale === "zh" ? `当天干支为「${dayGanzhi}」` : `Day Ganzhi: ${dayGanzhi}`}
                 </div>
               )}
               {!dayGanzhi && solarTerm && (
                 <div className="font-serif font-bold text-light-highlight">
-                  {locale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`}
+                  {effectiveLocale === "zh" ? `今日节气为「${solarTerm}」` : `Solar Term: ${solarTerm}`}
                 </div>
               )}
             </div>
@@ -835,7 +835,7 @@ export default function V2AnalysisResultClient({
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 5v6.5h-1.5V7h1.5zm0 8.5v1.5h-1.5v-1.5h1.5z" />
                 </svg>
-                {locale === "zh" ? "图像质量提醒" : "Image Quality Notice"}
+                {effectiveLocale === "zh" ? "图像质量提醒" : "Image Quality Notice"}
               </div>
               <ul className="analysis-warning-list">
                 {analysisWarnings.map((warning) => (
@@ -846,7 +846,7 @@ export default function V2AnalysisResultClient({
                 ))}
               </ul>
               <p className="analysis-warning-hint">
-                {locale === "zh"
+                {effectiveLocale === "zh"
                   ? "建议重新上传更清晰的照片以获得更精确的洞察。"
                   : "Try uploading clearer photos next time for a more precise analysis."}
               </p>
@@ -859,7 +859,7 @@ export default function V2AnalysisResultClient({
             <FiveAspectOverview
               data={fiveAspectData}
               delay={0.1}
-              locale={locale}
+              locale={effectiveLocale}
               unlocked
             />
             <PalmistryBlock
@@ -870,7 +870,7 @@ export default function V2AnalysisResultClient({
               fullData={palmFullDataPayload}
               accessLevel="full"
               delay={0.15}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={palmNotice}
             />
@@ -878,17 +878,17 @@ export default function V2AnalysisResultClient({
               tongueColor={tongueFullContentPayload.summary}
               tongueCoating={
                 rawTongueResult?.coating
-                  ? (locale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
+                  ? (effectiveLocale === "zh" ? `舌苔：${rawTongueResult.coating}` : `Tongue coating: ${rawTongueResult.coating}`)
                   : bodyTongue?.tongue_coating_signal ?? null
               }
               cracks={
                 rawTongueResult?.texture === "cracked" || rawTongueResult?.shape === "cracked"
-                  ? (locale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
+                  ? (effectiveLocale === "zh" ? "有裂纹，提示津液亏虚。" : "Cracks present, indicating fluid deficiency.")
                   : null
               }
               swelling={
                 rawTongueResult?.shape === "swollen" || rawTongueResult?.shape === "teethmark"
-                  ? (locale === "zh"
+                  ? (effectiveLocale === "zh"
                       ? rawTongueResult.shape === "swollen"
                         ? "舌体偏肿，提示脾虚水湿。"
                         : "舌边有齿痕，提示脾气不足。"
@@ -899,7 +899,7 @@ export default function V2AnalysisResultClient({
               }
               redPoints={
                 rawTongueResult?.color === "red" || rawTongueResult?.color === "crimson" || rawTongueResult?.color === "purple"
-                  ? (locale === "zh"
+                  ? (effectiveLocale === "zh"
                       ? rawTongueResult.color === "purple"
                         ? "舌色偏紫，提示血瘀。"
                         : "舌色偏红，提示内热。"
@@ -913,7 +913,7 @@ export default function V2AnalysisResultClient({
               accessLevel="full"
               fullContent={tongueFullContentPayload}
               delay={0.2}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={tongueNotice}
             />
@@ -922,7 +922,7 @@ export default function V2AnalysisResultClient({
               accessLevel="full"
               fullContent={dreamFullContentPayload}
               delay={0.25}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={dreamNotice}
             />
@@ -960,7 +960,7 @@ export default function V2AnalysisResultClient({
               qiTrend={qiRhythm?.trendText ?? qiRhythm?.summary ?? null}
               qiAdvice={qiRhythm?.advice ?? qiRhythm?.suggestions ?? []}
               delay={0.3}
-              locale={locale}
+              locale={effectiveLocale}
               isFullAccess
             />
           </>
@@ -969,7 +969,7 @@ export default function V2AnalysisResultClient({
             <FiveAspectOverview
               data={fiveAspectData}
               delay={0.1}
-              locale={locale}
+              locale={effectiveLocale}
               unlocked={false}
             />
             <PalmistryBlock
@@ -980,7 +980,7 @@ export default function V2AnalysisResultClient({
               fullData={null}
               accessLevel="preview"
               delay={0.15}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={palmNotice}
             />
@@ -995,7 +995,7 @@ export default function V2AnalysisResultClient({
               accessLevel="preview"
               fullContent={null}
               delay={0.2}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={tongueNotice}
             />
@@ -1004,7 +1004,7 @@ export default function V2AnalysisResultClient({
               accessLevel="preview"
               fullContent={null}
               delay={0.25}
-              locale={locale}
+              locale={effectiveLocale}
               reportId={report.id}
               notice={dreamNotice}
             />
@@ -1020,7 +1020,7 @@ export default function V2AnalysisResultClient({
               qiTrend={null}
               qiAdvice={null}
               delay={0.3}
-              locale={locale}
+              locale={effectiveLocale}
               isFullAccess={false}
             />
             {showPaywall && (
@@ -1033,10 +1033,10 @@ export default function V2AnalysisResultClient({
                 <div className="paywall-upgrade-card">
                   <div className="paywall-upgrade-header">
                     <span className="paywall-tag emphasize">
-                      {locale === "zh" ? "完整报告" : "Full Report"}
+                      {effectiveLocale === "zh" ? "完整报告" : "Full Report"}
                     </span>
                     <h3 className="paywall-panel-title">
-                      {locale === "zh" ? "升级即可获得" : "Unlock to receive"}
+                      {effectiveLocale === "zh" ? "升级即可获得" : "Unlock to receive"}
                     </h3>
                   </div>
                   <ul className="paywall-list">
@@ -1046,8 +1046,8 @@ export default function V2AnalysisResultClient({
                   </ul>
                   <div className="paywall-price-row">
                     <div>
-                      <p className="paywall-price-label">{locale === "zh" ? "解锁方式" : "Options"}</p>
-                      <p className="paywall-price-main">{locale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
+                      <p className="paywall-price-label">{effectiveLocale === "zh" ? "解锁方式" : "Options"}</p>
+                      <p className="paywall-price-main">{effectiveLocale === "zh" ? "US$1.99 单次报告" : "US$1.99 per report"}</p>
                     </div>
                     <div className="paywall-chip-list">
                       {unlockPerks.map((perk) => (
@@ -1064,7 +1064,7 @@ export default function V2AnalysisResultClient({
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2C9.243 2 7 4.243 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.757-2.243-5-5-5zm2 10v4h-4v-4h4zm-3-5V7a1 1 0 012 0v3h-2z"/>
                       </svg>
-                      {locale === "zh"
+                      {effectiveLocale === "zh"
                         ? "解锁完整报告 · 查看财富线与今日修身方案"
                         : "Unlock full report · detailed plan today"}
                     </button>
@@ -1073,7 +1073,7 @@ export default function V2AnalysisResultClient({
                       onClick={handleUnlockClick}
                       className="paywall-secondary-link"
                     >
-                      {locale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
+                      {effectiveLocale === "zh" ? "改订 PRO（月/年）" : "Switch to PRO (monthly/yearly)"}
                     </button>
                   </div>
                 </div>
